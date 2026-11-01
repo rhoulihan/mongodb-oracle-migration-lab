@@ -232,7 +232,7 @@ server and no network: Reveal.js 5.1.0 and the fonts are in the repo.
   `<!-- FIG:<name> -->` markers. It refuses anything out of frame, colliding
   or with a line through text, and renders light and dark PNGs to check by eye.
 - **QA:** `deck/build/qa_deck.py` renders every slide at 1280x720 and fails on
-  overflow, an SVG drawn below 0.80 scale, missing or empty notes, an em dash,
+  overflow, overlapping slide rows, an SVG drawn below 0.80 scale, missing or empty notes, an em dash,
   the old version name, more than 45 visible words on a non-demo slide
   (`--word-budget N`), and with `--offline` any request that is not file://.
 

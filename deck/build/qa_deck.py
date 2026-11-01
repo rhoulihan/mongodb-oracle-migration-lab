@@ -8,16 +8,20 @@ in headless Chrome at a 1280x720 viewport, walks ``Reveal.getSlides()`` (every f
 shown), and checks each slide for:
 
   * overflow: scroll overflow, or any element outside the 1280x720 frame
+  * overlap: an element spilling out of its slide row (a direct child of the section),
+    or two rows intersecting; ``data-qa-allow-overlap`` opts out a deliberate layer
   * an SVG figure (``svg.fig`` or ``figure svg``) drawn below 0.80 px per viewBox unit
   * a missing or empty ``<aside class="notes">``
   * the em dash character (U+2014), anywhere in the slide or its notes
   * the old database version name (say 26ai)
   * more visible words than ``--word-budget`` (default 45) on a slide without class
-    ``demo``; SVG labels and notes do not count. Text is accent only on concept slides.
+    ``demo``; SVG labels, the eyebrow and notes do not count. Text is accent only on
+    concept slides.
 
-``--offline`` blocks DNS in the browser and fails on any request whose scheme is not
-file: (or data:, blob:, about:), plus any http(s) reference in the deck source or its
-local stylesheets. ``--dark`` renders with data-theme="dark". ``--shots`` writes one
+``--offline`` blocks DNS in the browser and fails on any page request whose scheme is not
+file: (or data:, blob:, about:), read from Chrome's net log and Resource Timing, plus any
+http(s) reference in the deck source, its stylesheets, or its scripts (vendored included;
+text-only URLs in JS_URL_OK are allowed). ``--dark`` renders with data-theme="dark". ``--shots`` writes one
 1280x720 PNG per slide; always look at them, the checker cannot judge taste.
 """
 from __future__ import annotations
@@ -37,6 +41,10 @@ EM_DASH = chr(0x2014)
 OLD_VERSION = "23" + "ai"   # split so this file passes the repo copy lint
 MIN_SCALE = 0.80
 LOCAL_SCHEMES = ("file:", "data:", "blob:", "about:")
+# URLs that appear in vendored JS as text only (license banners, error messages, SVG
+# namespace), never fetched. Anything else in a .js file fails --offline.
+JS_URL_OK = ("https://hakim.se", "https://revealjs.com", "https://github.com/markedjs/marked",
+             "https://marked.js.org/", "http://www.w3.org/")
 
 DARK = "<script>document.documentElement.dataset.theme='dark'</script>"
 
@@ -52,14 +60,14 @@ QA_JS = r"""<script>
     const w = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT);
     for (let t = w.nextNode(); t; t = w.nextNode()) {
       const p = t.parentElement;
-      if (!p || p.closest('aside.notes, svg, script, style')) continue;
+      if (!p || p.closest('aside.notes, svg, script, style, .eyebrow')) continue;
       if (!p.checkVisibility({ visibilityProperty: true, opacityProperty: false })) continue;
-      n += (t.textContent.match(/[A-Za-z0-9][\w'.%-]*/g) || []).length;
+      n += (t.textContent.match(/[A-Za-z0-9][\w'.%:-]*/g) || []).length;
     }
     return n;
   }
   function run() {
-    Reveal.configure({ transition: 'none', backgroundTransition: 'none' });
+    Reveal.configure({ transition: 'none', backgroundTransition: 'none', autoAnimate: false });
     const out = [];
     Reveal.getSlides().forEach((s, i) => {
       const ix = Reveal.getIndices(s);
@@ -77,6 +85,28 @@ QA_JS = r"""<script>
         if (r.right > fb.r + 1 || r.left < fb.l - 1 || r.bottom > fb.b + 1 || r.top < fb.t - 1)
           bad.push('overflow: <' + el.tagName.toLowerCase() + '> outside the 1280x720 frame');
       });
+      // Collisions inside the frame: every slide row (direct child of the section) must hold
+      // its own content, and no two rows may intersect. Inline boxes are skipped (glyph boxes
+      // overhang tight line-heights); [data-qa-allow-overlap] opts out a deliberate layer.
+      const tag = el => '<' + el.tagName.toLowerCase() + (el.classList.length ? '.' + [...el.classList].join('.') : '') + '>';
+      const rows = [...s.children].filter(c => !c.matches('aside.notes, script, style, [data-qa-allow-overlap]')
+        && (c.getBoundingClientRect().width || c.getBoundingClientRect().height));
+      rows.forEach(row => {
+        const rr = row.getBoundingClientRect();
+        row.querySelectorAll('*').forEach(el => {
+          if (el.parentElement.closest('svg') || el.closest('[data-qa-allow-overlap]')) return;
+          if (getComputedStyle(el).display === 'inline') return;
+          const r = el.getBoundingClientRect();
+          if (!r.width && !r.height) return;
+          if (r.top < rr.top - 1 || r.bottom > rr.bottom + 1 || r.left < rr.left - 1 || r.right > rr.right + 1)
+            bad.push('overlap: ' + tag(el) + ' spills out of its row ' + tag(row));
+        });
+      });
+      for (let a = 0; a < rows.length; a++) for (let b = a + 1; b < rows.length; b++) {
+        const p = rows[a].getBoundingClientRect(), q = rows[b].getBoundingClientRect();
+        if (p.left < q.right - 1 && q.left < p.right - 1 && p.top < q.bottom - 1 && q.top < p.bottom - 1)
+          bad.push('overlap: rows ' + tag(rows[a]) + ' and ' + tag(rows[b]) + ' intersect');
+      }
       let k = null;
       s.querySelectorAll('svg.fig, figure svg').forEach(svg => {
         const vb = svg.viewBox && svg.viewBox.baseVal, r = svg.getBoundingClientRect();
@@ -115,7 +145,7 @@ QA_JS = r"""<script>
 SHOT_JS = r"""<script>
 addEventListener('load', () => {
   const go = () => {
-    Reveal.configure({ transition: 'none', backgroundTransition: 'none' });
+    Reveal.configure({ transition: 'none', backgroundTransition: 'none', autoAnimate: false });
     const m = /qa_slide=(\d+)\.(\d+)/.exec(location.search);
     if (m) Reveal.slide(+m[1], +m[2], 999);
   };
@@ -162,10 +192,10 @@ def variant(src: str, head_extra: str, body_extra: str) -> str:
 
 
 def local_refs(deck: Path, text: str) -> list[Path]:
-    """Local CSS/JS the deck links, outside vendor/ (third-party code is checked at vendoring)."""
+    """Local CSS/JS the deck links, vendored code included."""
     out = []
     for ref in re.findall(r'(?:href|src)\s*=\s*["\']([^"\'#?]+)', text):
-        if re.match(r"^[a-z]+:|^//", ref, re.I) or "vendor/" in ref:
+        if re.match(r"^[a-z]+:|^//", ref, re.I):
             continue
         p = (deck.parent / ref)
         if p.suffix in (".css", ".js") and p.is_file():
@@ -183,11 +213,40 @@ def source_issues(deck: Path, text: str, offline: bool) -> list[str]:
         if OLD_VERSION in s.lower():
             bad.append(f"old version name in {name}: say 26ai")
         if offline:
+            if p.suffix == ".js":
+                for u in re.findall(r"https?://[^\s\"'`)<>\\]+", s, re.I):
+                    if not u.startswith(JS_URL_OK):
+                        bad.append(f"network reference in {name}: {u}")
+                continue
             pat = (r'(?:src|href)\s*=\s*["\']?\s*((?:https?:)?//[^"\'\s>]+)' if p.suffix == ".html"
                    else r'(?:url\(|@import\s+)["\']?((?:https?:)?//[^"\')\s]+)')
             for u in re.findall(pat, s, re.I):
                 bad.append(f"network reference in {name}: {u}")
     return bad
+
+
+def page_requests(netlog: Path) -> list[str]:
+    """URLs the page asked the network stack for, from Chrome's net log. This sees requests
+    Resource Timing misses (a fetch that dies at the blocked DNS, or one fired after QA read
+    the timing buffer). Browser housekeeping requests carry initiator "not an origin" and
+    are ignored; page requests carry the page origin (file:// pages: "null")."""
+    if not netlog.is_file():
+        return ["(net log missing: cannot prove the deck is offline)"]
+    raw = netlog.read_text(encoding="utf-8", errors="replace").rstrip().rstrip(",")
+    try:
+        log = json.loads(raw)
+    except json.JSONDecodeError:  # chrome killed before it closed the file
+        log = json.loads(raw + ("]}" if not raw.endswith("]}") else ""))
+    kinds = {v: k for k, v in log["constants"]["logEventTypes"].items()}
+    urls = []
+    for ev in log.get("events", []):
+        prm = ev.get("params") or {}
+        if kinds.get(ev.get("type")) != "URL_REQUEST_START_JOB" or "url" not in prm:
+            continue
+        if prm.get("initiator") == "not an origin" and "file://" not in prm.get("network_isolation_key", ""):
+            continue
+        urls.append(prm["url"])
+    return sorted(set(urls))
 
 
 def run(deck: Path, shots: Path | None, dark: bool, offline: bool, budget: int,
@@ -206,7 +265,9 @@ def run(deck: Path, shots: Path | None, dark: bool, offline: bool, budget: int,
             qa = deck.parent / f".qa-{os.getpid()}.html"
             tmp.append(qa)
             qa.write_text(variant(text, head, QA_JS.replace("__CFG__", cfg)), encoding="utf-8")
-            dom = subprocess.run([ch, *base, "--virtual-time-budget=8000", "--dump-dom", qa.as_uri()],
+            netlog = Path(prof) / "net.json"
+            dom = subprocess.run([ch, *base, f"--log-net-log={netlog}", "--net-log-capture-mode=Default",
+                                  "--virtual-time-budget=8000", "--dump-dom", qa.as_uri()],
                                  capture_output=True, text=True, timeout=240).stdout
             m = re.search(r'<pre id="qa-out">(.*?)</pre>', dom, re.S)
             if not m:
@@ -217,6 +278,9 @@ def run(deck: Path, shots: Path | None, dark: bool, offline: bool, budget: int,
                 print(json.dumps({"deck": deck_issues + [res["fatal"]]}, indent=1))
                 return 1
             if offline:
+                for u in page_requests(netlog):
+                    if not u.lower().startswith(LOCAL_SCHEMES):
+                        deck_issues.append(f"network request: {u}")
                 for u in res["requests"]:
                     if not u.lower().startswith(LOCAL_SCHEMES):
                         deck_issues.append(f"network request: {u}")

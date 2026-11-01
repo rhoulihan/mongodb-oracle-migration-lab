@@ -105,6 +105,63 @@ def test_cdn_script_fails_offline(tmp_path):
     assert "network" in r.stdout
 
 
+def test_js_fetch_fails_offline(tmp_path):
+    # a DNS-blocked fetch leaves no Resource Timing entry; the network layer must catch it
+    body = f'<section><h2>Probe</h2><script>fetch("https://qa-probe.example/x.json").catch(() => 0)</script>{NOTE}</section>'
+    r = run_qa(tmp_path, deck(body), "--offline")
+    assert r.returncode == 1
+    assert "qa-probe.example" in r.stdout
+
+
+def test_late_js_fetch_fails_offline(tmp_path):
+    # issued after the page settles: never in the Resource Timing snapshot QA reads
+    js = 'addEventListener("load", () => setTimeout(() => fetch("https://qa-late.example/x.json").catch(() => 0), 300))'
+    body = f'<section><h2>Late probe</h2><script>{js}</script>{NOTE}</section>'
+    r = run_qa(tmp_path, deck(body), "--offline")
+    assert r.returncode == 1, r.stdout
+    assert "qa-late.example" in r.stdout
+
+
+def test_url_in_local_js_fails_offline(tmp_path):
+    (tmp_path / "extra.js").write_text('window.SRC = "https://cdn.example.com/lib.js";\n', encoding="utf-8")
+    html = deck(OK_SLIDE).replace('<script src="deck.js">', '<script src="extra.js"></script><script src="deck.js">')
+    r = run_qa(tmp_path, html, "--offline")
+    assert r.returncode == 1, r.stdout
+    assert "cdn.example.com" in r.stdout
+
+
+def _figure_slide(svg_attrs: str, wrap_style: str = "") -> str:
+    svg = (f'<svg {svg_attrs} viewBox="0 0 1120 520" xmlns="http://www.w3.org/2000/svg">'
+           '<rect x="20" y="20" width="1080" height="480" fill="none" stroke="red"/></svg>')
+    return ('<section><div class="eyebrow">Seg <span class="clock">0:00</span></div>'
+            '<h2>Figure slide</h2><p class="lede">One accent line.</p>'
+            f'<div class="body"{wrap_style}><figure>{svg}</figure></div>'
+            f'<p class="takeaway">Takeaway line.</p>{NOTE}</section>')
+
+
+def test_figure_spilling_over_takeaway_fails(tmp_path):
+    # the figure keeps its aspect height while its row shrinks: it spills inside the frame
+    html = deck(_figure_slide('style="display:block;width:100%;height:auto"',
+                              ' style="flex:1;min-height:0;display:block"'))
+    r = run_qa(tmp_path, html)
+    assert r.returncode == 1, r.stdout
+    assert "overlap" in r.stdout
+
+
+def test_theme_keeps_tall_figure_inside_its_row(tmp_path):
+    # same tall figure with the house classes: the theme fits it to the row (no collision)
+    r = run_qa(tmp_path, deck(_figure_slide('class="fig"')))
+    assert "overlap" not in r.stdout, r.stdout
+
+
+def test_eyebrow_and_clock_do_not_count_as_words(tmp_path):
+    words = " ".join(f"w{i}" for i in range(40))
+    body = (f'<section><div class="eyebrow">Segment 5 Optimization extra words here '
+            f'<span class="clock">0:54 · 26 min</span></div><h2>T</h2><p>{words}</p>{NOTE}</section>')
+    r = run_qa(tmp_path, deck(body))
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
 def test_missing_notes_fails(tmp_path):
     r = run_qa(tmp_path, deck('<section><h2>No notes</h2></section>'))
     assert r.returncode == 1

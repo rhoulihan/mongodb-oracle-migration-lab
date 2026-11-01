@@ -134,6 +134,10 @@ html, body { background: var(--paper); }
 /* ---------- Figures (inline SVG from build_figs.py) ---------- */
 .reveal figure { margin: 0; }
 .reveal svg.fig { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+/* A figure in .body shrinks with its row instead of spilling over the takeaway: the SVG
+   letterboxes (viewBox meet) and QA's 0.80 scale gate says when it got too small. */
+.body > figure { display: flex; flex-direction: column; justify-content: center; flex: 0 1 auto; min-height: 0; }
+.body > figure > svg.fig { flex: 0 1 auto; min-height: 0; width: 100%; }
 
 /* ---------- Title slide ---------- */
 .reveal .slides section.title-slide { justify-content: center; }
