@@ -36,18 +36,32 @@ ensure_app_env() { [ -f .lab/app.env ] || write_app_env mongo; }
 # The order service as seen from the host. LAB_APP_URL overrides it (tests).
 APP_URL="${LAB_APP_URL:-http://127.0.0.1:3300}"
 
-# Ruling O: write .lab/app.env (so a restart keeps the choice) and switch the
-# running service in place through POST /admin/backend. Only when the service
-# does not answer is it (re)started, which reads the new file.
+# Ruling O: switch the running service in place through POST /admin/backend,
+# then write .lab/app.env so a restart keeps the choice. Three outcomes:
+#   200            switched: write the file
+#   no connection  (curl exit 7) nothing listening: write the file and start
+#                  the service, which reads it
+#   anything else  (an HTTP error such as 503 "cannot reach oracle", or a
+#                  timeout) print the error, leave the file and the service
+#                  as they were, exit 1
 cmd_app_uri() {
   app_uri "$1" >/dev/null || usage
-  write_app_env "$1"
-  if curl -sf --max-time 30 -X POST -H 'content-type: application/json' \
-       -d "{\"target\":\"$1\"}" "$APP_URL/admin/backend" >/dev/null; then
+  local body code rc=0 err
+  body="$(mktemp)"
+  code="$(curl -s --max-time 30 -o "$body" -w '%{http_code}' -X POST -H 'content-type: application/json' \
+    -d "{\"target\":\"$1\"}" "$APP_URL/admin/backend")" || rc=$?
+  err="$(sed -n 's/.*"error":"\([^"]*\)".*/\1/p' "$body")"
+  rm -f "$body"
+  if [ "$rc" -eq 0 ] && [ "$code" = "200" ]; then
+    write_app_env "$1"
     echo "order service now uses $1 (127.0.0.1:3300)"
-  else
-    echo "order service did not answer; starting it on $1" >&2
+  elif [ "$rc" -eq 7 ]; then
+    write_app_env "$1"
+    echo "order service is not running; starting it on $1" >&2
     compose up -d --no-deps app && echo "order service now uses $1 (127.0.0.1:3300)"
+  else
+    echo "FAIL  order service did not switch to $1: ${err:-HTTP ${code:-none}, curl exit $rc}" >&2
+    return 1
   fi
 }
 
@@ -65,7 +79,9 @@ sync_app_env() {
 
 MIG_PASSWORD="${MIG_PASSWORD:-MigUser2026}"
 PORTS="27117 1523 8183 27119 3200 3300"
-BASE_IMAGES="docker.io/library/mongo:8.2 docker.io/gvenzl/oracle-free:23.26.3-faststart docker.io/library/node:22-alpine"
+# node:22-bookworm-slim is the app/runner base; node:22-alpine runs the console
+# and replicator placeholders until their tasks land.
+BASE_IMAGES="docker.io/library/mongo:8.2 docker.io/gvenzl/oracle-free:23.26.3-faststart docker.io/library/node:22-bookworm-slim docker.io/library/node:22-alpine"
 LAB_IMAGES="mongodb-oracle-migration-lab-mongo:latest mongodb-oracle-migration-lab-oracle:latest mongodb-oracle-migration-lab-app:latest docker.io/library/node:22-alpine"
 CHECK_TIMEOUT="${CHECK_TIMEOUT:-300}"
 
@@ -165,7 +181,8 @@ run_node() {
   local tty=-T
   [ -t 0 ] && [ -t 1 ] && tty=
   # $tty is unquoted on purpose: empty means "allocate a TTY" (no argument).
-  compose run --rm --no-deps $tty -e "MIG_PASSWORD=$MIG_PASSWORD" runner node "$@"
+  # --profile runner: podman-compose drops profiled services unless the profile is on.
+  compose --profile runner run --rm --no-deps $tty -e "MIG_PASSWORD=$MIG_PASSWORD" runner node "$@"
 }
 
 run_demo_cli() { local rc=0; run_node demos/run.mjs "$@" || rc=$?; sync_app_env; return "$rc"; }

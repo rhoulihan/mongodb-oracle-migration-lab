@@ -96,8 +96,11 @@ describe('D3 dump, restore, flip', () => {
     test('the planted Int64 2^53+1 version is checked for exactness after restore (Ruling K)', () => {
       const r = valueRow('orders', 'version', 'Int64 above 2^53');
       expect(r.src).toBe('9007199254740993');
-      expect(typeof r.exact).toBe('boolean');
-      expect(r.exact).toBe(r.dst === r.src);
+      // Measured: mongorestore carries it exactly (the Ruling K loss is on $inc,
+      // not on restore). If this fails, record the real behavior in the deck
+      // notes and invert the assertion with a comment; do not hide it.
+      expect(r.dst).toBe('9007199254740993');
+      expect(r.exact).toBe(true);
     });
 
     test('the table is printed for the CLI and the console', () => {
@@ -114,6 +117,29 @@ describe('D3 dump, restore, flip', () => {
       ['GET /health', true], ['GET /orders/:id', true], ['POST /orders', true],
       ['PATCH /orders/:id', true], ['GET /orders/:id (after PATCH)', true], ['GET /dashboard/top-devices/:region', true],
     ]);
+  });
+
+  test('counts after smoke still match the dump: smoke writes are left out and named', async () => {
+    const counts = d3.steps.find((s) => s.id === 'counts');
+    const r = await counts.run(ctx);
+    expect(r.ok, r.summary).toBe(true);
+    expect(r.summary).toMatch(/3 smoke-test documents left out/);
+    const byColl = Object.fromEntries(r.panes.left.map((x) => [x.coll, x.smokeExcluded]));
+    expect(byColl).toMatchObject({ orders: 1, orderEvents: 2 });
+  });
+
+  test('restore verify catches Oracle orders that do not match the dump', async () => {
+    const restore = d3.steps.find((s) => s.id === 'restore');
+    expect((await restore.verify(ctx)).ok).toBe(true);
+    const ora = await ctx.oraMongo();
+    const { insertedId } = await ora.collection('orders').insertOne({ region: 'R99', status: 'placed' });
+    try {
+      const v = await restore.verify(ctx);
+      expect(v.ok).toBe(false);
+      expect(v.summary).toMatch(/run \.\/lab\.sh reset d3 first/);
+    } finally {
+      await ora.collection('orders').deleteOne({ _id: insertedId });
+    }
   });
 
   test('explain shows the Oracle plan for the restored index', () => {

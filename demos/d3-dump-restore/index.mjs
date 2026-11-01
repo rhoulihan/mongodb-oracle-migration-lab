@@ -69,17 +69,32 @@ async function startingState() {
   await switchApp('mongo');
 }
 
-/** Per collection: what the archive holds and what Oracle holds now. */
-async function compareCounts(ora) {
-  const archive = await readArchive(readDump(DUMP));
+// The smoke step tags the order it places (SMOKE_TAG) right after the POST.
+// Counts leave out those orders and their orderEvents, so counts still
+// compares against the dump after a smoke run (headless, console or test).
+const SMOKE_TAG = 'd3SmokeTest';
+
+/** Documents the smoke step wrote, per collection: {orders, orderEvents, ids}. */
+async function smokeWrites(ora) {
+  const ids = (await ora.collection('orders').find({ [SMOKE_TAG]: true }, { projection: { _id: 1 } }).toArray())
+    .map((d) => d._id);
+  const events = ids.length ? await ora.collection('orderEvents').countDocuments({ orderId: { $in: ids } }) : 0;
+  return { orders: ids.length, orderEvents: events };
+}
+
+/** Per collection: what the archive holds and what Oracle holds now (smoke writes excluded). */
+async function compareCounts(ora, archive) {
+  archive ??= await readArchive(readDump(DUMP));
+  const smoke = await smokeWrites(ora);
   const oracle = new Map();
-  for (const c of COLLECTIONS) oracle.set(c, await ora.collection(c).countDocuments());
+  for (const c of COLLECTIONS) oracle.set(c, (await ora.collection(c).countDocuments()) - (smoke[c] ?? 0));
   // Taken after the Oracle counts: every archived document still unexpired
   // now was unexpired while Oracle was counted, so Oracle must hold it.
   const now = Date.now();
   return COLLECTIONS.map((coll) => {
     const a = archive.get(`${SRC_DB}.${coll}`) ?? { count: 0, ttl: null, deadlines: null };
-    const row = { coll, archive: a.count, restored: lastRestore?.get(coll) ?? null, oracle: oracle.get(coll) };
+    const row = { coll, archive: a.count, restored: lastRestore?.get(coll) ?? null, oracle: oracle.get(coll),
+      smokeExcluded: smoke[coll] ?? 0 };
     if (a.ttl) {
       // A TTL collection keeps expiring on both sides (Oracle runs the
       // restored TTL index too), so its live count is a range, not a number.
@@ -98,7 +113,8 @@ function countsTable(rows) {
   const head = ['collection', 'in the dump', 'restored', 'on Oracle now', 'note'];
   const body = rows.map((r) => [
     r.coll, String(r.archive), r.restored === null ? '-' : String(r.restored), String(r.oracle),
-    r.ttl ? `TTL ${r.ttl}: ${r.archive - r.oracle} expired since the dump (${r.unexpired} still unexpired)` : '',
+    [r.ttl ? `TTL ${r.ttl}: ${r.archive - r.oracle} expired since the dump (${r.unexpired} still unexpired)` : '',
+      r.smokeExcluded ? `${r.smokeExcluded} smoke-test documents left out` : ''].filter(Boolean).join('; '),
   ]);
   const w = head.map((h, i) => Math.max(h.length, ...body.map((b) => b[i].length)));
   const line = (r) => r.map((c, i) => c.padEnd(w[i])).join('  ').trimEnd();
@@ -172,10 +188,17 @@ export default {
         const names = (await ora.listCollections({}, { nameOnly: true }).toArray()).map((c) => c.name).sort();
         const extra = names.filter((n) => !COLLECTIONS.includes(n));
         if (extra.length) return { ok: false, summary: `unexpected collections on Oracle: ${extra.join(', ')}` };
-        const orders = await ora.collection('orders').countDocuments();
-        return orders > 0
-          ? { ok: true, summary: `MIG holds the ${COLLECTIONS.length} pre-created collections; orders has ${orders} documents` }
-          : { ok: false, summary: 'MIG.orders is empty: run the restore command' };
+        const orders = (await ora.collection('orders').countDocuments()) - (await smokeWrites(ora)).orders;
+        if (orders === 0) return { ok: false, summary: 'MIG.orders is empty: run the restore command' };
+        // With the dump present, Oracle must hold exactly the dumped orders:
+        // anything else means a restore into collections that were not empty.
+        if (await dumpExists(DUMP)) {
+          const dumped = (await readArchive(readDump(DUMP))).get(`${SRC_DB}.orders`)?.count ?? 0;
+          if (orders !== dumped) {
+            return { ok: false, summary: `MIG.orders holds ${orders} documents but the dump has ${dumped}: run ./lab.sh reset d3 first` };
+          }
+        }
+        return { ok: true, summary: `MIG holds the ${COLLECTIONS.length} pre-created collections; orders has ${orders} documents, as dumped` };
       },
     },
     {
@@ -185,11 +208,13 @@ export default {
       async run(ctx) {
         const rows = await compareCounts(await ctx.oraMongo());
         const bad = rows.filter((r) => !r.ok).map((r) => r.coll);
+        const smoke = rows.reduce((n, r) => n + r.smokeExcluded, 0);
+        const note = smoke ? ` (${smoke} smoke-test documents left out)` : '';
         return {
           ok: bad.length === 0,
           summary: bad.length
-            ? `counts differ for ${bad.join(', ')}`
-            : `all ${rows.length} collections match the dump`,
+            ? `counts differ for ${bad.join(', ')}${note}`
+            : `all ${rows.length} collections match the dump${note}`,
           panes: { left: rows },
           detail: countsTable(rows),
         };
@@ -250,6 +275,8 @@ export default {
         const post = await app('POST', '/orders', { subscriberId: sub._id, lines: [{ sku: dev._id, qty: 1 }, { sku: plan._id, qty: 1 }] });
         check('POST /orders', post.status === 201 && post.body?._id, `status ${post.status}`);
         const id = post.body?._id?.toHexString?.();
+        // Tag it (outside the app, no version bump) so counts can leave it out.
+        if (id) await ora.collection('orders').updateOne({ _id: post.body._id }, { $set: { [SMOKE_TAG]: true } });
 
         const patch = id ? await app('PATCH', `/orders/${id}`, { status: 'provisioned' }) : { status: 0 };
         check('PATCH /orders/:id', patch.status === 200, `status ${patch.status}`);
