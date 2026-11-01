@@ -6,15 +6,15 @@
 // command exit 0. It must pass twice in a row with nothing done by hand
 // between the runs: the first command is a full reset.
 //
-// Gated on LAB_UP (the stack must be up). It wipes the lab volumes, so the
+// Gated on LAB_UP by ./live.mjs, like every integration file. It wipes the lab volumes, so the
 // console's live recordings go too (fallback/recorded/ is the copy that stays).
-// Takes about 9 minutes on the Linux lab (--reporter=verbose shows each
+// Takes about 12 minutes on the Linux lab (--reporter=verbose shows each
 // command's time; .lab/full-run/ keeps each command's output). `./lab.sh` runs Node in the runner container unless
 // LAB_HOST_NODE=1 is set, so by default it also proves the images.
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test } from './live.mjs';
 import { findDemo } from '../../demos/contract.mjs';
 import { BEFORE, SESSION } from '../../scripts/run-sheet.mjs';
 
@@ -44,7 +44,7 @@ function step(args, check) {
   }, 1_800_000);
 }
 
-describe.skipIf(!process.env.LAB_UP)('full session run (LAB_UP)', () => {
+describe('full session run (LAB_UP)', () => {
   for (const args of BEFORE) {
     step(args, args[0] === 'reset' ? (r) => expect(r.stdout.match(/^OK /gm)?.length, r.out).toBe(4) : undefined);
   }

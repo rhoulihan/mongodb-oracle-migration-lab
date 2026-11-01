@@ -2,7 +2,7 @@
 // ephemeral port, pointed (through its URI, the same knob D3 and D4 flip) at a
 // scratch database `telco_apptest` on the MongoDB source, loaded with the tiny
 // dataset. The real `telco` database is never written.
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { BSON, Decimal128, Int32, Long, MongoClient } from 'mongodb';
 import { config } from '../../lib/config.mjs';
 import { load } from '../../gen/generate.mjs';

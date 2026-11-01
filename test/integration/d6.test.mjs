@@ -4,7 +4,7 @@
 // its explain (no timing, spec section 6a); (2) the same pipeline on Oracle
 // through the MongoDB API, timed; (3) $sql through the MongoDB API, timed.
 // Results must be equal before any timing is shown.
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createContext, gatedTimingLeaks, runDemo } from '../../demos/contract.mjs';

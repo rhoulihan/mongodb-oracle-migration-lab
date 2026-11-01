@@ -2,9 +2,10 @@
 // The full-run smoke test and scripts/record-clips.mjs both walk it, so the
 // test proves exactly what the run sheet tells the presenter to do.
 //
-//   before   ./lab.sh commands run once, before D1 (a fresh lab and data
-//            generated no more than 30 minutes before the session: carts
-//            expire, Ruling R)
+//   before   ./lab.sh commands run once, before D1: the full reset about
+//            60 minutes before the session (it recreates Oracle and ORDS, so
+//            it gets time to boot), then generate no more than 30 minutes
+//            before (carts expire, Ruling R)
 //   demos    session order; `after` holds the ./lab.sh commands the
 //            presenter runs once the demo is over, before the next one
 export const BEFORE = [['reset'], ['generate']];

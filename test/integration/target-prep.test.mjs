@@ -1,7 +1,7 @@
 // Oracle target prep against the live stack: the eight collections exist as
 // JSON collection tables owned by MIG, they are empty, MIG is ORDS-enabled,
 // and running the prep twice is safe.
-import { afterAll, expect, test } from 'vitest';
+import { afterAll, expect, test } from './live.mjs';
 import { closeAll, oraMongo, oraSql } from '../../lib/db.mjs';
 import { COLLECTIONS, prepareTarget } from '../../oracle/prep.mjs';
 

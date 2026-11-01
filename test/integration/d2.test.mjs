@@ -2,7 +2,7 @@
 // in age-out mode (new writes to Oracle, old orders read from MongoDB), the
 // merged cross-cutoff read, and carts expiring in MongoDB on their own. Then
 // every demo step in order. Leaves the lab at the D2 starting state (reset).
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { createContext, runDemo } from '../../demos/contract.mjs';
 import d2, { ENTITIES, D2_TAG } from '../../demos/d2-ageout/index.mjs';
 import { migrateEntities } from '../../demos/d2-ageout/migrate-entities.mjs';

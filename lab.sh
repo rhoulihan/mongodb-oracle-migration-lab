@@ -35,13 +35,17 @@ app_uri() {
     *)      return 1 ;;
   esac
 }
-write_app_env() { mkdir -p .lab && printf 'APP_MONGO_URI=%s\n' "$(app_uri "$1")" > .lab/app.env; }
+# Where app.env lives. compose.yml always reads .lab/app.env; LAB_STATE_DIR
+# moves it only for the unit tests, which run lab.sh against a fake engine.
+STATE_DIR="${LAB_STATE_DIR:-.lab}"
+APP_ENV="$STATE_DIR/app.env"
+write_app_env() { mkdir -p "$STATE_DIR" && printf 'APP_MONGO_URI=%s\n' "$(app_uri "$1")" > "$APP_ENV"; }
 # D2 age-out mode: both backends behind the router, split at the cutoff the app chose.
 write_ageout_env() {
-  mkdir -p .lab && printf 'APP_MONGO_URI=%s\nAPP_MODE=ageout\nAPP_CUTOFF=%s\n' "$(app_uri mongo)" "$1" > .lab/app.env
+  mkdir -p "$STATE_DIR" && printf 'APP_MONGO_URI=%s\nAPP_MODE=ageout\nAPP_CUTOFF=%s\n' "$(app_uri mongo)" "$1" > "$APP_ENV"
 }
 # compose needs .lab/app.env to exist; default the app to the MongoDB source.
-ensure_app_env() { [ -f .lab/app.env ] || write_app_env mongo; }
+ensure_app_env() { [ -f "$APP_ENV" ] || write_app_env mongo; }
 
 # The order service as seen from the host. LAB_APP_URL overrides it (tests).
 APP_URL="${LAB_APP_URL:-http://127.0.0.1:3300}"
@@ -130,7 +134,8 @@ PORTS="27117 1523 8183 27119 3200 3300"
 # node:22-bookworm-slim is the base of the app image (app, runner, replicator, console).
 BASE_IMAGES="docker.io/library/mongo:8.2 docker.io/gvenzl/oracle-free:23.26.3-faststart docker.io/library/node:22-bookworm-slim"
 LAB_IMAGES="mongodb-oracle-migration-lab-mongo:latest mongodb-oracle-migration-lab-oracle:latest mongodb-oracle-migration-lab-app:latest"
-CHECK_TIMEOUT="${CHECK_TIMEOUT:-300}"
+# A full reset recreates Oracle and ORDS from scratch: give them 10 minutes.
+CHECK_TIMEOUT="${CHECK_TIMEOUT:-600}"
 
 ok()   { printf 'OK    %s\n' "$*"; }
 warn() { printf 'WARN  %s\n' "$*"; }
@@ -340,7 +345,9 @@ case "$cmd" in
   preflight) cmd_preflight ;;
   reset)
     if [ $# -eq 0 ]; then
-      compose --profile d4 down -v && compose up -d && cmd_check
+      # Fresh volumes, fresh app: back on the MongoDB source in normal mode,
+      # whatever backend or age-out mode the last run left in app.env.
+      compose --profile d4 down -v && write_app_env mongo && compose up -d && cmd_check
     else
       # D4's replicator runs in its own container; stop it before the reset.
       [ "$1" = "d4" ] && repl_stop >/dev/null

@@ -4,7 +4,7 @@
 // database's change log shows exactly 2 updates applied. Then the demo itself
 // runs end to end, twice (setup must restore its own starting state).
 // Leaves the lab at the D7 starting state (reset).
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

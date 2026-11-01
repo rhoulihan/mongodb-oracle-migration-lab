@@ -1,6 +1,6 @@
 // D1 against the live MongoDB source: setup, every step, then the findings
 // the session promises. D1 reads only; it changes nothing.
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { createContext, runDemo } from '../../demos/contract.mjs';
 import d1 from '../../demos/d1-compat/index.mjs';
 

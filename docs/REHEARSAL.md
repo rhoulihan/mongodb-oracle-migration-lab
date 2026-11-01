@@ -22,8 +22,7 @@ the environment, so no password ever shows on screen or in the deck.
 
    ```sh
    git clone https://github.com/rhoulihan/mongodb-oracle-migration-lab.git
-   cd mongodb-oracle-migration-lab
-   git checkout build/session-v1
+   cd mongodb-oracle-migration-lab          # the default branch, main
    ./lab.sh pull && ./lab.sh build
    ./lab.sh up
    ./lab.sh check          # wait for four OK lines (the first Oracle boot takes a few minutes)
@@ -40,7 +39,8 @@ Do this once at rehearsal, with Wi-Fi off the whole time:
 
 1. `./lab.sh down`, then `./lab.sh up`, then `./lab.sh check`. You should
    get four OK lines.
-2. `./lab.sh reset`, then `./lab.sh generate`.
+2. `time ./lab.sh reset`, then `./lab.sh generate`. Note the reset's wall
+   time for section 3.
 3. Open the deck straight from disk in Chrome:
    `file:///<path>/mongodb-oracle-migration-lab/deck/index.html`. Press
    **S** for the speaker view. Every slide should render with its fonts and
@@ -61,13 +61,19 @@ Paste these back after the Mac rehearsal:
 - [ ] The full output of `./lab.sh preflight`, run with Wi-Fi off
 - [ ] Pass or fail for each demo, D1 to D7, in the console. For a failure,
       include the step and its summary text.
+- [ ] Full reset wall time: run `time ./lab.sh reset` and paste the four
+      `OK` lines and the `real` time (reset to four OK lines; 44 s on the
+      Linux lab)
+- [ ] D6 setup time: the seconds the console shows for the D6 step "Same
+      data on both sides, statistics gathered" (about 2.5 min on the Linux
+      lab; it decides how early you must click it in the session)
 - [ ] D3 restore time: the last line of the restore command
       (`INFO  restore took N s on this laptop`)
 - [ ] D6 ratio: the summary of the D6 step "Relative timing: the pipeline vs
       $sql, same engine" (pipeline seconds, $sql seconds, ratio)
 - [ ] The headless pass, **run twice in a row** with nothing done between the
       runs (the first command is a full reset). It needs no Node and takes
-      about 9 minutes per pass on the Linux lab, likely longer on the Mac.
+      about 12 minutes per pass on the Linux lab, likely longer on the Mac.
       For each pass, paste the last line of each demo's block and whether
       `ALL DEMOS PASSED` printed:
 
@@ -85,10 +91,15 @@ Paste these back after the Mac rehearsal:
 
 | When | Do this |
 |---|---|
-| 60 min before | Wi-Fi off. `./lab.sh up`, then `./lab.sh check` (four OK lines) |
-| 30 min before, no earlier | `./lab.sh reset`, then `./lab.sh generate` (carts expire over about 4 hours after `generate`, and some must still expire live in D2) |
+| 60 min before | Wi-Fi off. `./lab.sh reset` (it starts the stack if it is down, wipes the lab and ends with `./lab.sh check`: four OK lines) |
+| 30 min before, no earlier | `./lab.sh generate` (carts expire over about 4 hours after `generate`, and some must still expire live in D2) |
 | 20 min before | Chrome tab 1: the deck, `file:///.../deck/index.html`, with **S** for the speaker view. Tab 2: the console, http://127.0.0.1:3200. Two terminals side by side in the repo folder (D7 uses both). |
 | 15 min before | Glance at the console's four dots: all green |
+
+A full reset recreates Oracle and ORDS from scratch, and `./lab.sh check`
+waits up to 600 s for them (44 s on the Linux lab; the Mac is slower). A
+`FAIL ... (not ready after N s)` line right after a reset means the stack is
+still booting: re-run `./lab.sh check`. It is not broken.
 
 The full reset also wipes the console's own recordings. After it, **Skip to
 result** shows the copy saved in the repo, labeled "(saved in the repo)".
@@ -185,7 +196,7 @@ Segment 5, slide 34 (clock 1:00, 4 min).
 | 2 | console | (a) Embedded Top-N document: every order rewrites it | Redo per order; the Top-N document is about 800 bytes |
 | 3 | console | (b) $lookup pipeline: every read re-aggregates the orders | Plan shown, read time hidden |
 | 4 | console | (c) Converged: one counter row per order, a pre-sorted index | INDEX RANGE SCAN on DEVICE_SALES_TOPN under COUNT STOPKEY |
-| 5 | console | Same document, three ways | All 8 dashboards identical, **then** the read times appear (Linux lab: embedded 0.3 to 0.8 ms, converged 0.7 to 0.9, lookup 236 to 262; counter redo per order embedded 2,600 to 3,500 bytes, converged 870 to 950) |
+| 5 | console | Same document, three ways | All 8 dashboards identical, **then** the read times appear (Linux lab: embedded 0.3 to 0.8 ms, converged 0.6 to 0.9, lookup 234 to 262; counter redo per order embedded 2,600 to 3,500 bytes, converged 870 to 950) |
 | 6 | terminal | `./lab.sh mongosh ora --eval 'db.region_top_devices_v.findOne({_id:"R03"})'` | Ten devices, sorted. Mark done |
 
 If step 1 fails: `./lab.sh reset d5`. Reset after: none.
@@ -193,6 +204,12 @@ If step 1 fails: `./lab.sh reset d5`. Reset after: none.
 ### D6: Pipeline vs $sql
 
 Segment 5, slide 38 (clock 1:08, 4 min).
+
+**Setup timing.** Click D6 step 1 right after D5's last step, and no later
+than clock 1:05. If D5 runs long, click **Skip to result** on its remaining
+steps so D6 setup starts on time. If setup is still running when you reach
+slide 38, talk the `$setWindowFields` compatibility note (slide 38 notes)
+until it finishes. Measure the Mac's setup time at rehearsal (section 3).
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
@@ -204,9 +221,11 @@ Segment 5, slide 38 (clock 1:08, 4 min).
 | 6 | console | Both Oracle plans, side by side | Nested loops vs hash joins + WINDOW SORT PUSHED RANK |
 | 7 | console | Relative timing: the pipeline vs $sql, same engine | The ratio, read live (Linux lab, warm against warm: about 125 to 150x; 126 to 146x measured). Laptop, relative only. Then the field number: 3 to 15x |
 
-If setup fails: `./lab.sh reset d6`. It always re-runs D3's dump and
-restore, gathers statistics and warms both sides once: about 3 to 4
-minutes, so do it before the segment, not in the middle of the demo. Reset after: none.
+If setup fails live: click **Skip to result** on each step and say it's
+the rehearsal recording. Before the segment only: `./lab.sh reset d6`. It
+always re-runs D3's dump and restore, gathers statistics and warms both
+sides once, about 3 to 4 minutes, too long to run in the middle of the
+demo. Reset after: none.
 
 ### D7: ETags, two agents, one order
 

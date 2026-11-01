@@ -1,7 +1,7 @@
 // D3 dump/restore against the live stack: setup, then every step in order
 // (terminal steps run in-process and are verified), then the assertions the
 // session promises. Leaves the lab at the D3 starting state (reset).
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { createContext, runDemo } from '../../demos/contract.mjs';
 import d3 from '../../demos/d3-dump-restore/index.mjs';
 import { COLLECTIONS } from '../../oracle/prep.mjs';

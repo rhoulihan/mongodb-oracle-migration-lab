@@ -78,7 +78,7 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh pull` | Pull the base images (needs network) |
 | `./lab.sh build` | Build the lab images (needs network the first time) |
 | `./lab.sh up` | Start the stack in the background |
-| `./lab.sh check` | Wait up to 300 s until MongoDB, Oracle, ORDS and the Oracle API for MongoDB all answer; prints one line per service |
+| `./lab.sh check` | Wait up to 600 s (`CHECK_TIMEOUT`) until MongoDB, Oracle, ORDS and the Oracle API for MongoDB all answer; prints one line per service |
 | `./lab.sh preflight` | Laptop readiness checks (see above) |
 | `./lab.sh down` | Stop the stack and keep the data |
 | `./lab.sh reset` | Wipe the lab data volumes and start fresh |
@@ -277,10 +277,11 @@ Developers only: needs Node.js 22 or newer and `npm install` on the host. The
 tests run Node on the host (`LAB_HOST_NODE=1` where they call `lab.sh`).
 
 ```sh
-npm test                 # everything (integration tests need the stack up)
+npm test                 # unit tests; integration files skip unless LAB_UP=1
+LAB_UP=1 npm test        # everything, the full-run test below included (stack up; it wipes the lab)
 npm run test:unit
 npm run lint:copy        # copy rules: no em dashes, say 26ai, no private references
-LAB_UP=1 npx vitest run test/integration/full-run.test.mjs   # the whole session, about 9 min
+LAB_UP=1 npx vitest run test/integration/full-run.test.mjs   # the whole session, about 12 minutes
 ```
 
 The full-run smoke test wipes the lab (`./lab.sh reset`), generates the data,

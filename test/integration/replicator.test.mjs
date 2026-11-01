@@ -9,7 +9,7 @@
 //               MongoDB has them and both sides are equal again
 // The app at 127.0.0.1:3300 drives every write. Leaves the lab at the D4
 // starting state's reset (app on MongoDB, capture objects dropped).
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { spawn } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';

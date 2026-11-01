@@ -1,7 +1,8 @@
 # MongoDB 8.2 source for the migration demos: a single-node replica set (rs0),
 # so change streams work, plus the MongoDB Database Tools (mongodump, mongoexport).
 # mongo:8.2, not 8.0: mongod 8.0 refuses to start on Linux kernel 6.19 and newer
-# (SERVER-121912), which includes current Linux hosts and podman machine VMs.
+# (SERVER-121912). That includes current Linux hosts, and podman machine VMs
+# may run such a kernel too, so 8.0 may fail there.
 # mongo:8.2 is multi-arch (amd64 + arm64). The MongoDB apt repo is already set up
 # in the base image, and apt picks the package for the build architecture.
 FROM docker.io/library/mongo:8.2

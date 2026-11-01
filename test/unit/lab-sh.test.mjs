@@ -10,6 +10,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
+// Every lab.sh run in this file writes app.env to a temp dir, never the real
+// .lab/app.env (lab.sh honors LAB_STATE_DIR; each spawn inherits process.env).
+const stateDir = mkdtempSync(join(tmpdir(), 'lab-state-'));
+process.env.LAB_STATE_DIR = stateDir;
+const ENV = join(stateDir, 'app.env');
 let fakeBin;
 
 beforeAll(() => {
@@ -86,9 +91,8 @@ describe('lab.sh runs Node work in a one-off runner container (Ruling O)', () =>
 
 describe('lab.sh app-uri', () => {
   // A stub order service answers /admin/backend; lab.sh runs asynchronously so
-  // the stub (same process) can reply. .lab/app.env is restored afterwards.
-  const ENV = join(root, '.lab', 'app.env');
-  let saved, stub, status;
+  // the stub (same process) can reply. app.env is the temp one (LAB_STATE_DIR).
+  let stub, status;
   const shAsync = (args, env) => new Promise((resolve) => {
     const e = { ...process.env, PATH: `${fakeBin}:${process.env.PATH}`, ...env };
     execFile('./lab.sh', args, { cwd: root, env: e }, (err, stdout, stderr) =>
@@ -96,7 +100,6 @@ describe('lab.sh app-uri', () => {
   });
 
   beforeAll(async () => {
-    saved = existsSync(ENV) ? readFileSync(ENV, 'utf8') : null;
     writeFileSync(ENV, 'APP_MONGO_URI=before\n');
     stub = createServer((req, res) => {
       res.writeHead(status, { 'content-type': 'application/json' });
@@ -104,11 +107,7 @@ describe('lab.sh app-uri', () => {
     });
     await new Promise((r) => stub.listen(0, '127.0.0.1', r));
   });
-  afterAll(() => {
-    stub?.close();
-    if (saved === null) writeFileSync(ENV, 'APP_MONGO_URI=mongodb://mongo:27017/telco?replicaSet=rs0&directConnection=true\n');
-    else writeFileSync(ENV, saved);
-  });
+  afterAll(() => { stub?.close(); });
   const url = () => `http://127.0.0.1:${stub.address().port}`;
 
   test('an unknown backend prints usage and exits 2', () => {
@@ -146,9 +145,8 @@ describe('lab.sh app-uri', () => {
 // D2: age-out mode is a third /admin/backend target. The app picks the cutoff
 // (from the data, never the clock) and lab.sh persists it with the mode.
 describe('lab.sh app-mode ageout|normal', () => {
-  const ENV = join(root, '.lab', 'app.env');
   const CUTOFF = '2026-09-30T23:59:58.123Z';
-  let saved, stub, bodies;
+  let stub, bodies;
   const shAsync = (args, env) => new Promise((resolve) => {
     const e = { ...process.env, PATH: `${fakeBin}:${process.env.PATH}`, ...env };
     execFile('./lab.sh', args, { cwd: root, env: e }, (err, stdout, stderr) =>
@@ -156,7 +154,6 @@ describe('lab.sh app-mode ageout|normal', () => {
   });
 
   beforeAll(async () => {
-    saved = existsSync(ENV) ? readFileSync(ENV, 'utf8') : null;
     stub = createServer((req, res) => {
       if (req.method === 'GET') { // /health, for the app-env sync after a demo
         res.writeHead(200, { 'content-type': 'application/json' });
@@ -173,11 +170,7 @@ describe('lab.sh app-mode ageout|normal', () => {
     });
     await new Promise((r) => stub.listen(0, '127.0.0.1', r));
   });
-  afterAll(() => {
-    stub?.close();
-    if (saved === null) writeFileSync(ENV, 'APP_MONGO_URI=mongodb://mongo:27017/telco?replicaSet=rs0&directConnection=true\n');
-    else writeFileSync(ENV, saved);
-  });
+  afterAll(() => { stub?.close(); });
   const url = () => `http://127.0.0.1:${stub.address().port}`;
 
   test('ageout switches the running app and persists the mode and its cutoff', async () => {
@@ -224,6 +217,46 @@ describe('lab.sh app-mode ageout|normal', () => {
   test('an unknown mode prints usage and exits 2', () => {
     expect(sh(['app-mode', 'sideways']).status).toBe(2);
     expect(sh(['app-mode']).status).toBe(2);
+  });
+});
+
+describe('lab.sh state dir and full reset', () => {
+  test('app.env goes to LAB_STATE_DIR, not the repo .lab/', () => {
+    const realEnv = join(root, '.lab', 'app.env');
+    const before = existsSync(realEnv) ? readFileSync(realEnv, 'utf8') : null;
+    writeFileSync(ENV, 'APP_MONGO_URI=x\n');
+    const r = sh(['app-uri', 'mongo']);   // dead app URL: writes app.env, starts the app
+    expect(r.status).toBe(0);
+    expect(readFileSync(ENV, 'utf8')).toMatch(/mongo:27017\/telco/);
+    expect(existsSync(realEnv) ? readFileSync(realEnv, 'utf8') : null).toBe(before);
+  });
+
+  test('reset (no arg) puts the app back on MongoDB in normal mode after down -v, before up', () => {
+    // A stale app.env from D2 (age-out) or D3 (oracle) must not survive a full reset.
+    writeFileSync(ENV, 'APP_MONGO_URI=mongodb://MIG:x@oracle:27017/MIG\nAPP_MODE=ageout\nAPP_CUTOFF=2026-09-30T00:00:00Z\n');
+    const dir = mkdtempSync(join(tmpdir(), 'lab-reset-'));
+    const log = join(dir, 'calls.log');
+    // Logs each compose call with the app.env it sees at that moment.
+    for (const name of ['podman', 'docker']) {
+      writeFileSync(join(dir, name), `#!/bin/sh\necho "$* :: $(tr '\\n' ' ' < "${ENV}")" >> "${log}"\n`);
+      chmodSync(join(dir, name), 0o755);
+    }
+    const e = { ...process.env, PATH: `${dir}:${process.env.PATH}`, LAB_APP_URL: 'http://127.0.0.1:9', CHECK_TIMEOUT: '0' };
+    spawnSync('./lab.sh', ['reset'], { cwd: root, encoding: 'utf8', env: e });
+    const calls = readFileSync(log, 'utf8').split('\n');
+    const down = calls.find((l) => l.includes('down -v'));
+    const up = calls.find((l) => l.includes('compose -f compose.yml up -d'));
+    expect(down).toMatch(/APP_MODE=ageout/);
+    expect(up).toBeDefined();
+    expect(up).not.toMatch(/APP_MODE|oracle:27017/);
+    expect(up).toMatch(/APP_MONGO_URI=mongodb:\/\/mongo:27017\/telco/);
+    const env = readFileSync(ENV, 'utf8');
+    expect(env).not.toMatch(/APP_MODE|APP_CUTOFF/);
+    expect(env).toMatch(/^APP_MONGO_URI=mongodb:\/\/mongo:27017\/telco/m);
+  });
+
+  test('check waits 600 s by default (a full reset recreates Oracle and ORDS)', () => {
+    expect(readFileSync(join(root, 'lab.sh'), 'utf8')).toContain('CHECK_TIMEOUT="${CHECK_TIMEOUT:-600}"');
   });
 });
 

@@ -3,7 +3,7 @@
 // output from both the MongoDB source and the Oracle API for MongoDB.
 // Scratch objects only: MIG table measure_probe, MIG collection measureProbe
 // (created in SQL, never implicitly), and source database telco_measuretest.
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { MongoClient } from 'mongodb';
 import { config } from '../../lib/config.mjs';
 import { closeAll, oraMongo, oraSql } from '../../lib/db.mjs';

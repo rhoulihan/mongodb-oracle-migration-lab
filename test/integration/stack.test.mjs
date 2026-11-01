@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from 'vitest';
+import { afterAll, expect, test } from './live.mjs';
 import { readFileSync } from 'node:fs';
 import { mongoSrc, oraMongo, oraSql, closeAll } from '../../lib/db.mjs';
 

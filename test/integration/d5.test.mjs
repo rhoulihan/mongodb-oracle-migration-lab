@@ -3,7 +3,7 @@
 // truth and places the same 200 seeded orders through its variant, so the
 // three dashboards must be identical; then redo per order and the read plans
 // are checked. Leaves the lab at the D5 starting state (reset).
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { createContext, gatedTimingLeaks, runDemo } from '../../demos/contract.mjs';
 import d5, { planChecks } from '../../demos/d5-topn/index.mjs';
 import { D5_ID_RANGE, seededOrders } from '../../demos/d5-topn/variants.mjs';

@@ -3,7 +3,7 @@
 // container; recorded results go to a scratch folder, not .lab/recorded.
 // A second console with readiness stubbed to ords:false checks the 503
 // (Review Focus 2). Leaves D5 and D6 at their starting state.
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
