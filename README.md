@@ -239,6 +239,10 @@ server and no network: Reveal.js 5.1.0 and the fonts are in the repo.
   SVG (it measures with offsetLeft/offsetWidth), so a shape that must morph
   across slides is drawn with `overlay()`: an HTML box laid over the SVG,
   matched by `data-id` (the age-out router's three states).
+  `ov()` adds a solid wire and left or right arrowheads the same way (the
+  blue/green figure: the app's wire slides to green, the replication arrow
+  turns around). A bar that grows on its click is a `fragment custom bar-grow`
+  group (the window math figure).
 - **QA:** `deck/build/qa_deck.py` renders every slide at 1280x720 and fails on
   overflow, overlapping slide rows (`data-qa-allow-overlap` on a layer inside a row opts it out and is counted per slide), an SVG drawn below 0.80 scale, missing or empty notes, an em dash,
   the old version name, more than 45 visible words on a non-demo slide

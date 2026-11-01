@@ -33,7 +33,7 @@ DECK_DIR = BUILD.parent
 DECK = DECK_DIR / "index.html"
 FIGS = DECK_DIR / "figures"
 sys.path.insert(0, str(BUILD))
-from deckfig import HEAD, MONO, TONE, Fig, FigureError, Flow  # noqa: E402
+from deckfig import HEAD, MONO, SANS, TONE, Fig, FigureError, Flow  # noqa: E402
 
 MARK = re.compile(r"(<!-- FIG:([a-z0-9-]+) -->)(.*?)(<!-- /FIG:\2 -->)", re.S)
 
@@ -484,6 +484,266 @@ def fig_ageout_router_mid() -> Fig:
 
 def fig_ageout_router_end() -> Fig:
     return _ageout_router("end")
+
+
+# ----------------------------------------------------------------------------- segment 3
+WINDOW = [  # step, sub line, illustrative width (not to scale), tone
+    ("Stop writes", "app down or read only", 24, "hot"),
+    ("Dump", "mongodump --archive --gzip", 150, "flow"),
+    ("Restore", "mongorestore, in parallel", 236, "flow"),
+    ("Indexes", "rebuild or verify", 104, "flow"),
+    ("Validate", "counts, $type, the app's queries", 132, "flow"),
+    ("Rollback buffer", "time to go back", 132, "hot"),
+]
+
+
+def fig_window_math() -> Fig:
+    """The maintenance window as a stacked timeline. Each bar is a fragment that grows in
+    from the left (CSS .fragment.custom.bar-grow), so the window builds one step per click."""
+    f = Fig(1120, 400, "The maintenance window as a stacked timeline: stop writes, dump, restore, "
+                       "rebuild or verify indexes, validate, then a rollback buffer. The go or no-go "
+                       "call comes after validation. The whole window is sized from a rehearsal")
+    x0, top, rh = 300, 62, 46
+    f.text(18, 34, "STEP", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(x0, 34, "TIME IN THE WINDOW (FROM A REHEARSAL)", size=13, weight=700, font=MONO, fill="var(--muted)")
+    x = x0
+    gate = None
+    for i, (step, sub, w, tone) in enumerate(WINDOW):
+        y = top + i * rh
+        col, soft = TONE[tone]
+        f.text(18, y + 17, step, size=17, weight=700, font=HEAD)
+        f.text(18, y + 36, sub, size=13, font=MONO if sub.startswith("mongo") else SANS, fill="var(--muted)")
+        group(f, "fragment custom bar-grow", data_fragment_index=i + 1)
+        f.rect(x, y + 6, w, 28, fill=soft, stroke=col, sw=1.6, rx=5,
+               dash="6 4" if step.startswith("Rollback") else None, name="bar")
+        f.raw("</g>")
+        x += w
+        if step == "Validate":
+            gate = x
+    # the go / no-go call, after validation
+    yb = top + len(WINDOW) * rh
+    f.line(gate, top - 4, gate, yb - 8, stroke="var(--ink)", sw=1.6, dash="4 4", name="gate", seg=False)
+    f.text(gate + 10, top + 12, "go / no-go", size=14, weight=700, font=MONO, fill="var(--ink)")
+    # the window bracket
+    f.path(f"M{x0},{yb + 4} V{yb + 14} H{x} V{yb + 4}", [(x0, yb + 4), (x, yb + 14)], stroke="var(--hot)",
+           sw=1.8, name="bracket", seg=False)
+    f.text((x0 + x) / 2, yb + 40, "your window", size=18, weight=800, font=HEAD, fill="var(--hot)",
+           anchor="middle")
+    return f
+
+
+
+def fig_validation_gate() -> Fig:
+    """Three checks before the flip; equal counts are only the first."""
+    f = Fig(1120, 380, "The validation gate: compare counts at the dump snapshot, run a $type "
+                       "differential per field on both sides, and replay the app's own queries on both "
+                       "sides; only then flip the connection string. In this lab, catalog.skuPattern "
+                       "reads back the same on Oracle, but a $type regex query finds 300 documents on "
+                       "MongoDB and is rejected on Oracle")
+    fl = Flow(f)
+    y, h, w = 40, 112, 236
+    xs = [18, 300, 582, 864]
+    fl.node("g1", xs[0], y, w, h, ["1  Counts", "at the dump snapshot", "needed, not enough"], tone="flow", size=18, sub=15)
+    fl.node("g2", xs[1], y, w, h, ["2  $type check", "every field,", "both sides"], tone="flow", size=18, sub=15)
+    fl.node("g3", xs[2], y, w, h, ["3  App's queries", "same filters,", "same results?"], tone="flow", size=18, sub=15)
+    fl.node("go", xs[3], y, 238, h, ["Flip", "the connection", "string"], tone="cool", size=18, sub=15)
+    for a, b, lane in (("g1", "g2", 277), ("g2", "g3", 559), ("g3", "go", 841)):
+        fl.edge(a, b, lane, tone="flow")
+    # what check 2 caught in this lab
+    py = 196
+    f.text(18, py, "CAUGHT BY CHECK 2 IN THIS LAB", size=13, weight=700, font=MONO, fill="var(--muted)")
+    cy, ch = py + 16, 132
+    f.rect(18, cy, 530, ch, fill="var(--cool-soft)", stroke="var(--cool)", sw=1.4, rx=8, name="reads")
+    f.text(40, cy + 34, "Read the document", size=17, weight=700, font=HEAD, fill="var(--cool)")
+    f.text(40, cy + 66, 'skuPattern: /^SKU-DEV-[0-9]{4}$/', size=15, weight=600, font=MONO)
+    f.text(40, cy + 98, "looks the same on both sides", size=15, fill="var(--muted)")
+    f.rect(572, cy, 530, ch, fill="var(--hot-soft)", stroke="var(--hot)", sw=1.4, rx=8, name="query")
+    f.text(594, cy + 34, "Query by type", size=17, weight=700, font=HEAD, fill="var(--hot)")
+    f.text(594, cy + 66, "{skuPattern: {$type: 'regex'}}", size=15, weight=600, font=MONO)
+    f.text(594, cy + 98, "MongoDB: 300 documents.  Oracle: rejected.", size=15, weight=600, fill="var(--hot)")
+    return f
+
+
+def fig_one_way_door() -> Fig:
+    """Dump and restore locks once writes land on Oracle; a read-only soak moves the lock later."""
+    f = Fig(1120, 332, "The one-way door, delayed. During the window and a read-only soak on Oracle, "
+                       "MongoDB stays frozen, so going back is just pointing the app at MongoDB again. "
+                       "Once writes open on Oracle the door locks: going back means losing those writes "
+                       "or exporting them by hand. Decide in advance how much you would replay")
+    xa, xb, xc, xd = 18, 380, 742, 1102
+    by, bh = 166, 76
+    phases = [(xa, xb, "The window", "dump, restore, validate", "hot"),
+              (xb, xc, "Read-only soak", "Oracle serves reads; MongoDB frozen", "flow"),
+              (xc, xd, "Writes open on Oracle", "new data exists only here", "cool")]
+    for x0, x1, title, sub, tone in phases:
+        col, soft = TONE[tone]
+        f.rect(x0 + 4, by, x1 - x0 - 8, bh, fill=soft, stroke=col, sw=1.6, rx=8, name="phase")
+        f.text(x0 + 22, by + 32, title, size=18, weight=800, font=HEAD, fill=col)
+        f.text(x0 + 22, by + 58, sub, size=15, fill="var(--muted)")
+    # the lock, at the moment writes open
+    door(f, xc - 28, by - 98, 56, 86, "hot", locked=True)
+    f.text(xc + 42, by - 46, "the lock", size=16, weight=700, font=MONO, fill="var(--hot)")
+    # walk back vs. the way back after the lock
+    for x0, x1, label, col in ((xa + 4, xc - 44, "Walk back: point the app at MongoDB. Nothing lost.", "var(--cool)"),
+                               (xc + 44, xd - 4, "Way back: lose writes or export them", "var(--hot)")):
+        f.path(f"M{x0},{by - 104} V{by - 114} H{x1} V{by - 104}", [(x0, by - 114), (x1, by - 104)],
+               stroke=col, sw=1.8, name="bracket", seg=False)
+        f.text((x0 + x1) / 2, by - 126, label, size=14 if "Way" in label else 15, weight=700, fill=col, anchor="middle")
+    # the soak is what delays the lock
+    f.path(f"M{xb + 4},{by + bh + 12} V{by + bh + 22} H{xc - 4} V{by + bh + 12}",
+           [(xb + 4, by + bh + 12), (xc - 4, by + bh + 22)], stroke="var(--flow)", sw=1.8, name="soak", seg=False)
+    f.text((xb + xc) / 2, by + bh + 46, "the soak moves the lock later", size=15, weight=700,
+           fill="var(--flow)", anchor="middle")
+    return f
+
+
+# ----------------------------------------------------------------------------- segment 4
+def ov(f: Fig, data_id: str, kind: str, tone: str, x, y, w, h) -> None:
+    """Like overlay(), for the blue/green figure's moving parts: a solid wire (``wire``) or an
+    arrowhead pointing right or left (``head-r``, ``head-l``). tone is flow, cool or idle."""
+    if not hasattr(f, "overlays"):
+        f.overlays = []
+    col = "var(--faint)" if tone == "idle" else TONE[tone][0]
+    f.raw('<g class="overlay-twin">')
+    if kind == "wire":
+        f.rect(x, y, w, h, fill=col, stroke=col, sw=0, rx=3, name=data_id)
+    else:
+        pts = ([(x, y), (x + w, y + h / 2), (x, y + h)] if kind == "head-r"
+               else [(x + w, y), (x, y + h / 2), (x + w, y + h)])
+        d = "M" + " L".join(f"{a:.1f},{b:.1f}" for a, b in pts) + " Z"
+        f.path(d, pts, stroke=col, sw=0, fill=col, name=data_id, seg=False)
+    f.raw("</g>")
+    pct = lambda v, t: f"{v / t * 100:.3f}%"
+    f.overlays.append(f'<div class="ov {kind} t-{tone}" data-id="{data_id}" style="left:{pct(x, f.w)};'
+                      f'top:{pct(y, f.h)};width:{pct(w, f.w)};height:{pct(h, f.h)}"></div>')
+
+
+BG_STATES = {  # state: app wire x, pipe tone, head, pipe label, under-pipe label, blue sub, green sub, step
+    "fwd": (218, "flow", "head-r", "forward: every change", "lag: seconds, falling",
+            "live: takes every write", "initial load, then changes", 0),
+    "cut": (902, "idle", None, "drain to lag 0, stop", "the app flips",
+            "frozen: no new writes", "takes every write now", 1),
+    "rev": (902, "cool", "head-l", "reverse: the way back", "fallback stays warm",
+            "fallback: kept in step", "live: takes every write", 2),
+}
+BG_TRACK = ["Sync live", "Cutover", "Fallback path"]
+
+
+def _bluegreen(state: str) -> Fig:
+    """Blue (MongoDB) and green (Oracle) both live. Same data-ids in all three states, so Reveal
+    auto-animate slides the app's wire from blue to green at cutover and the replication arrow
+    turns around (the forward head fades out, the reverse head fades in)."""
+    wx, ptone, head, plabel, ulabel, bsub, gsub, step = BG_STATES[state]
+    f = Fig(1120, 420, {
+        "fwd": "Blue/green, sync live: the app writes to blue (MongoDB); after the initial load, every "
+               "change replicates forward to green (Oracle) and the lag falls toward zero",
+        "cut": "Blue/green, cutover: replication drains to lag zero and stops, and the app's connection "
+               "string flips from blue to green",
+        "rev": "Blue/green, fallback path: the app writes to green (Oracle) and replication runs in "
+               "reverse, so blue (MongoDB) stays in step and a flip back loses nothing",
+    }[state])
+    f.box(18, 24, 1084, 64, ["Order service", "same code; only the connection string changes"],
+          tone="ink", size=19, sub_size=15, name="app")
+    bx, gx, y, w, h = 18, 702, 230, 400, 116
+    f.rect(bx, y, w, h, fill="var(--flow-soft)", stroke="var(--flow)", sw=1.8, rx=8, name="blue")
+    f.text(bx + 22, y + 38, "Blue: MongoDB", size=20, weight=800, font=HEAD, fill="var(--flow)")
+    f.text(bx + 22, y + 70, bsub, size=16, fill="var(--muted)")
+    f.rect(gx, y, w, h, fill="var(--cool-soft)", stroke="var(--cool)", sw=1.8, rx=8, name="green")
+    f.text(gx + 22, y + 38, "Green: Oracle 26ai", size=20, weight=800, font=HEAD, fill="var(--cool)")
+    f.text(gx + 22, y + 70, gsub, size=16, fill="var(--muted)")
+    # the app's connection: a wire from the app bar down to the database it writes to
+    ov(f, "bg-wire", "wire", "flow" if state == "fwd" else "cool", wx - 3, 92, 6, y - 96)
+    f.text(wx + 16 if state == "fwd" else wx - 16, 168, "connection string", size=14, weight=600, font=MONO,
+           fill="var(--flow)" if state == "fwd" else "var(--cool)", anchor="start" if state == "fwd" else "end")
+    # replication pipe between the two
+    py = 286
+    ov(f, "bg-pipe", "wire", ptone, 444, py - 3, 232, 6)
+    if head == "head-r":
+        ov(f, "bg-head-fwd", "head-r", ptone, 676, py - 11, 20, 22)
+    elif head == "head-l":
+        ov(f, "bg-head-rev", "head-l", ptone, 424, py - 11, 20, 22)
+    pcol = "var(--faint)" if ptone == "idle" else TONE[ptone][0]
+    f.text(560, py - 22, plabel, size=14, weight=700, font=MONO, fill=pcol, anchor="middle")
+    f.text(560, py + 36, ulabel, size=14, fill="var(--muted)", anchor="middle")
+    # time track
+    ty, tx0, tx1 = 388, 120, 1000
+    f.line(tx0, ty, tx1, ty, stroke="var(--hairline)", sw=3, name="track", seg=False)
+    for k, lab in enumerate(BG_TRACK):
+        x = tx0 + k * (tx1 - tx0) / 2
+        on = k == step
+        f.circle(x, ty, 7, fill="var(--ink)" if k <= step else "var(--hairline)")
+        anchor = "start" if k == 0 else ("end" if k == 2 else "middle")
+        f.text(x + (-8 if k == 0 else (8 if k == 2 else 0)), ty - 16, lab, size=14, weight=700 if on else 400,
+               fill="var(--ink)" if on else "var(--faint)", anchor=anchor)
+    cx = tx0 + step * (tx1 - tx0) / 2
+    overlay(f, "bg-now", "ring", cx - 12.2, ty - 12.2, 24.4, 24.4)
+    auto_ids(f, "bg")
+    return f
+
+
+def fig_bluegreen_flow() -> Fig:
+    return _bluegreen("fwd")
+
+
+def fig_bluegreen_flow_cut() -> Fig:
+    return _bluegreen("cut")
+
+
+def fig_bluegreen_flow_rev() -> Fig:
+    return _bluegreen("rev")
+
+
+def fig_goldengate_topology() -> Fig:
+    """The production replicator: GoldenGate forward, the reverse path unverified, two ways to buy it."""
+    f = Fig(1120, 400, "Production topology: Oracle GoldenGate does the initial load and then every change "
+                       "from the MongoDB replica set's oplog into Oracle AI Database 26ai. A reverse path, "
+                       "Oracle back to MongoDB, is labeled verify for your release. Two ways to run "
+                       "GoldenGate: GoldenGate for MongoDB Migrations, free-use terms with no support or "
+                       "patching, and licensed OCI GoldenGate, the supported path")
+    fl = Flow(f)
+    y, h = 36, 104
+    fl.node("mongo", 18, y, 300, h, ["MongoDB replica set", "oplog and", "change streams"], tone="flow", size=18, sub=15)
+    fl.node("gg", 410, y, 300, h, ["Oracle GoldenGate", "initial load,", "then every change"], tone="ink", size=18, sub=15)
+    fl.node("ora", 802, y, 300, h, ["Oracle AI Database 26ai", "green: the target"], tone="cool", size=18, sub=15)
+    fl.edge("mongo", "gg", 364, tone="flow")
+    fl.edge("gg", "ora", 756, tone="cool")
+    # the reverse path: under the boxes, dashed, unverified
+    ry = y + h + 34
+    f.path(f"M952,{y + h + 2} V{ry} H168 V{y + h + 4}", [(952, y + h + 2), (952, ry), (168, ry), (168, y + h + 4)],
+           stroke="var(--hot)", sw=1.8, dash="7 5", arrow=True, name="reverse")
+    f.text(560, ry + 28, "Reverse to MongoDB: verify for your release", size=16, weight=700, fill="var(--hot)",
+           anchor="middle")
+    # two ways to run it
+    cy, ch = 250, 126
+    f.box(18, cy, 530, ch, ["GoldenGate for MongoDB Migrations", "recipe UI, offline or online",
+                            "free-use terms", "no support, no patching"], tone="hot", size=18, sub_size=15)
+    f.box(572, cy, 530, ch, ["OCI GoldenGate", "licensed", "supported", "the production path"], tone="cool",
+          size=18, sub_size=15)
+    return f
+
+
+def fig_fallback_constrains_model() -> Fig:
+    """While a flip back is possible, green must still produce blue's document; duality is the bridge."""
+    f = Fig(1120, 360, "Fallback constrains the model: green can normalize its tables, but as long as a flip "
+                       "back is possible a duality view must project the exact order document blue holds. "
+                       "The app reads that document, and so does the path back to MongoDB")
+    fl = Flow(f)
+    f.text(18, 34, "GREEN STORES", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(420, 34, "PROJECTION", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(820, 34, "WHAT READS IT", size=13, weight=700, font=MONO, fill="var(--muted)")
+    fl.node("rows", 18, 100, 300, 132, ["Normalized tables", "orders, order lines,", "subscribers, devices"],
+            tone="cool", size=18, sub=15)
+    fl.node("dv", 420, 116, 300, 100, ["Duality view", "blue's order document,", "exact shape"], tone="cool",
+            size=18, sub=15)
+    fl.node("app", 820, 56, 282, 92, ["The app", "same document as today"], tone="ink", size=18, sub=15)
+    fl.node("blue", 820, 184, 282, 92, ["The way back to blue", "MongoDB gets that shape"], tone="flow",
+            size=18, sub=15)
+    fl.edge("rows", "dv", 370, tone="cool")
+    fl.edge("dv", "app", 770, tone="cool", ay=150, by=102)
+    fl.edge("dv", "blue", 770, tone="flow", ay=182, by=230)
+    f.text(18, 318, "GoldenGate in 26ai can replicate duality views as JSON. For a MongoDB target: verify first.",
+           size=15, fill="var(--muted)")
+    return f
 
 
 # ----------------------------------------------------------------------------- build

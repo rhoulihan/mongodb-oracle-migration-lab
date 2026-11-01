@@ -234,6 +234,24 @@ html, body { background: var(--paper); }
 .fig-stack .ov.flow { background: var(--flow-soft); border: 2px solid var(--flow); }
 .fig-stack .ov.gone { border-width: 0; }
 .fig-stack .ov.ring { border-radius: 50%; border: 2.4px solid var(--hot); z-index: 2; }
+/* build_figs.ov(): a solid wire, and an arrowhead pointing right or left (blue/green figure).
+   Reveal auto-animate moves the wire and fades its colour; the two heads swap by data-id. */
+.fig-stack .ov.wire { border-radius: 3px; }
+.fig-stack .ov.head-r { border-radius: 0; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.fig-stack .ov.head-l { border-radius: 0; clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+.fig-stack .ov.t-flow { background: var(--flow); }
+.fig-stack .ov.t-cool { background: var(--cool); }
+.fig-stack .ov.t-idle { background: var(--faint); }
+
+/* A bar inside an SVG that grows in from the left as a fragment (window_math). "custom" keeps
+   Reveal from fading it; scaleX(0) hides it until its click. QA shows every fragment. */
+.reveal svg .fragment.custom.bar-grow {
+  transform: scaleX(0);
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+  transition: transform 0.7s ease;
+}
+.reveal svg .fragment.custom.bar-grow.visible { transform: scaleX(1); }
 
 /* ---------- Reveal chrome ---------- */
 .reveal .controls { color: var(--hot); }
