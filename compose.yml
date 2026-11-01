@@ -91,6 +91,7 @@ services:
       MIG_PASSWORD: '${MIG_PASSWORD:-MigUser2026}'
     volumes:
       - dumps:/dumps
+      - state:/state             # small state kept between one-off runs (D7 agents' memory)
 
   # Placeholder: only starts with `--profile d4`. The real replicator replaces this.
   replicator:
@@ -105,3 +106,4 @@ volumes:
   mongo-data:
   oracle-data:
   dumps:
+  state:

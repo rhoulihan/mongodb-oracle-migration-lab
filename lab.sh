@@ -7,7 +7,8 @@
 #   ./lab.sh mongosh src|ora [args...]  mongosh against the source or the Oracle API for MongoDB
 #   ./lab.sh exec <service> <cmd...>
 #   ./lab.sh app-uri <mongo|oracle>  switch the order service's backend (no restart)
-# demo, reset dN and generate run Node in a one-off runner container (the app
+#   ./lab.sh agent read|write|retry --agent A|B  a D7 agent (runs in the runner)
+# demo, reset dN, generate and agent run Node in a one-off runner container (the app
 # image), so the laptop needs no Node. LAB_HOST_NODE=1 uses the host's node.
 set -uo pipefail
 cd "$(dirname "$0")"
@@ -200,7 +201,7 @@ cmd_mongosh() {
 }
 
 usage() {
-  sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -223,5 +224,6 @@ case "$cmd" in
   mongosh)   [ $# -ge 1 ] || usage; cmd_mongosh "$@" ;;
   exec)      [ $# -ge 2 ] || usage; lab_exec "$@" ;;
   app-uri)   [ $# -eq 1 ] || usage; cmd_app_uri "$1" ;;
+  agent)     [ $# -ge 1 ] || usage; run_node demos/d7-etag/agent.mjs "$@" ;;
   *)         usage ;;
 esac

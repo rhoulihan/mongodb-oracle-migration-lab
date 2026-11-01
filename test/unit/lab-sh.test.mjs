@@ -56,6 +56,13 @@ describe('lab.sh runs Node work in a one-off runner container (Ruling O)', () =>
     expect(r.stdout).toContain(`${RUN} gen/generate.mjs --scale tiny\n`);
   });
 
+  test('agent read|write|retry --agent A|B (D7 terminal steps)', () => {
+    const r = sh(['agent', 'write', '--agent', 'B']);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain(`${RUN} demos/d7-etag/agent.mjs write --agent B\n`);
+    expect(sh(['agent']).status).toBe(2);
+  });
+
   test('passes MIG_PASSWORD into the container', () => {
     const r = sh(['demo', 'd1'], { MIG_PASSWORD: 'Other2026' });
     expect(r.stdout).toMatch(/ -e MIG_PASSWORD=Other2026 runner /);

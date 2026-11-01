@@ -40,7 +40,7 @@ RUN set -eu; \
     rm -f tools.tgz mongosh.tgz; \
     apt-get purge -y curl; apt-get autoremove -y; rm -rf /var/lib/apt/lists/*; \
     mongodump --version; mongorestore --version; mongosh --version; \
-    mkdir -p /dumps && chown node:node /dumps
+    mkdir -p /dumps /state && chown node:node /dumps /state
 
 WORKDIR /lab
 COPY package.json package-lock.json ./

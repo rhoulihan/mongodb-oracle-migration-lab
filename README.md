@@ -80,13 +80,16 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh mongosh ora [args...]` | mongosh against the Oracle API for MongoDB as `MIG`, run inside `lab-oracle` |
 | `./lab.sh exec <service> <cmd...>` | Run a command inside a lab container, for example `./lab.sh exec mongo mongosh` |
 | `./lab.sh app-uri <mongo\|oracle>` | Point the order service at MongoDB or at the Oracle API for MongoDB (switched live, no restart) |
+| `./lab.sh agent read\|write\|retry --agent A\|B` | One of demo 7's two agents (`--api sql` on `read` to use SQL instead of the MongoDB API) |
 
-`demo`, `reset dN` and `generate` run Node in a one-off `runner` container
+`demo`, `reset dN`, `generate` and `agent` run Node in a one-off `runner` container
 (`compose run --rm runner`, the app image), never inside `lab-app`, so a demo
 step can switch the order service without stopping itself. The runner reaches
 the databases over the compose network, so the stack must be up. The app image
 also carries the MongoDB Database Tools and mongosh, and the runner mounts the
-`dumps` volume (also mounted in `lab-mongo` at `/dumps`) for demo 3. The code
+`dumps` volume (also mounted in `lab-mongo` at `/dumps`) for demo 3 and the
+`state` volume at `/state` (demo 7's agents remember what they read there,
+between one-off runs). The code
 (`lib/`, `gen/`, `oracle/`, `app/`, `demos/`) is baked into the app image, not
 mounted, so after changing any of it run `./lab.sh build` and `./lab.sh up` again. Developers can run them with
 the host's Node instead by setting `LAB_HOST_NODE=1`.
@@ -225,3 +228,28 @@ The presenter's terminal command:
 Top 10 document comes from `region_top_devices_v`, and the duality view
 carries the full device list and the write path. Details, errors and the
 measured numbers: `docs/spikes/d5-duality-nested-order.md`.
+
+## Demo 7: ETags, two agents, no lost update
+
+`./lab.sh demo d7` runs it headless; `./lab.sh reset d7` puts back the
+starting state. D7 runs on Oracle after D3: if `MIG.orders` is empty, setup
+runs D3's dump and restore first. Setup then builds `order_hdr` (status) and
+`order_line` (sku, qty) from the region R03 orders, a change log filled by row
+triggers, and the duality view `orders_dv` (`oracle/sql/d7-orders-dv.sql`),
+picks the demo order and clears both agents' memory. Two terminals, one per
+agent, in this order:
+
+```sh
+./lab.sh agent read --agent A     # terminal 1
+./lab.sh agent read --agent B     # terminal 2
+./lab.sh agent write --agent A    # terminal 1: status -> provisioned, accepted
+./lab.sh agent write --agent B    # terminal 2: device swap with a stale ETag, rejected (ORA-42699)
+./lab.sh agent retry --agent B    # terminal 2: re-read, reapply, accepted
+./lab.sh demo d7 --step final     # both changes, exactly 2 updates applied
+```
+
+Each agent keeps the document and ETag it last read in
+`/state/d7/agent-A.json` (or `-B`) on the `state` volume (`.lab/state/d7/` with
+`LAB_HOST_NODE=1`). The agents use the MongoDB API, which enforces the ETag; a
+write that leaves `_metadata` out is last writer wins. Details and the exact
+errors: `docs/spikes/d7-etag-mongo-api.md`.
