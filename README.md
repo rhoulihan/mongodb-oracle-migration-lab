@@ -229,6 +229,12 @@ Pick a demo at the top, then work down its steps on the left.
   in the terminal instead: it stops the replicator container first.
 - **Theme:** the button at the top right switches light and dark;
   `?theme=dark` in the URL does the same.
+- **Let Claude drive:** `./lab.sh drive` lets a Claude Code session run the
+  steps for you on the shared screen. It queues console steps through the
+  console's remote channel (`/api/remote`); the open page presses its own
+  buttons. It types terminal commands into the tmux session `lab`. The
+  `drive-demo` skill in `.claude/skills/` is the protocol. Setup and use:
+  `docs/REHEARSAL.md` section 7.
 
 The console runs as one long process, so demos keep their state from step to
 step. It is baked into the app image: run `./lab.sh build` after changing it.

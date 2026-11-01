@@ -13,6 +13,8 @@
 #   ./lab.sh agent read|write|retry --agent A|B  a D7 agent (runs in the runner)
 #   ./lab.sh repl fwd|rev|stop|status|logs  the D4 stand-in for Oracle GoldenGate
 #   ./lab.sh bake-recordings       save the console's rehearsal results in fallback/recorded/
+#   ./lab.sh drive stage|status|plan dN   Claude drives the demos (tmux session `lab` + the console)
+#   ./lab.sh drive console dN STEP [--skip|--show] [--nowait] | wait SEQ | term [A|B] 'CMD'
 # demo, reset dN, generate and agent run Node in a one-off runner container (the app
 # image), so the laptop needs no Node. LAB_HOST_NODE=1 uses the host's node.
 set -uo pipefail
@@ -211,6 +213,9 @@ cmd_preflight() {
     [ "$mem" -ge 12288 ] && ok "host memory ${mem} MiB" || warn "host memory ${mem} MiB (12 GB+ recommended)"
   fi
 
+  command -v tmux >/dev/null 2>&1 && ok "tmux present (for ./lab.sh drive)" \
+    || warn "tmux missing: only ./lab.sh drive needs it (brew install tmux)"
+
   for p in $LAB_IMAGES; do
     "$ENGINE" image inspect "$p" >/dev/null 2>&1 && ok "image $p present" \
       || fail "image $p missing (run ./lab.sh pull && ./lab.sh build)"
@@ -330,8 +335,147 @@ cmd_bake_recordings() {
     || { echo "FAIL  no recordings yet: run the demos in the console first" >&2; return 1; }
 }
 
+# ---- drive: Claude runs the demos while the presenter talks -----------------
+# The presenter shares two windows: the console in Chrome, and one terminal
+# attached to the tmux session `lab` (`./lab.sh drive stage`). Console steps go
+# through the console's remote channel, so the open page presses its own button
+# and the audience sees the usual timer and result. Terminal steps are typed
+# into the shared tmux pane. Only bash, curl and tmux on the host.
+CONSOLE_URL="${LAB_CONSOLE_URL:-http://127.0.0.1:3200}"
+TMUX_SESSION="${LAB_TMUX_SESSION:-lab}"
+case "$STATE_DIR" in /*) DRIVE_DIR="$STATE_DIR/drive" ;; *) DRIVE_DIR="$PWD/$STATE_DIR/drive" ;; esac
+
+# curl the console; sets BODY, CODE and RC. Fails loudly when it is down.
+drive_req() {
+  local f; f="$(mktemp)"
+  RC=0
+  CODE="$(curl -s --max-time 40 -o "$f" -w '%{http_code}' -X "$1" "$CONSOLE_URL$2")" || RC=$?
+  BODY="$(cat "$f")"; rm -f "$f"
+  if [ "$RC" -ne 0 ]; then echo "FAIL  the console did not answer at $CONSOLE_URL (curl exit $RC; ./lab.sh up?)" >&2; return 1; fi
+  case "$CODE" in 2??) return 0 ;; esac
+  printf '%s\n' "${BODY:-FAIL  HTTP $CODE}" >&2; return 1
+}
+
+need_tmux() { command -v tmux >/dev/null 2>&1 || { echo "FAIL  tmux is not installed (Mac: brew install tmux)" >&2; return 1; }; }
+need_stage() {
+  need_tmux || return 1
+  tmux has-session -t "$TMUX_SESSION" 2>/dev/null \
+    || { echo "FAIL  no tmux session $TMUX_SESSION: run ./lab.sh drive stage, then tmux attach -t $TMUX_SESSION in the shared terminal" >&2; return 1; }
+}
+
+# Each pane runs bash with this rc file: a short prompt, and a prompt hook
+# that writes "<count> <exit status>" to a file per pane, so the driver knows
+# when a command has finished without printing anything on screen.
+drive_rc() {
+  mkdir -p "$DRIVE_DIR"
+  cat > "$DRIVE_DIR/bashrc" <<RC
+cd "$PWD"
+PS1='lab \\\$ '
+__lab_n=0
+PROMPT_COMMAND='__lab_s=\$?; __lab_n=\$((__lab_n+1)); echo "\$__lab_n \$__lab_s" > "$DRIVE_DIR/prompt-\$LAB_PANE"'
+clear
+RC
+}
+
+drive_stage() {
+  need_tmux || return 1
+  if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+    echo "OK    tmux session $TMUX_SESSION already exists"
+  else
+    drive_rc
+    rm -f "$DRIVE_DIR"/prompt-*
+    tmux new-session -d -s "$TMUX_SESSION" -n main "env LAB_PANE=main bash --noprofile --rcfile '$DRIVE_DIR/bashrc' -i"
+    tmux new-window -d -t "$TMUX_SESSION" -n agents "env LAB_PANE=A bash --noprofile --rcfile '$DRIVE_DIR/bashrc' -i"
+    tmux split-window -h -d -t "$TMUX_SESSION:agents" "env LAB_PANE=B bash --noprofile --rcfile '$DRIVE_DIR/bashrc' -i"
+    tmux set-option -t "$TMUX_SESSION" status off >/dev/null
+    echo "OK    tmux session $TMUX_SESSION: window main, window agents (A left, B right)"
+  fi
+  echo "Next: in the terminal you will share, run:  tmux attach -t $TMUX_SESSION"
+}
+
+drive_status() {
+  drive_req GET /api/remote/status || return 1
+  printf '%s\n' "$BODY"
+  if need_stage 2>/dev/null; then
+    local n; n="$(tmux display -p -t "$TMUX_SESSION" '#{session_attached}')"
+    if [ "${n:-0}" -gt 0 ]; then echo "OK    tmux session $TMUX_SESSION attached ($n terminal)"
+    else echo "FAIL  tmux session $TMUX_SESSION is not attached: run tmux attach -t $TMUX_SESSION in the shared terminal"; fi
+  else
+    echo "FAIL  no tmux session $TMUX_SESSION: run ./lab.sh drive stage"
+  fi
+  grep -q '^FAIL' <<<"$BODY" && return 1
+  return 0
+}
+
+# Wait for the outcome of a console command, in 25 s long polls.
+drive_wait() {
+  while :; do
+    drive_req GET "/api/remote/result/$1?wait=25000" || return 1
+    [ "$CODE" = "202" ] || break
+  done
+  printf '%s\n' "$BODY"
+  case "$BODY" in OK*) return 0 ;; *) return 1 ;; esac
+}
+
+drive_console() {
+  [ $# -ge 2 ] || usage
+  local demo="$1" step="$2" action=run wait=1
+  shift 2
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --skip) action=skip ;; --show) action=show ;; --nowait) wait=0 ;; *) usage ;;
+    esac
+    shift
+  done
+  drive_req POST "/api/remote/$demo/$step/$action" || return 1
+  local seq="$BODY"
+  if [ "$wait" = 0 ]; then echo "INFO  $demo $step started; ./lab.sh drive wait $seq waits for it"; return 0; fi
+  drive_wait "$seq"
+}
+
+# Type a command into the shared pane (main, or A/B for D7), wait for its
+# prompt to come back, then print the pane's last lines and the exit status.
+drive_term() {
+  local pane=main target="$TMUX_SESSION:main"
+  case "${1:-}" in
+    A) pane=A; target="$TMUX_SESSION:agents.0"; shift ;;
+    B) pane=B; target="$TMUX_SESSION:agents.1"; shift ;;
+  esac
+  [ $# -eq 1 ] || usage
+  need_stage || return 1
+  local f="$DRIVE_DIR/prompt-$pane" before after status
+  before="$(cut -d' ' -f1 "$f" 2>/dev/null)"
+  tmux select-window -t "${target%.*}"
+  [ "$pane" = main ] || tmux select-pane -t "$target"
+  tmux send-keys -t "$target" -l -- "$1"
+  tmux send-keys -t "$target" Enter
+  local limit=$((SECONDS + ${DRIVE_TIMEOUT:-900}))
+  while :; do
+    after="$(cut -d' ' -f1 "$f" 2>/dev/null)"
+    [ -n "$after" ] && [ "$after" != "$before" ] && break
+    [ "$SECONDS" -lt "$limit" ] || { echo "FAIL  still running after ${DRIVE_TIMEOUT:-900} s: look at the terminal" >&2; return 1; }
+    sleep 0.3
+  done
+  status="$(cut -d' ' -f2 "$f")"
+  tmux capture-pane -p -J -t "$target" -S -60 | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' | tail -n "${DRIVE_LINES:-20}"
+  if [ "$status" = 0 ]; then echo "OK    exit 0"; else echo "FAIL  exit $status"; return 1; fi
+}
+
+cmd_drive() {
+  local sub="${1:-}"; [ $# -gt 0 ] && shift
+  case "$sub" in
+    stage)   drive_stage ;;
+    status)  drive_status ;;
+    plan)    [ $# -eq 1 ] || usage; drive_req GET "/api/remote/plan/$1" && printf '%s\n' "$BODY" ;;
+    console) drive_console "$@" ;;
+    wait)    [ $# -eq 1 ] || usage; drive_wait "$1" ;;
+    term)    drive_term "$@" ;;
+    *)       usage ;;
+  esac
+}
+
 usage() {
-  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -364,5 +508,6 @@ case "$cmd" in
   mongorestore-ora) cmd_mongorestore_ora "$@" ;;
   repl)      [ $# -eq 1 ] || usage; cmd_repl "$1" ;;
   bake-recordings) cmd_bake_recordings ;;
+  drive)     cmd_drive "$@" ;;
   *)         usage ;;
 esac

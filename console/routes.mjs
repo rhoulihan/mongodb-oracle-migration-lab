@@ -12,6 +12,14 @@
 //                                   each step, from this lab (source 'live') or, after a full
 //                                   reset, the copy saved in the repo (source 'baked', Ruling V)
 //
+// Remote control (./lab.sh drive; plain-text answers, for curl):
+//   POST /api/remote/:id/:step/run|skip|show  queue it for the open page; the seq, or 504
+//   GET  /api/remote/next           the page takes the pending command (204: none)
+//   POST /api/remote/done/:seq      the page reports {ok, summary}
+//   GET  /api/remote/result/:seq?wait=ms  "OK    ..." / "FAIL  ..." (202: still waiting)
+//   GET  /api/remote/plan/:id       the steps, with each terminal command
+//   GET  /api/remote/status         services, console page open, running
+//
 // The console never runs shell commands: the presenter types terminal
 // commands, the console only checks their effect.
 //
@@ -105,15 +113,17 @@ function recordedView(demo, rec) {
 }
 
 const READY_TTL_MS = 5000;
+// How long a remote command waits for an open console page to take it.
+const TAKE_MS = 5000;
 
 /**
  * @param {{demos: import('../demos/contract.mjs').Demo[], ctx: any,
  *          readiness: () => Promise<{mongo:boolean, oracle:boolean, ords:boolean, oraMongo:boolean}>,
- *          recordedDir: string, bakedDir?: string, readyTtlMs?: number, log?: (...a:any[]) => void}} opts
+ *          recordedDir: string, bakedDir?: string, readyTtlMs?: number, takeMs?: number, log?: (...a:any[]) => void}} opts
  * recordedDir: this lab's recordings (written after each passing step);
  * bakedDir: the copies saved in the repo (fallback/recorded, Ruling V).
  */
-export function createConsoleApp({ demos, ctx, readiness, recordedDir, bakedDir = BAKED_DIR, readyTtlMs = READY_TTL_MS, log = () => {} }) {
+export function createConsoleApp({ demos, ctx, readiness, recordedDir, bakedDir = BAKED_DIR, readyTtlMs = READY_TTL_MS, takeMs = TAKE_MS, log = () => {} }) {
   const byId = new Map([...demos].sort((a, b) => a.id.localeCompare(b.id)).map((d) => [d.id, d]));
   const live = new Map([...byId.keys()].map((id) => [id, { results: new Map(), revealed: false }]));
   let running = null; // "d5 setup" while a step or reset runs
@@ -233,6 +243,80 @@ export function createConsoleApp({ demos, ctx, readiness, recordedDir, bakedDir 
     const rec = live ?? await readRecorded(demo.id, bakedDir);
     if (!rec) return res.status(404).json({ error: `nothing recorded for ${demo.id} yet: run its steps once at rehearsal` });
     return res.json({ ...rec, source: live ? 'live' : 'baked', steps: recordedView(demo, rec) });
+  });
+
+  // ---- remote control (./lab.sh drive) ------------------------------------
+  // The driver queues one command; the open console page takes it, presses
+  // its own button (so the audience sees the same timer and result as a
+  // click) and posts the outcome back.
+  const remote = { seq: 0, pending: null, done: new Map(), lastPoll: 0 };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const text = (res, code, body) => res.status(code).type('text/plain').send(`${body}\n`);
+
+  app.get('/api/remote/plan/:id', (req, res) => {
+    const d = req.demo;
+    const lines = [`${d.id}  ${d.title}`];
+    d.steps.forEach((s, i) => {
+      lines.push(`${String(i + 1).padStart(2)}  ${s.id}  ${s.lane}  ${s.title}`);
+      if (s.lane === 'terminal') lines.push(`      $ ${s.command}`);
+    });
+    text(res, 200, lines.join('\n'));
+  });
+
+  app.get('/api/remote/status', async (_req, res) => {
+    const r = await readyNow({ cachedOk: false });
+    const down = Object.entries(r).filter(([, up]) => !up).map(([k]) => k);
+    const age = remote.lastPoll ? (Date.now() - remote.lastPoll) / 1000 : null;
+    text(res, 200, [
+      isReady(r) ? 'OK    services ready' : `FAIL  not ready: ${down.join(', ')} (run ./lab.sh check)`,
+      age !== null && age < 3 ? `OK    console page open (polled ${age.toFixed(1)} s ago)`
+        : 'FAIL  no console page open: open http://127.0.0.1:3200 in Chrome',
+      running ? `INFO  running: ${running}` : 'INFO  idle',
+    ].join('\n'));
+  });
+
+  app.post('/api/remote/:id/:step/:action', async (req, res) => {
+    const demo = req.demo;
+    const step = demo.steps.find((s) => s.id === req.params.step);
+    if (!step) return text(res, 404, `FAIL  no step ${req.params.step} in ${demo.id}`);
+    if (!['run', 'skip', 'show'].includes(req.params.action)) {
+      return text(res, 400, `FAIL  action ${req.params.action} is not run, skip or show`);
+    }
+    const cmd = { seq: ++remote.seq, demo: demo.id, step: step.id, action: req.params.action, taken: false };
+    remote.pending = cmd;
+    for (let t = 0; t < takeMs && !cmd.taken; t += 50) await sleep(50);
+    if (!cmd.taken) {
+      if (remote.pending === cmd) remote.pending = null;
+      return text(res, 504, 'FAIL  no console page took it: open http://127.0.0.1:3200 in Chrome');
+    }
+    return text(res, 200, String(cmd.seq));
+  });
+
+  // The page polls this; the first page to ask takes the command.
+  app.get('/api/remote/next', (_req, res) => {
+    remote.lastPoll = Date.now();
+    const cmd = remote.pending;
+    if (!cmd) return res.status(204).end();
+    remote.pending = null;
+    cmd.taken = true;
+    return res.json({ seq: cmd.seq, demo: cmd.demo, step: cmd.step, action: cmd.action });
+  });
+
+  app.post('/api/remote/done/:seq', express.json(), (req, res) => {
+    const r = req.body;
+    if (!isResult(r)) return res.status(400).json({ error: 'need {ok, summary}' });
+    remote.done.set(Number(req.params.seq), { ok: r.ok, summary: r.summary });
+    if (remote.done.size > 100) remote.done.delete(remote.done.keys().next().value);
+    return res.json({ ok: true });
+  });
+
+  // Long poll: 200 with the outcome, or 202 "waiting" after ?wait= ms (at most 30 s).
+  app.get('/api/remote/result/:seq', async (req, res) => {
+    const seq = Number(req.params.seq);
+    const wait = Math.min(Number(req.query.wait) || 0, 30000);
+    for (let t = 0; !remote.done.has(seq) && t < wait; t += 100) await sleep(100);
+    const r = remote.done.get(seq);
+    return r ? text(res, 200, `${r.ok ? 'OK  ' : 'FAIL'}  ${r.summary}`) : text(res, 202, 'waiting');
   });
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'not found' }));

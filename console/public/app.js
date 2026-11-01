@@ -40,8 +40,9 @@ $('theme').addEventListener('click', () => {
 applyTheme(new URLSearchParams(location.search).get('theme') || storedTheme());
 
 // ---- API ----------------------------------------------------------------
-async function api(method, path) {
-  const res = await fetch(path, { method });
+async function api(method, path, json) {
+  const res = await fetch(path, json === undefined ? { method }
+    : { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(json) });
   let body = null;
   try { body = await res.json(); } catch { /* empty */ }
   return { status: res.status, body };
@@ -376,6 +377,39 @@ async function runStep(s) {
   }
   render();
   pollReady();
+  if (res.status !== 200) return { ok: false, summary: res.body?.error ?? `HTTP ${res.status}` };
+  return { ok: res.body?.ok === true, summary: res.body?.summary ?? 'no summary' };
+}
+
+// ---- remote control (./lab.sh drive) ------------------------------------
+// The driver queues a command on the server; this page takes it and presses
+// its own buttons, so the shared screen shows exactly what a click shows.
+let remoteBusy = false;
+async function doRemote({ demo, step, action }) {
+  if (!state.demos.some((d) => d.id === demo)) return { ok: false, summary: `no demo ${demo}` };
+  await select(demo, step);
+  const s = state.demo.steps.find((x) => x.id === step);
+  if (!s) return { ok: false, summary: `no step ${step} in ${demo}` };
+  if (action === 'run') return runStep(s);
+  if (action === 'skip') {
+    const rec = state.recorded?.steps?.[s.id];
+    if (!rec) return { ok: false, summary: `nothing recorded for ${demo} ${step}` };
+    state.shown[s.id] = 'recorded';
+    render();
+    return { ok: true, summary: `showing the rehearsal recording: ${rec.result.summary}` };
+  }
+  return { ok: true, summary: `showing ${demo}: ${s.title}` };
+}
+async function pollRemote() {
+  if (remoteBusy || !state.demos.length) return;
+  let r;
+  try { r = await api('GET', '/api/remote/next'); } catch { return; }
+  if (r.status !== 200 || !r.body) return;
+  remoteBusy = true;
+  let out;
+  try { out = await doRemote(r.body); } catch (err) { out = { ok: false, summary: `the console page failed: ${err.message}` }; }
+  try { await api('POST', `/api/remote/done/${r.body.seq}`, out); } catch { /* the driver times out */ }
+  remoteBusy = false;
 }
 
 $('reset').addEventListener('click', async () => {
@@ -403,4 +437,5 @@ addEventListener('hashchange', () => {
   if (!state.demos.length) { $('demo-title').textContent = 'No demos found'; return; }
   const [id, step] = location.hash.slice(1).split('/');
   await select(id || state.demos[0].id, step);
+  setInterval(pollRemote, 500);
 })();

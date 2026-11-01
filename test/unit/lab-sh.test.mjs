@@ -381,3 +381,43 @@ describe('lab.sh preflight checks the compose provider', () => {
     expect(r.stdout).toContain('OK    podman compose works');
   });
 });
+
+describe('lab.sh drive (Claude drives the demos)', () => {
+  const hasTmux = spawnSync('tmux', ['-V']).status === 0;
+
+  test('bad arguments print usage and exit 2', () => {
+    for (const args of [['drive'], ['drive', 'fly'], ['drive', 'console', 'd1'], ['drive', 'console', 'd1', 'scan', '--bogus'], ['drive', 'plan']]) {
+      expect(sh(args).status).toBe(2);
+    }
+  });
+
+  test('a console that does not answer is a plain FAIL, exit 1', () => {
+    const r = sh(['drive', 'plan', 'd1'], { LAB_CONSOLE_URL: 'http://127.0.0.1:9' });
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/^FAIL  the console did not answer at http:\/\/127\.0\.0\.1:9/);
+  });
+
+  test.skipIf(!hasTmux)('term without a staged session says how to stage it', () => {
+    const r = sh(['drive', 'term', 'echo hi'], { LAB_TMUX_SESSION: `lab-test-none-${process.pid}` });
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/no tmux session .* run \.\/lab\.sh drive stage/);
+  });
+
+  test.skipIf(!hasTmux)('term types into the shared pane, waits for the prompt, and reports the exit status', () => {
+    const session = `lab-test-${process.pid}`;
+    const env = { LAB_TMUX_SESSION: session };
+    try {
+      expect(sh(['drive', 'stage'], env).stdout).toContain(`tmux attach -t ${session}`);
+      const bad = sh(['drive', 'term', 'echo hello-from-test; sleep 1; false'], env);
+      expect(bad.stdout).toContain('hello-from-test');
+      expect(bad.stdout).toMatch(/FAIL  exit 1\n$/);
+      expect(bad.status).toBe(1);
+      const good = sh(['drive', 'term', 'B', 'echo pane-b'], env);
+      expect(good.stdout).toContain('pane-b');
+      expect(good.stdout).toMatch(/OK    exit 0\n$/);
+      expect(sh(['drive', 'stage'], env).stdout).toContain('already exists');
+    } finally {
+      spawnSync('tmux', ['kill-session', '-t', session]);
+    }
+  });
+});

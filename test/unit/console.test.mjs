@@ -333,3 +333,74 @@ describe('recorded fallback', () => {
     }
   });
 });
+
+describe('remote control (./lab.sh drive)', () => {
+  // A page that polls like console/public/app.js: takes the next command and
+  // answers with the outcome the test hands it.
+  let rs, rbase;
+  const rget = (path) => fetch(rbase + path);
+  async function pageTakes() {
+    for (let i = 0; i < 100; i++) {
+      const r = await rget('/api/remote/next');
+      if (r.status === 200) return r.json();
+      await new Promise((ok) => setTimeout(ok, 20));
+    }
+    throw new Error('nothing queued');
+  }
+  const done = (seq, body) => fetch(`${rbase}/api/remote/done/${seq}`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+  });
+
+  beforeAll(async () => {
+    const app = createConsoleApp({
+      demos: [broken, timed], ctx: {}, readiness: async () => READY,
+      recordedDir: mkdtempSync(join(tmpdir(), 'rec-')), bakedDir: mkdtempSync(join(tmpdir(), 'baked-')), takeMs: 300,
+    });
+    await new Promise((resolve) => { rs = app.listen(0, '127.0.0.1', resolve); });
+    rbase = `http://127.0.0.1:${rs.address().port}`;
+  });
+  afterAll(() => new Promise((resolve) => rs.close(resolve)));
+
+  test('plan lists the steps in order, with each terminal command', async () => {
+    const t = await (await rget('/api/remote/plan/d6')).text();
+    expect(t.split('\n').slice(0, 4)).toEqual([
+      'd6  Timed fixture', ' 1  pipeline  console  Pipeline', ' 2  sql  terminal  SQL', '      $ ./lab.sh mongosh ora x.js',
+    ]);
+  });
+
+  test('with no page open, a command times out with a plain hint and is dropped', async () => {
+    const r = await fetch(`${rbase}/api/remote/d3/bad/run`, { method: 'POST' });
+    expect(r.status).toBe(504);
+    expect(await r.text()).toMatch(/^FAIL  no console page took it/);
+    expect((await rget('/api/remote/next')).status).toBe(204);
+  });
+
+  test('the page takes the command once, and its outcome comes back as text', async () => {
+    const queued = fetch(`${rbase}/api/remote/d6/timing/run`, { method: 'POST' });
+    const cmd = await pageTakes();
+    expect(cmd).toMatchObject({ demo: 'd6', step: 'timing', action: 'run' });
+    const q = await queued;
+    expect(q.status).toBe(200);
+    expect(Number(await q.text())).toBe(cmd.seq);
+    expect((await rget('/api/remote/next')).status).toBe(204); // taken once
+    expect((await rget(`/api/remote/result/${cmd.seq}?wait=0`)).status).toBe(202);
+    const waiting = rget(`/api/remote/result/${cmd.seq}?wait=5000`);
+    await done(cmd.seq, { ok: false, summary: 'step still running' });
+    const r = await waiting;
+    expect(r.status).toBe(200);
+    expect(await r.text()).toBe('FAIL  step still running\n');
+  });
+
+  test('bad step, bad action and a bad outcome body are refused', async () => {
+    expect((await fetch(`${rbase}/api/remote/d6/nope/run`, { method: 'POST' })).status).toBe(404);
+    expect((await fetch(`${rbase}/api/remote/d6/timing/explode`, { method: 'POST' })).status).toBe(400);
+    expect((await fetch(`${rbase}/api/remote/zz/timing/run`, { method: 'POST' })).status).toBe(404);
+    expect((await done(1, { ok: 'yes' })).status).toBe(400);
+  });
+
+  test('status reports readiness, whether a page is polling, and what runs', async () => {
+    await rget('/api/remote/next');
+    const t = await (await rget('/api/remote/status')).text();
+    expect(t).toMatch(/^OK    services ready\nOK    console page open \(polled \d+\.\d s ago\)\nINFO  idle\n$/);
+  });
+});

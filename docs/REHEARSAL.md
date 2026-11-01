@@ -263,3 +263,45 @@ node scripts/record-clips.mjs      # clean run in the console; writes clips/dN.w
 ./lab.sh build                     # bake them into the image
 git add fallback/recorded && git commit
 ```
+
+## 7. Let Claude drive (optional)
+
+Claude Code can run the demos for you while you talk. It tells you which
+window to share, waits for your "ready", then runs each step on the shared
+screen. The audience sees the same console timer and the same terminal
+output as when you do it yourself.
+
+**Claude needs internet. The lab doesn't.** If the venue network drops, click
+and type the steps yourself as in section 5. Nothing else changes.
+
+**Setup (once):** `brew install tmux`, and Claude Code installed. Add this to
+`.claude/settings.local.json` in the repo, so no permission prompt appears
+on stage:
+
+```json
+{ "permissions": { "allow": ["Bash(./lab.sh drive:*)"] } }
+```
+
+**Before the session:**
+
+1. Run `./lab.sh drive stage`. It creates the tmux session `lab`: window
+   `main`, and window `agents` split into A (left) and B (right) for D7.
+2. In the terminal window you will share, run `tmux attach -t lab`. Make
+   the font large.
+3. Open the console in Chrome, http://127.0.0.1:3200.
+4. In a **second** terminal that you don't share, start `claude` in the repo
+   folder.
+5. Ask Claude to check: `run ./lab.sh drive status`. You should see three
+   OK lines and `INFO  idle`.
+
+**During the session:** say "run demo D3" (the `drive-demo` skill).
+
+- Claude says **Share the Console** or **Share the Terminal** when the
+  window changes. Reply "ready" once it's on screen.
+- After each step, Claude replies with the result and the line to say. Say
+  "next" or "go" to continue.
+- On a failure, Claude offers **Skip to result** (the rehearsal recording)
+  and never debugs on stage.
+
+**Rehearse it once this way, D1 to D7.** Each step adds a few seconds while
+Claude responds, so note where D5 and D6 run long.
