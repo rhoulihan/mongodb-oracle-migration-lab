@@ -100,7 +100,9 @@ def test_old_version_name_fails(tmp_path):
 
 def test_cdn_script_fails_offline(tmp_path):
     head = '<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>'
-    r = run_qa(tmp_path, deck(OK_SLIDE, head), "--offline")
+    # A blocking CDN script either fails fast at the blocked DNS or hangs Chrome; both must
+    # fail the gate (the hang through the render timeout), never hang it.
+    r = run_qa(tmp_path, deck(OK_SLIDE, head), "--offline", "--timeout", "30")
     assert r.returncode == 1
     assert "network" in r.stdout
 
@@ -231,3 +233,38 @@ def test_shots_writes_one_png_per_slide(tmp_path):
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
+
+
+def test_render_timeout_fails_the_gate(tmp_path, monkeypatch, capsys):
+    """A Chrome run that never returns: QA kills its process group, reports the timeout, exits 1."""
+    sys.path.insert(0, str(BUILD))
+    import qa_deck
+
+    killed = []
+
+    class Hung:
+        pid = 4242
+
+        def __init__(self, *a, **kw):
+            assert kw.get("start_new_session"), "Chrome must run in its own process group"
+            self.calls = 0
+
+        def communicate(self, timeout=None):
+            self.calls += 1
+            if self.calls == 1:
+                raise subprocess.TimeoutExpired("chrome", timeout)
+            return "", ""
+
+        def kill(self):
+            killed.append("kill")
+
+    monkeypatch.setattr(qa_deck, "chrome", lambda: "chrome")
+    monkeypatch.setattr(qa_deck.subprocess, "Popen", Hung)
+    monkeypatch.setattr(qa_deck.os, "killpg", lambda pid, sig: killed.append((pid, sig)))
+    p = tmp_path / "index.html"
+    p.write_text(deck(OK_SLIDE), encoding="utf-8")
+    rc = qa_deck.run(p, None, False, False, 45, None, timeout=5)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "timed out after 5 s" in out and "blocked or hanging" in out
+    assert killed and killed[0] == (4242, qa_deck.signal.SIGKILL)

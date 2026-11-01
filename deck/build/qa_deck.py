@@ -1,7 +1,7 @@
 """Headless QA for the Reveal.js deck. Exit code 1 if any slide fails a check.
 
   python3 deck/build/qa_deck.py deck/index.html [--dark] [--offline] [--shots DIR]
-                                [--word-budget 45] [--slides 3,4]
+                                [--word-budget 45] [--slides 3,4] [--timeout 90]
 
 Adapted from converged-modeling-patterns/presentations/build/qa_deck.py: renders the deck
 in headless Chrome at a 1280x720 viewport, walks ``Reveal.getSlides()`` (every fragment
@@ -20,6 +20,10 @@ shown), and checks each slide for:
     ``demo``; SVG labels, the eyebrow and notes do not count. Text is accent only on
     concept slides.
 
+Every Chrome run has a time limit (``--timeout``, default 90 s). A run that does not finish
+(a page blocked on a request, a hung renderer) has its process group killed and fails the gate
+with "... timed out" instead of hanging it.
+
 ``--offline`` blocks DNS in the browser and fails on any page request whose scheme is not
 file: (or data:, blob:, about:), read from Chrome's net log and Resource Timing, plus any
 http(s) reference in the deck source, its stylesheets, or its scripts (vendored included;
@@ -34,6 +38,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -47,6 +52,31 @@ LOCAL_SCHEMES = ("file:", "data:", "blob:", "about:")
 # namespace), never fetched. Anything else in a .js file fails --offline.
 JS_URL_OK = ("https://hakim.se", "https://revealjs.com", "https://github.com/markedjs/marked",
              "https://marked.js.org/", "http://www.w3.org/")
+
+DEFAULT_TIMEOUT = 90   # seconds per Chrome run; the real deck renders in a few
+
+
+class RenderTimeout(Exception):
+    """A Chrome run did not finish in time: the gate fails instead of hanging."""
+
+
+def chrome_run(args: list[str], timeout: float, what: str) -> str:
+    """Run headless Chrome in its own process group and return stdout. On timeout, kill the
+    whole group (Chrome forks zygote, GPU and network helpers) and raise RenderTimeout."""
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                         start_new_session=True)
+    try:
+        out, _ = p.communicate(timeout=timeout)
+        return out or ""
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            p.kill()
+        p.communicate()
+        raise RenderTimeout(f"{what} timed out after {timeout:g} s "
+                            "(a page request may be blocked or hanging: check network references)")
+
 
 DARK = "<script>document.documentElement.dataset.theme='dark'</script>"
 
@@ -177,15 +207,14 @@ def chrome_base(profile: Path, offline: bool) -> list[str]:
     return base
 
 
-def viewport_args(ch: str, base: list[str], w=1280, h=720) -> list[str]:
+def viewport_args(ch: str, base: list[str], w=1280, h=720, timeout: float = DEFAULT_TIMEOUT) -> list[str]:
     """Headless 'window-size' includes window chrome; probe and correct so the viewport is w x h."""
     with tempfile.TemporaryDirectory() as td:
         pf = Path(td) / "probe.html"
         pf.write_text("<body><script>addEventListener('load',()=>{document.body.textContent="
                       "'VP'+innerWidth+'x'+innerHeight})</script></body>", encoding="utf-8")
-        dom = subprocess.run([ch, *base, f"--window-size={w},{h}", "--virtual-time-budget=1000",
-                              "--dump-dom", pf.as_uri()], capture_output=True, text=True,
-                             timeout=60).stdout
+        dom = chrome_run([ch, *base, f"--window-size={w},{h}", "--virtual-time-budget=1000",
+                          "--dump-dom", pf.as_uri()], timeout, "viewport probe")
     m = re.search(r"VP(\d+)x(\d+)", dom)
     dw, dh = (w - int(m.group(1)), h - int(m.group(2))) if m else (0, 0)
     return base + [f"--window-size={w + dw},{h + dh}"]
@@ -256,7 +285,19 @@ def page_requests(netlog: Path) -> list[str]:
 
 
 def run(deck: Path, shots: Path | None, dark: bool, offline: bool, budget: int,
-        only: set[int] | None) -> int:
+        only: set[int] | None, timeout: float = DEFAULT_TIMEOUT) -> int:
+    try:
+        return _run(deck, shots, dark, offline, budget, only, timeout)
+    except RenderTimeout as ex:
+        issues = source_issues(deck, deck.read_text(encoding="utf-8"), offline) + [str(ex)]
+        print(json.dumps({"theme": "dark" if dark else "light", "offline": offline, "deck": issues,
+                          "slides": []}, indent=1, ensure_ascii=True))
+        print(f"QA {'dark' if dark else 'light'}: {ex}", file=sys.stderr)
+        return 1
+
+
+def _run(deck: Path, shots: Path | None, dark: bool, offline: bool, budget: int,
+         only: set[int] | None, timeout: float) -> int:
     ch = chrome()
     text = deck.read_text(encoding="utf-8")
     deck_issues = source_issues(deck, text, offline)
@@ -265,16 +306,16 @@ def run(deck: Path, shots: Path | None, dark: bool, offline: bool, budget: int,
     tmp = []
     with tempfile.TemporaryDirectory() as prof:
         plain = chrome_base(Path(prof), offline)
-        base = viewport_args(ch, plain)
+        base = viewport_args(ch, plain, timeout=timeout)
         try:
             # The variant sits next to the deck so every relative asset path still resolves.
             qa = deck.parent / f".qa-{os.getpid()}.html"
             tmp.append(qa)
             qa.write_text(variant(text, head, QA_JS.replace("__CFG__", cfg)), encoding="utf-8")
             netlog = Path(prof) / "net.json"
-            dom = subprocess.run([ch, *base, f"--log-net-log={netlog}", "--net-log-capture-mode=Default",
-                                  "--virtual-time-budget=8000", "--dump-dom", qa.as_uri()],
-                                 capture_output=True, text=True, timeout=240).stdout
+            dom = chrome_run([ch, *base, f"--log-net-log={netlog}", "--net-log-capture-mode=Default",
+                              "--virtual-time-budget=8000", "--dump-dom", qa.as_uri()],
+                             timeout, "deck render")
             m = re.search(r'<pre id="qa-out">(.*?)</pre>', dom, re.S)
             if not m:
                 print(json.dumps({"deck": deck_issues + ["QA script produced no output (page error?)"]}))
@@ -305,10 +346,15 @@ def run(deck: Path, shots: Path | None, dark: bool, offline: bool, budget: int,
                 for r in slides:
                     png = shots.resolve() / f"slide-{r['slide']:02d}{'-dark' if dark else ''}.png"
                     # --screenshot captures exactly --window-size, so it takes the raw 1280x720
-                    subprocess.run([ch, *plain, "--window-size=1280,720", "--virtual-time-budget=4000",
-                                    f"--screenshot={png}",
-                                    sv.as_uri() + f"?qa_slide={r['index']}"],
-                                   capture_output=True, timeout=120)
+                    try:
+                        chrome_run([ch, *plain, "--window-size=1280,720", "--virtual-time-budget=4000",
+                                    f"--screenshot={png}", sv.as_uri() + f"?qa_slide={r['index']}"],
+                                   timeout, f"screenshot of slide {r['slide']}")
+                    except RenderTimeout as ex:
+                        # one hung shot fails that slide; stop rather than wait out every slide
+                        r["issues"].append(str(ex))
+                        deck_issues.append("screenshots stopped after a timeout")
+                        break
                     r["png"] = str(png)
         finally:
             for p in tmp:
@@ -330,6 +376,8 @@ if __name__ == "__main__":
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--word-budget", type=int, default=45)
     ap.add_argument("--slides", help="comma-separated slide numbers to report")
+    ap.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT,
+                    help=f"seconds per Chrome run before the gate fails (default {DEFAULT_TIMEOUT})")
     a = ap.parse_args()
     sel = {int(x) for x in a.slides.split(",")} if a.slides else None
-    sys.exit(run(a.deck.resolve(), a.shots, a.dark, a.offline, a.word_budget, sel))
+    sys.exit(run(a.deck.resolve(), a.shots, a.dark, a.offline, a.word_budget, sel, a.timeout))
