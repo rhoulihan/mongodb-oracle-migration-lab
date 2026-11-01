@@ -8,10 +8,14 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createContext, runDemo } from '../../demos/contract.mjs';
-import d6, { planChecks } from '../../demos/d6-sql/index.mjs';
 import { atCents, nativeRankPipeline, pipeline, sqlStage } from '../../demos/d6-sql/queries.mjs';
 import { sameDocs } from '../../lib/compare.mjs';
 import { prepareTarget } from '../../oracle/prep.mjs';
+
+// Ruling T: live the pipeline is timed once; headless and tests time it 3 times.
+// Set before the demo module reads it (hence the dynamic import).
+process.env.D6_PIPELINE_RUNS ??= '3';
+const { default: d6, planChecks, PIPELINE_RUNS } = await import('../../demos/d6-sql/index.mjs');
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 let ctx, results;
@@ -61,6 +65,8 @@ describe('D6 pipeline vs $sql', () => {
 
   test('metrics.medianMs exists for (2) and (3) only: no MongoDB timing is collected', () => {
     expect(result('pipeline-oracle').metrics.medianMs).toBeGreaterThan(0);
+    expect(result('pipeline-oracle').metrics.runsMs).toHaveLength(PIPELINE_RUNS.runs);
+    expect(result('sql-stage').metrics.runsMs).toHaveLength(7);
     expect(result('sql-stage').metrics.medianMs).toBeGreaterThan(0);
     for (const id of ['setup', 'pipeline-mongo-explain', 'equal', 'plans']) {
       expect(result(id).metrics?.medianMs, id).toBeUndefined();
@@ -84,6 +90,8 @@ describe('D6 pipeline vs $sql', () => {
     expect(plan).toMatch(/WINDOW SORT PUSHED RANK|WINDOW NOSORT/);
     expect(planChecks.sql(plan)).toBe(true);
     expect(result('plans').plan.left).toMatch(/orders/);
+    // The plan of the cursor the MongoDB API ran, not a re-run in a direct session.
+    expect(result('plans').metrics.sqlPlanSource).toBe('the cursor the MongoDB API ran');
   });
 
   test('timing shows both medians and their ratio, after equality', () => {

@@ -24,11 +24,14 @@ const TABLES = ['orders', 'subscribers', 'accounts', 'catalog'];
 const GROUPS = 32; // 8 regions x 4 tiers
 const ROWS = GROUPS * 5;
 
-// The pipeline through the API takes minutes per run on a laptop, so it is
-// timed over fewer runs than $sql. D6_PIPELINE_RUNS overrides (1 for a quick
-// rehearsal). Laptop timings are relative only.
-const PIPELINE_RUNS = { runs: Number(process.env.D6_PIPELINE_RUNS || 3), warmup: 0 };
-const SQL_RUNS = { runs: 7, warmup: 2 };
+// The pipeline through the API takes over a minute per run on a laptop, so
+// live it is timed once (Ruling T: the presenter narrates the plan while it
+// runs); headless runs and the tests set D6_PIPELINE_RUNS=3 (compose passes 3
+// to the runner). $sql is fast, so it keeps a median of 7. Neither side gets
+// a warmup: the median of 7 absorbs $sql's cold first run, and nothing is
+// pre-warmed to flatter either side. Laptop timings are relative only.
+export const PIPELINE_RUNS = Object.freeze({ runs: Number(process.env.D6_PIPELINE_RUNS || 1), warmup: 0 });
+export const SQL_RUNS = Object.freeze({ runs: 7, warmup: 0 });
 
 // Results and medians of this process's runs. The console may run steps one
 // at a time, in any order; a step that needs a missing one computes it.
@@ -37,6 +40,7 @@ const fail = (summary) => ({ ok: false, summary });
 const windowFilter = { placedAt: { $gte: WINDOW.fromTs, $lt: WINDOW.toTs } };
 const day = (d) => d.toISOString().slice(0, 10);
 const runs = (n) => `${n} run${n === 1 ? '' : 's'}`;
+const timed = (n) => (n === 1 ? '1 run' : `median of ${n} runs`);
 
 async function windowCounts(ctx) {
   const src = await (await ctx.mongoSrc()).collection('orders').countDocuments(windowFilter);
@@ -44,12 +48,16 @@ async function windowCounts(ctx) {
   return { src, ora };
 }
 
-/** MIG holds D3's restore with the source's window of orders; otherwise run D3's dump and restore. */
-async function ensureRestored(ctx) {
+/**
+ * MIG holds D3's restore with the source's window of orders; otherwise (or
+ * always, with force: the reset path, which must repair any drift inside
+ * the window, not just a count mismatch) run D3's dump and restore.
+ */
+async function ensureRestored(ctx, { force = false } = {}) {
   const total = await (await ctx.mongoSrc()).collection('orders').estimatedDocumentCount();
   if (total === 0) throw new Error('the MongoDB source has no orders: run ./lab.sh generate, then ./lab.sh reset d6');
   let n = await windowCounts(ctx);
-  if (n.ora === n.src) return n;
+  if (!force && n.ora === n.src) return n;
   for (const id of ['dump', 'restore']) {
     const r = await d3.steps.find((s) => s.id === id).run(ctx);
     if (!r.ok) throw new Error(`D6 needs D3's restore, and D3 ${id} failed: ${r.summary}`);
@@ -66,9 +74,9 @@ async function gatherStats(conn) {
   }
 }
 
-async function startingState(ctx) {
+async function startingState(ctx, { force = false } = {}) {
   last.clear();
-  const n = await ensureRestored(ctx);
+  const n = await ensureRestored(ctx, { force });
   await gatherStats(await ctx.oraSql());
   return n;
 }
@@ -106,20 +114,20 @@ async function runSql(ctx) {
 
 /** Equality of (1), (2), (3) after the explicit scale step; remembered for `timing`. */
 async function proveEqual(ctx) {
-  const runs = { source: await runSource(ctx), pipeline: await runPipelineOracle(ctx), sql: await runSql(ctx) };
+  const all = { source: await runSource(ctx), pipeline: await runPipelineOracle(ctx), sql: await runSql(ctx) };
   const sorted = (docs) => docs.every((d, i) => i === 0 || key(docs[i - 1]) <= key(d));
-  for (const [name, r] of Object.entries(runs)) {
+  for (const [name, r] of Object.entries(all)) {
     if (r.docs.length !== ROWS) return { equal: false, why: `${name} returned ${r.docs.length} rows, expected ${ROWS}` };
     if (!sorted(r.docs)) return { equal: false, why: `${name} is not sorted by region, tier, rank` };
   }
   let cents;
   try {
-    cents = Object.fromEntries(Object.entries(runs).map(([k, r]) => [k, r.docs.map(atCents)]));
+    cents = Object.fromEntries(Object.entries(all).map(([k, r]) => [k, r.docs.map(atCents)]));
   } catch (err) {
     return { equal: false, why: err.message };
   }
   const a = sameDocs(cents.source, cents.pipeline), b = sameDocs(cents.source, cents.sql);
-  const rescaled = Object.fromEntries(Object.entries(runs).map(([k, r]) => [k, r.docs.filter(scaleChanged).length]));
+  const rescaled = Object.fromEntries(Object.entries(all).map(([k, r]) => [k, r.docs.filter(scaleChanged).length]));
   const why = !a.equal ? `source vs pipeline on Oracle: ${a.diff}` : !b.equal ? `source vs $sql: ${b.diff}` : undefined;
   const res = { equal: !why, why, rescaled };
   if (res.equal) last.set('equal', res);
@@ -128,6 +136,36 @@ async function proveEqual(ctx) {
 const key = (d) => `${d.region}\u0000${d.tier}\u0000${String(d.rank).padStart(3, '0')}`;
 
 // --- plans ------------------------------------------------------------------
+/**
+ * The plan of the $sql statement as the Oracle API ran it (the ORDS session
+ * the timing measured), from its cursor in v$sql. Runs the stage once first
+ * so the cursor is there. Falls back to running the same statement in a
+ * direct SQL session (sqlPlan) only if the cursor has aged out; `source`
+ * says which.
+ */
+async function apiSqlPlan(ctx) {
+  await runSqlOnce(ctx);
+  const conn = await ctx.oraSql();
+  // sql_text holds the first 1000 characters; the statement starts with its
+  // CTE, while sqlPlan's own runs start with a /* measure:... */ tag.
+  const cur = await conn.execute(
+    `select sql_id, child_number from v$sql
+      where parsing_schema_name = 'MIG' and sql_text like :head and sql_fulltext like :marker
+      order by last_active_time desc fetch first 1 row only`,
+    { head: 'with lines as%', marker: '%json_scalar(spend as decimal)%' },
+  );
+  if (cur.rows.length) {
+    const [id, child] = cur.rows[0];
+    const plan = await conn.execute(
+      "select plan_table_output from table(dbms_xplan.display_cursor(:id, :child, 'BASIC +ROWS +PREDICATE'))", { id, child });
+    return { text: plan.rows.map((r) => r[0] ?? '').join('\n').trimEnd(), source: 'the cursor the MongoDB API ran' };
+  }
+  return {
+    text: await sqlPlan(conn, sqlText, { fromTs: WINDOW.fromTs, toTs: WINDOW.toTs }),
+    source: 'the same statement in a direct SQL session',
+  };
+}
+
 /** Plan text checks, shared by the steps and the tests. */
 export const planChecks = {
   sql: (p) => /HASH JOIN|NESTED LOOPS/.test(p) && /WINDOW SORT PUSHED RANK|WINDOW NOSORT/.test(p),
@@ -170,7 +208,7 @@ export default {
   id: 'd6',
   title: 'Pipeline vs $sql: hand the hard query to the optimizer',
   setup: startingState,
-  reset: startingState,
+  reset: (ctx) => startingState(ctx, { force: true }),
   steps: [
     {
       id: 'setup',
@@ -268,14 +306,16 @@ export default {
       lane: 'console',
       run: guarded(async (ctx) => {
         const left = await mongoExplain(await ctx.oraMongo(), 'orders', pipeline);
-        const right = await sqlPlan(await ctx.oraSql(), sqlText, { fromTs: WINDOW.fromTs, toTs: WINDOW.toTs });
+        const { text: right, source } = await apiSqlPlan(ctx);
         const ok = planChecks.sql(right);
         const loops = (left.match(/NESTED LOOPS/g) ?? []).length;
         return {
           ok,
           summary: `(2) the pipeline becomes ${loops} nested loops that look up and rebuild each document one at a time; ` +
             '(3) the optimizer plans hash joins over whole tables and a rank that stops at 5 per group (WINDOW SORT PUSHED RANK)' +
+            ` (plan of ${source})` +
             (ok ? '' : '; the $sql plan does not show a join and a pushed rank'),
+          metrics: { sqlPlanSource: source },
           plan: { left, right },
           detail: sideBySide('(2) pipeline through the MongoDB API', left, '(3) $sql', right),
         };
@@ -295,8 +335,8 @@ export default {
         const ratio = Math.round((p.medianMs / s.medianMs) * 10) / 10;
         return {
           ok: ratio > 0,
-          summary: `same engine, same data, same answer: the pipeline takes ${(pipelineMs / 1000).toFixed(1)} s (median of ${p.runsMs.length}), ` +
-            `$sql ${(sqlMs / 1000).toFixed(2)} s (median of ${s.runsMs.length}): ${ratio}x. Laptop numbers, relative only`,
+          summary: `same engine, same data, same answer: the pipeline takes ${(pipelineMs / 1000).toFixed(1)} s (${timed(p.runsMs.length)}), ` +
+            `$sql ${(sqlMs / 1000).toFixed(2)} s (${timed(s.runsMs.length)}): ${ratio}x. Laptop numbers, relative only`,
           metrics: { pipelineMs, sqlMs, ratio },
           detail: [
             'run                                   median ms   runs ms',

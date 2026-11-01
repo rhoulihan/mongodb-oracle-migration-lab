@@ -1,6 +1,6 @@
 with lines as (
-  select json_value(o.data, '$.subscriber.id' returning varchar2(10)) subscriber_id,
-         json_value(o.data, '$._id' returning varchar2(24))           order_id,
+  select json_value(o.data, '$.subscriber.id' returning varchar2(10) error on error) subscriber_id,
+         json_value(o.data, '$._id' returning varchar2(24) error on error) order_id,
          o.data.placedAt.timestamp()                                    placed_at,
          l.sku, l.qty, l.price
     from "orders" o,
@@ -15,7 +15,7 @@ spend as (
   select l.subscriber_id,
          sum(l.qty * l.price) spend,
          max(case when c.data.kind.string() = 'plan'
-                  then json_value(c.data, '$.name' returning varchar2(60)) end)
+                  then json_value(c.data, '$.name' returning varchar2(60) error on error) end)
            keep (dense_rank last order by case when c.data.kind.string() = 'plan' then 1 else 0 end,
                                           l.placed_at, l.order_id) plan
     from lines l

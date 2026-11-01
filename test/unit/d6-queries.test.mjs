@@ -47,3 +47,19 @@ describe('D6 queries', () => {
     expect(() => atCents({ spend: 9718.8 })).toThrow(/Decimal128/);
   });
 });
+
+// Ruling T: live (no D6_PIPELINE_RUNS, as in the console) the pipeline is
+// timed once; neither side gets a warmup run.
+describe('D6 timing defaults', () => {
+  test('one pipeline run by default, $sql median of 7, no warmups', async () => {
+    const saved = process.env.D6_PIPELINE_RUNS;
+    delete process.env.D6_PIPELINE_RUNS;
+    try {
+      const { PIPELINE_RUNS, SQL_RUNS } = await import('../../demos/d6-sql/index.mjs');
+      expect(PIPELINE_RUNS).toEqual({ runs: 1, warmup: 0 });
+      expect(SQL_RUNS).toEqual({ runs: 7, warmup: 0 });
+    } finally {
+      if (saved !== undefined) process.env.D6_PIPELINE_RUNS = saved;
+    }
+  });
+});

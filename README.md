@@ -250,9 +250,12 @@ editing it):
 ./lab.sh mongosh ora demos/d6-sql/sql-stage.js
 ```
 
-The pipeline through the API takes minutes per run on a laptop, so it is
-timed over 3 runs (`D6_PIPELINE_RUNS=1 ./lab.sh demo d6` for a quick
-rehearsal). Plans, medians and the ratio: `docs/spikes/d6-ratio.md`.
+The pipeline through the API takes over a minute per run on a laptop, so
+live (the console) it is timed once while the presenter talks through the
+plan; `./lab.sh demo d6` and the tests time it over 3 runs (compose passes
+`D6_PIPELINE_RUNS=3` to the runner; `D6_PIPELINE_RUNS=1 ./lab.sh demo d6` for
+a quick rehearsal). `$sql` is timed over 7 runs; neither side is warmed up.
+Plans, medians and the ratio: `docs/spikes/d6-ratio.md`.
 
 ## Demo 7: ETags, two agents, no lost update
 

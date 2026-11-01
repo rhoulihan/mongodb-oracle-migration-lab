@@ -54,7 +54,8 @@ with plan name. Shared definitions (`demos/d6-sql/queries.mjs`):
    gathers table statistics on the four collections (what a DBA does after a
    load). Then the `GROUP BY` spilled 737 MB to temp (10.8 s) because dot
    notation `.string()` returns `VARCHAR2(4000)`; projecting the grouped and
-   sorted values with `json_value(... returning varchar2(n))` took it to
+   sorted values with `json_value(... returning varchar2(n) error on error)`
+   (an over-long value fails loudly instead of becoming NULL) took it to
    0.7 s in memory. `JSON_TABLE` over the root (`'$'`) of each collection
    gave row estimates in the billions, so the lines are the only `JSON_TABLE`.
 5. **Why the pipeline is slow on Oracle.** The API translates each `$lookup`
@@ -70,14 +71,23 @@ with plan name. Shared definitions (`demos/d6-sql/queries.mjs`):
 
 ## Medians and ratio (laptop, relative only)
 
-`./lab.sh demo d6`, run twice in a row from the runner container. Pipeline
-timed over 3 runs (no warmup; `D6_PIPELINE_RUNS`), `$sql` over 7 runs after 2
-warmups (`lib/measure.mjs timeMedian`). Results proven equal first in both.
+Ruling T: live (the console, no `D6_PIPELINE_RUNS`) the pipeline is timed
+once, about 80 s, while the presenter talks through its plan; headless runs
+and the tests time it over 3 runs (compose passes `D6_PIPELINE_RUNS=3` to the
+runner). `$sql` is timed over 7 runs. Neither side gets a warmup run (the
+median of 7 absorbs `$sql`'s cold first run), so nothing is pre-warmed in
+either side's favour. Results proven equal first in every run.
 
-| run | (2) pipeline via MongoDB API, median | (3) `$sql` via MongoDB API, median | ratio |
-|---|---|---|---|
-| 1 | 84.3 s | 0.60 s | 141x |
-| 2 | 78.3 s (78.3, 85.7, 78.3) | 0.61 s (0.60 to 0.62) | 128x |
+Re-measured 2026-11-01 after the fix round (no warmups), `./lab.sh demo d6`
+from the runner container:
+
+| run | (2) pipeline via MongoDB API | (3) `$sql` via MongoDB API, median of 7 | ratio | demo wall time |
+|---|---|---|---|---|
+| headless, 3 runs | 77.8 s median (77.7, 85.2, 77.8) | 0.65 s (0.64 to 0.67) | 120x | 4m15s |
+| live default, `D6_PIPELINE_RUNS=1` | 86.1 s (1 run) | 0.65 s (0.64 to 0.66) | 133x | 1m40s |
+
+Earlier runs (with a 2-run `$sql` warmup, before the fix round) gave 141x
+and 128x; the warmup made no material difference (0.60 vs 0.65 s).
 
 Say on stage: "the same question, handed to the optimizer as SQL, ran more
 than 100 times faster on this laptop, with identical results." Cite the
@@ -86,8 +96,10 @@ field PoC (pipelines about 3 to 15x slower) for anything absolute.
 ## Plans
 
 (2) is the plan the Oracle API returns for the pipeline (`explain`, condensed
-by `mongoExplain`); (3) is `DBMS_XPLAN.DISPLAY_CURSOR` for the same SQL text
-(`sqlPlan`).
+by `mongoExplain`); (3) is `DBMS_XPLAN.DISPLAY_CURSOR` of the cursor the
+MongoDB API itself ran for the `$sql` stage (found in `v$sql`; the demo falls
+back to the same statement in a direct SQL session only if that cursor has
+aged out, and says so).
 
 ```text
 (2) pipeline through the MongoDB API                                     |  (3) $sql
