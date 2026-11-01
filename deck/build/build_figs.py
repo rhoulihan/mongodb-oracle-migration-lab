@@ -505,7 +505,7 @@ def fig_window_math() -> Fig:
                        "call comes after validation. The whole window is sized from a rehearsal")
     x0, top, rh = 300, 62, 46
     f.text(18, 34, "STEP", size=13, weight=700, font=MONO, fill="var(--muted)")
-    f.text(x0, 34, "TIME IN THE WINDOW (FROM A REHEARSAL)", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(x0, 34, "TIME IN THE WINDOW (ILLUSTRATIVE)", size=13, weight=700, font=MONO, fill="var(--muted)")
     x = x0
     gate = None
     for i, (step, sub, w, tone) in enumerate(WINDOW):
@@ -522,7 +522,7 @@ def fig_window_math() -> Fig:
             gate = x
     # the go / no-go call, after validation
     yb = top + len(WINDOW) * rh
-    f.line(gate, top - 4, gate, yb - 8, stroke="var(--ink)", sw=1.6, dash="4 4", name="gate", seg=False)
+    f.line(gate, top - 4, gate, top + (len(WINDOW) - 1) * rh + 2, stroke="var(--ink)", sw=1.6, dash="4 4", name="gate", seg=False)
     f.text(gate + 10, top + 12, "go / no-go", size=14, weight=700, font=MONO, fill="var(--ink)")
     # the window bracket
     f.path(f"M{x0},{yb + 4} V{yb + 14} H{x} V{yb + 4}", [(x0, yb + 4), (x, yb + 14)], stroke="var(--hot)",
@@ -716,7 +716,7 @@ def fig_goldengate_topology() -> Fig:
     # two ways to run it
     cy, ch = 250, 126
     f.box(18, cy, 530, ch, ["GoldenGate for MongoDB Migrations", "recipe UI, offline or online",
-                            "free-use terms", "no support, no patching"], tone="hot", size=18, sub_size=15)
+                            "free-use terms", "no support or patching entitlement"], tone="hot", size=18, sub_size=15)
     f.box(572, cy, 530, ch, ["OCI GoldenGate", "licensed", "supported", "the production path"], tone="cool",
           size=18, sub_size=15)
     return f
