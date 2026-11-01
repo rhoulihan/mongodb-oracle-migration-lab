@@ -129,7 +129,7 @@ Segment 1, slide 8 (clock 0:10, 3 min). Console only, read only.
 | # | Lane | Do | Expect |
 |---|---|---|---|
 | 1 | console | Scripted operator scan (built for this lab) | Operators sorted into supported, caveat and unsupported, for the app and for the D5/D6 pipelines. Say: not Oracle's advisor |
-| 2 | console | BSON type census on the MongoDB source | `!!` landmine rows: regex `skuPattern`, Timestamp `ts`, Int64 above 2^53, Decimal128, arrays |
+| 2 | console | BSON type census on the MongoDB source | `!!` landmine rows: regex `skuPattern`, Timestamp `ts`, Decimal128, arrays |
 
 Reset after: none.
 

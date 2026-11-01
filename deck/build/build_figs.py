@@ -252,18 +252,16 @@ LANDMINES = [  # field, BSON type, value on MongoDB, how it reads back, what cha
      "{$type: 'regex'} is rejected"),
     ("orderEvents.ts", "Timestamp", "Timestamp(t, i)", '{"$timestamp": ...}',
      "{$type: 'timestamp'} is rejected"),
-    ("orders.version", "Int64", "2^53 + 1", "2^53 + 1, exact", "$inc by 1 stores 2^53"),
     ("catalog.price", "Decimal128", '"19.00"', '"19"', "same value, trailing zeros gone"),
     ("orders.lines", "array", "[{...}, {...}]", "[{...}, {...}]", "$type misses the elements"),
 ]
 
 
 def fig_type_landmines() -> Fig:
-    """Five BSON landmines: what MongoDB holds, what Oracle reads back, what a query sees."""
-    f = Fig(1120, 444, "BSON type landmines. A regex and a BSON Timestamp read back from Oracle as "
-                       "tagged objects, and $type queries on them are rejected. An Int64 above 2 to the "
-                       "53 restores exactly, but $inc loses exactness. Decimal128 keeps its value and "
-                       "drops trailing zeros. On an array, $type does not match the elements")
+    """Four BSON landmines: what MongoDB holds, what Oracle reads back, what a query sees."""
+    f = Fig(1120, 384, "BSON type landmines. A regex and a BSON Timestamp read back from Oracle as "
+                       "tagged objects, and $type queries on them are rejected. Decimal128 keeps its value "
+                       "and drops trailing zeros. On an array, $type does not match the elements")
     cols = [(18, 320, "ON MONGODB (BSON)"), (378, 330, "READS BACK FROM ORACLE"), (748, 354, "WHAT A QUERY SEES")]
     for x, w, h in cols:
         f.text(x, 34, h, size=13, weight=700, font=MONO, fill="var(--muted)")
@@ -277,7 +275,7 @@ def fig_type_landmines() -> Fig:
                    stroke="var(--hot)" if hot else "var(--hairline)", sw=1.4, rx=6, name="cell")
         f.text(30, cy - 5, f"{field} · {typ}", size=13, fill="var(--muted)")
         f.text(30, cy + 15, src, size=15, font=MONO, weight=600)
-        f.text(390, cy + 6, back, size=15, font=MONO, fill="var(--cool)" if i < 4 else "var(--ink)")
+        f.text(390, cy + 6, back, size=15, font=MONO, fill="var(--cool)" if i < 3 else "var(--ink)")
         f.text(760, cy + 6, query, size=15, weight=600, fill="var(--hot)")
         for xa, xb in ((338, 378), (708, 748)):
             f.line(xa + 6, cy, xb - 6, cy, stroke="var(--faint)", sw=1.6, arrow=True, name="arrow")

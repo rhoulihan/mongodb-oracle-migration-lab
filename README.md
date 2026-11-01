@@ -306,7 +306,7 @@ a generated MongoDB source (`./lab.sh generate`) and nothing else, so
   lookup table is `demos/d1-compat/compat-matrix.json`: the oracle-ai-dev
   plugin's reference matrix plus findings measured in this lab, which win.
 - `census`: the BSON types per field on the MongoDB source, with the
-  landmines marked: regex, Timestamp, Int64 above 2^53, Decimal128 scale, and
+  landmines marked: regex, Timestamp, Decimal128 scale, and
   arrays (on Oracle, `$type` does not match an array's elements).
 
 There is no advisor step: Oracle's MongoDB Compatibility Advisor does not run

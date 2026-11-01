@@ -28,11 +28,11 @@ describe('D1 compatibility check and type census', () => {
     expect(ms).toBeLessThan(30_000);
   });
 
-  test('scan: the app operators are classified, with $inc flagged as a caveat (Ruling K)', () => {
+  test('scan: the app operators are classified; $inc is supported', () => {
     const r = result('scan');
     const app = r.panes.left;
     expect(app.map((x) => x.op)).toEqual(expect.arrayContaining(['$inc', '$push', '$slice']));
-    expect(app.find((x) => x.op === '$inc').status).toBe('caveat');
+    expect(app.find((x) => x.op === '$inc').status).toBe('supported');
     expect(r.panes.right.find((x) => x.op === '$setWindowFields').status).toBe('unsupported');
     expect(r.panes.right.find((x) => x.op === '$lookup').status).toBe('caveat');
     expect(r.detail).toMatch(/Scripted operator scan/);
@@ -52,10 +52,9 @@ describe('D1 compatibility check and type census', () => {
       expect(row('orderEvents', 'ts').landmines.join()).toMatch(/timestamp/i);
     });
 
-    test('orders.version: Int64 with one value above 2^53; Decimal128 totals; array lines', () => {
+    test('orders.version: Int64, no landmine; Decimal128 totals; array lines', () => {
       expect(row('orders', 'version').types).toEqual(['long']);
-      expect(row('orders', 'version').above2p53).toBe(1);
-      expect(row('orders', 'version').landmines.join()).toMatch(/2\^53/);
+      expect(row('orders', 'version').landmines).toEqual([]);
       expect(row('orders', 'total').landmines.join()).toMatch(/Decimal128/);
       expect(row('orders', 'lines').landmines.join()).toMatch(/\$type/);
     });

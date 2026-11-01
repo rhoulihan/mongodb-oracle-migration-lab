@@ -50,8 +50,7 @@ describe('compat-matrix.json', () => {
     expect(byOp('$type').status).toBe('caveat');
     expect(byOp('$type').note).toMatch(/regex/);
     expect(byOp('$type').note).toMatch(/array/);
-    expect(byOp('$inc').status).toBe('caveat');
-    expect(byOp('$inc').note).toMatch(/2\^53/);
+    expect(byOp('$inc').status).toBe('supported');
     const types = Object.fromEntries(m.types.map((t) => [t.type, t]));
     expect(types.decimal.note).toMatch(/1\.10/);
     expect(types.regex.source).toBe('measured in this lab');

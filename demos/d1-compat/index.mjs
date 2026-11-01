@@ -9,7 +9,7 @@
 //           and D6.
 //   census  The BSON types per field on the MongoDB source, with the types
 //           that change meaning on Oracle flagged as landmines: regex,
-//           Timestamp, Int64 above 2^53, Decimal128, and arrays (where $type
+//           Timestamp, Decimal128, and arrays (where $type
 //           does not match the elements).
 //
 // No advisor step: Oracle's MongoDB Compatibility Advisor does not run
@@ -17,7 +17,6 @@
 //
 // D1 reads only. Its starting state is a generated MongoDB source; setup
 // checks for it and reset has nothing to undo.
-import { Long } from 'mongodb';
 import { COLLECTIONS } from '../../oracle/prep.mjs';
 import { typeCensus } from '../d3-dump-restore/typediff.mjs';
 import { classify, formatOperators, loadMatrix, rowsOf, scanOperators } from './opscan.mjs';
@@ -25,7 +24,6 @@ import { classify, formatOperators, loadMatrix, rowsOf, scanOperators } from './
 export const APP_GLOBS = ['app/**/*.mjs'];
 export const DEMO_GLOBS = ['demos/d5-topn/variants.mjs', 'demos/d6-sql/queries.mjs'];
 const SAMPLE = 2000;
-const TWO_53 = Long.fromString('9007199254740992');
 const EMPTY_HINT = 'the MongoDB source is empty: run ./lab.sh generate';
 
 async function sourceReady(ctx) {
@@ -43,10 +41,9 @@ async function startingState(ctx) {
 const counts = (c) => `${c.unsupported.length} unsupported, ${c.caveat.length} caveat, ${c.supported.length} supported`;
 
 /** Landmine notes for one path, from the matrix's measured type findings. */
-function landminesFor(types, above2p53, notes) {
+function landminesFor(types, notes) {
   const out = [];
   for (const t of ['regex', 'timestamp', 'decimal', 'array']) if (types.includes(t)) out.push(notes[t]);
-  if (above2p53 > 0) out.push(`${notes.long} (${above2p53} value${above2p53 === 1 ? '' : 's'} here)`);
   return out;
 }
 
@@ -58,13 +55,7 @@ async function census(src, notes) {
     if (!m.size) empty.push(coll);
     for (const path of [...m.keys()].sort()) {
       const types = [...m.get(path)].sort();
-      let above2p53 = 0;
-      if (types.includes('long')) {
-        // The whole collection, not the sample: the planted value counts.
-        above2p53 = await src.collection(coll).countDocuments(
-          { $or: [{ [path]: { $gt: TWO_53 } }, { [path]: { $lt: TWO_53.negate() } }] });
-      }
-      rows.push({ coll, path, types, ...(types.includes('long') ? { above2p53 } : {}), landmines: landminesFor(types, above2p53, notes) });
+      rows.push({ coll, path, types, landmines: landminesFor(types, notes) });
     }
   }
   return { rows, empty };
