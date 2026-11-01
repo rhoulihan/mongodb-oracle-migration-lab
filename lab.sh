@@ -190,6 +190,13 @@ cmd_preflight() {
   fi
 
   echo "INFO  container engine: $ENGINE"
+  # `podman compose` needs a provider (docker-compose or podman-compose) on PATH.
+  if "$ENGINE" compose version >/dev/null 2>&1; then ok "$ENGINE compose works"
+  elif [ "$ENGINE" = "podman" ]; then
+    fail "podman compose has no provider (brew install docker-compose, or install podman-compose)"
+  else
+    fail "docker compose is missing (install the Docker Compose plugin)"
+  fi
   if [ "$ENGINE" = "podman" ] && [ "$os" = "Darwin" ]; then
     mem="$(podman machine inspect --format '{{.Resources.Memory}}' 2>/dev/null | head -1)"
     if [ -n "$mem" ] && [ "$mem" -ge 12288 ]; then ok "podman machine memory ${mem} MiB"

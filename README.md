@@ -56,7 +56,7 @@ Every port binds to `127.0.0.1` only. Nothing is published to the network.
    ```
 
 3. Confirm the laptop is ready: `./lab.sh preflight`. It checks the CPU is
-   arm64, the Podman machine has at least 12 GB of memory, every image is
+   arm64, `podman compose` has a provider, the Podman machine has at least 12 GB of memory, every image is
    present, and nothing else is listening on the lab ports.
 
 The full presenter walk-through, from a new Mac to the session (the run sheet

@@ -328,3 +328,23 @@ describe('lab.sh repl fwd|rev|stop|status (D4 stand-in for Oracle GoldenGate)', 
     expect(run(['repl']).status).toBe(2);
   });
 });
+
+describe('lab.sh preflight checks the compose provider', () => {
+  // A podman whose `compose version` fails, as on a Mac with no
+  // docker-compose or podman-compose installed.
+  test('a podman without a compose provider fails with the install hint', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'lab-nocompose-'));
+    writeFileSync(join(dir, 'podman'), '#!/bin/sh\n[ "$1" = compose ] && exit 125\nexit 1\n');
+    chmodSync(join(dir, 'podman'), 0o755);
+    const r = spawnSync('./lab.sh', ['preflight'], {
+      cwd: root, encoding: 'utf8', env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, PODMAN: '1' },
+    });
+    expect(r.status).not.toBe(0);
+    expect(r.stdout).toMatch(/FAIL  podman compose has no provider \(brew install docker-compose/);
+  });
+
+  test('a working compose passes', () => {
+    const r = sh(['preflight'], { PODMAN: '1' });
+    expect(r.stdout).toContain('OK    podman compose works');
+  });
+});

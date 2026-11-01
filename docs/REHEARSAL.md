@@ -3,7 +3,7 @@
 For the presenter. You need a Mac with Apple silicon, Podman and Chrome.
 Node isn't needed: every demo, reset and terminal command runs inside the
 lab containers. Never type a password. The `./lab.sh` wrappers read it from
-the environment (Ruling X).
+the environment, so no password ever shows on screen or in the deck.
 
 ## 1. Mac setup from zero (once, with network)
 
@@ -31,7 +31,7 @@ the environment (Ruling X).
    ```
 
 4. Turn Wi-Fi off, then run `./lab.sh preflight`. Every line should read
-   `OK`: CPU arm64, Podman machine memory at least 12288 MiB, all three lab
+   `OK`: CPU arm64, `podman compose` works, Podman machine memory at least 12288 MiB, all three lab
    images present, and each lab port either free or in use by this stack.
 
 ## 2. The "turn off Wi-Fi and rerun everything" check
@@ -65,9 +65,11 @@ Paste these back after the Mac rehearsal:
       (`INFO  restore took N s on this laptop`)
 - [ ] D6 ratio: the summary of the D6 step "Relative timing: the pipeline vs
       $sql, same engine" (pipeline seconds, $sql seconds, ratio)
-- [ ] The headless pass. It needs no Node and takes about 9 minutes on the
-      Linux lab, likely longer on the Mac. Paste
-      the last line of each demo's block:
+- [ ] The headless pass, **run twice in a row** with nothing done between the
+      runs (the first command is a full reset). It needs no Node and takes
+      about 9 minutes per pass on the Linux lab, likely longer on the Mac.
+      For each pass, paste the last line of each demo's block and whether
+      `ALL DEMOS PASSED` printed:
 
       ```sh
       ./lab.sh reset && ./lab.sh generate && ./lab.sh demo d1 && ./lab.sh demo d2 && ./lab.sh reset d2 \
@@ -84,7 +86,7 @@ Paste these back after the Mac rehearsal:
 | When | Do this |
 |---|---|
 | 60 min before | Wi-Fi off. `./lab.sh up`, then `./lab.sh check` (four OK lines) |
-| 30 min before, no earlier | `./lab.sh reset`, then `./lab.sh generate` (Ruling R: carts expire over about 4 hours, and some must still expire live in D2) |
+| 30 min before, no earlier | `./lab.sh reset`, then `./lab.sh generate` (carts expire over about 4 hours after `generate`, and some must still expire live in D2) |
 | 20 min before | Chrome tab 1: the deck, `file:///.../deck/index.html`, with **S** for the speaker view. Tab 2: the console, http://127.0.0.1:3200. Two terminals side by side in the repo folder (D7 uses both). |
 | 15 min before | Glance at the console's four dots: all green |
 
@@ -106,8 +108,8 @@ into the repo folder on the Mac before the session.
 
 **Timings wait for proof:** in D5, read times appear only after "Same
 document, three ways" passes. In D6, times appear only after "Equal results,
-proven before any timing" passes. That's by design (Rulings T and W), not a
-fault.
+proven before any timing" passes. That's by design, not a
+fault: no time goes on screen until the results are proven equal.
 
 ### D1: Compatibility check and type census
 
@@ -196,11 +198,11 @@ Segment 5, slide 38 (clock 1:08, 4 min).
 |---|---|---|---|
 | 1 | console | Same data on both sides, statistics gathered | Same window counts; stats gathered |
 | 2 | console | (1) The pipeline on MongoDB: the stage tree (plan shape only, no timing) | COLLSCAN, three $lookups, $unwinds, $groups, $sort |
-| 3 | console | (2) The same pipeline on Oracle through the MongoDB API | **One timed run, about 80 to 135 s** on the Linux lab (89 s headless; 134 s while the clips were being recorded). The timer runs. Narrate the plan while it runs (Ruling T). No time is shown yet |
+| 3 | console | (2) The same pipeline on Oracle through the MongoDB API | **One timed run, about 2 min 15 s** (130 to 135 s measured on the Linux lab: the first run after the restore is cold; warm runs take 82 to 89 s). The timer runs. Narrate the plan while it runs: it is one run, not three, to keep the demo inside its 4 minutes. No time is shown yet |
 | 4 | terminal | `./lab.sh mongosh ora demos/d6-sql/sql-stage.js` | The first 10 of 160 rows. Mark done: 160 rows, ranks 1 to 5 for 32 pairs |
 | 5 | console | Equal results, proven before any timing | 160 rows identical on all three; **now** the times appear |
 | 6 | console | Both Oracle plans, side by side | Nested loops vs hash joins + WINDOW SORT PUSHED RANK |
-| 7 | console | Relative timing: the pipeline vs $sql, same engine | The ratio (laptop, relative only), then the field number: 3 to 15x |
+| 7 | console | Relative timing: the pipeline vs $sql, same engine | The ratio, read live (Linux lab: about 180 to 205x for this cold single run; about 138x warm, median of 3, headless). Laptop, relative only. Then the field number: 3 to 15x |
 
 If setup fails: `./lab.sh reset d6`. It always re-runs D3's dump and
 restore, about a minute. Reset after: none.
