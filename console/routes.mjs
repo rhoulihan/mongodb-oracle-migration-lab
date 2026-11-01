@@ -8,7 +8,9 @@
 //                                   terminal steps ("Mark done") run `verify`
 //   POST /api/demos/:id/reset       the demo's reset; forgets its results
 //   GET  /api/demos/:id/state       {revealed, results:{step:{at, result}}} of this process
-//   GET  /api/demos/:id/recorded    {id, steps:{step:{at, result}}}: the last good run of each step
+//   GET  /api/demos/:id/recorded    {id, source, steps:{step:{at, result}}}: the last good run of
+//                                   each step, from this lab (source 'live') or, after a full
+//                                   reset, the copy saved in the repo (source 'baked', Ruling V)
 //
 // The console never runs shell commands: the presenter types terminal
 // commands, the console only checks their effect.
@@ -29,25 +31,34 @@ import { oracleReady } from '../lib/ready.mjs';
 export const NOT_READY = 'Oracle is still starting (ORDS not ready)';
 export const MONGO_NOT_READY = 'MongoDB is still starting (run ./lab.sh check)';
 const PUBLIC = fileURLToPath(new URL('./public/', import.meta.url));
+export const BAKED_DIR = fileURLToPath(new URL('../fallback/recorded/', import.meta.url));
 
 const isResult = (r) => r && typeof r === 'object' && typeof r.ok === 'boolean' && typeof r.summary === 'string';
 const resetHint = (id) => `run ./lab.sh reset ${id}`;
 const withHint = (msg, id) => (msg.trimEnd().endsWith(resetHint(id)) ? msg : `${msg}: ${resetHint(id)}`);
 
-// BSON values (ObjectId, Decimal128, Long, Date) as plain JSON strings and numbers.
-const WRAPPERS = ['$oid', '$date', '$numberDecimal', '$numberLong', '$numberInt', '$numberDouble', '$symbol'];
-function unwrap(v) {
-  if (Array.isArray(v)) return v.map(unwrap);
-  if (!v || typeof v !== 'object') return v;
-  const keys = Object.keys(v);
-  if (keys.length === 1 && WRAPPERS.includes(keys[0])) {
-    const x = v[keys[0]];
-    return typeof x === 'object' && x !== null ? unwrap(x.$numberLong ?? x) : x;
+// BSON values as plain JSON: ObjectId, Decimal128 and Long become strings (a
+// Long above 2^53 must never round, Ruling K), Int32 and Double numbers, Date
+// an ISO string. JavaScript numbers stay numbers. Other BSON types become
+// their canonical EJSON.
+const BSON_PLAIN = {
+  ObjectId: (v) => v.toHexString(),
+  Decimal128: (v) => v.toString(),
+  Long: (v) => v.toString(),
+  Int32: (v) => v.valueOf(),
+  Double: (v) => v.valueOf(),
+  Timestamp: (v) => `Timestamp(${v.high >>> 0}, ${v.low >>> 0})`,
+};
+export function toPlain(v) {
+  if (v == null || typeof v !== 'object') return v;
+  if (v instanceof Date) return v.toISOString();
+  if (Array.isArray(v)) return v.map(toPlain);
+  if (v._bsontype) {
+    const f = BSON_PLAIN[v._bsontype];
+    return f ? f(v) : BSON.EJSON.serialize(v, { relaxed: false });
   }
-  if (keys.length <= 2 && '$timestamp' in v) return `Timestamp(${v.$timestamp.t}, ${v.$timestamp.i})`;
-  return Object.fromEntries(keys.map((k) => [k, unwrap(v[k])]));
+  return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, toPlain(x)]));
 }
-export const toPlain = (v) => unwrap(BSON.EJSON.serialize(v, { relaxed: true }));
 
 /** Run one step for the console: `run` or `verify`; every failure becomes a StepResult. */
 async function invoke(demo, step, ctx) {
@@ -57,10 +68,13 @@ async function invoke(demo, step, ctx) {
     if (!isResult(r)) return { ok: false, summary: withHint(`step ${step.id} did not return a result`, demo.id) };
     return toPlain(r);
   } catch (err) {
+    // A broken connection is dropped, so the next step reconnects.
+    await Promise.resolve(ctx.evictOnError?.(err)).catch(() => {});
     return { ok: false, summary: withHint(String(err?.message ?? err), demo.id) };
   }
 }
 
+const isReady = (r) => oracleReady(r) && r.mongo;
 const gated = (demo, stepId, revealed) => Boolean(demo.revealAfter && !revealed && demo.revealAfter.steps.includes(stepId));
 
 /** The result as the console may show it now: gated metrics removed while hidden. */
@@ -72,26 +86,52 @@ function redact(demo, stepId, result, revealed) {
   return { ...result, ...(metrics ? { metrics } : {}), hidden: { metrics: g.metrics, until: g.step, untilTitle } };
 }
 
-/** A stored {at, ms, result} as shown now; the step's own run time is a timing too. */
-function view(demo, stepId, entry, revealed) {
-  if (!gated(demo, stepId, revealed)) return entry;
-  const { ms: _hidden, ...rest } = entry;
-  return { ...rest, result: redact(demo, stepId, entry.result, revealed) };
+/** A stored {at, result} as shown now; never a run time (a step's run time is a timing too). */
+function view(demo, stepId, { at, result }, revealed) {
+  return { at, result: redact(demo, stepId, result, revealed) };
 }
+
+/**
+ * A recording as the console may serve it: gated steps always redacted, and
+ * the steps from the gate on only when the same recording holds the gate
+ * step (saved only when it passed), so a recorded timing is never shown
+ * without its proof of equal results.
+ */
+function recordedView(demo, rec) {
+  const g = demo.revealAfter;
+  const at = (id) => demo.steps.findIndex((s) => s.id === id);
+  const keep = ([id]) => !g || at(id) < at(g.step) || rec.steps?.[g.step]?.result?.ok === true;
+  return Object.fromEntries(Object.entries(rec.steps ?? {}).filter(keep).map(([id, e]) => [id, view(demo, id, e, false)]));
+}
+
+const READY_TTL_MS = 5000;
 
 /**
  * @param {{demos: import('../demos/contract.mjs').Demo[], ctx: any,
  *          readiness: () => Promise<{mongo:boolean, oracle:boolean, ords:boolean, oraMongo:boolean}>,
- *          recordedDir: string, log?: (...a:any[]) => void}} opts
+ *          recordedDir: string, bakedDir?: string, readyTtlMs?: number, log?: (...a:any[]) => void}} opts
+ * recordedDir: this lab's recordings (written after each passing step);
+ * bakedDir: the copies saved in the repo (fallback/recorded, Ruling V).
  */
-export function createConsoleApp({ demos, ctx, readiness, recordedDir, log = () => {} }) {
+export function createConsoleApp({ demos, ctx, readiness, recordedDir, bakedDir = BAKED_DIR, readyTtlMs = READY_TTL_MS, log = () => {} }) {
   const byId = new Map([...demos].sort((a, b) => a.id.localeCompare(b.id)).map((d) => [d.id, d]));
   const live = new Map([...byId.keys()].map((id) => [id, { results: new Map(), revealed: false }]));
   let running = null; // "d5 setup" while a step or reset runs
 
-  const recordedFile = (id) => join(recordedDir, `${id}.json`);
-  async function readRecorded(id) {
-    try { return JSON.parse(await readFile(recordedFile(id), 'utf8')); } catch { return null; }
+  const recordedFile = (id, dir = recordedDir) => join(dir, `${id}.json`);
+  async function readRecorded(id, dir = recordedDir) {
+    try { return JSON.parse(await readFile(recordedFile(id, dir), 'utf8')); } catch { return null; }
+  }
+
+  // Readiness, cached: a ready answer is trusted for readyTtlMs (step POSTs
+  // skip the probes), a not-ready one is probed again on the next request.
+  let lastReady = null; // {at, value}
+  async function readyNow({ cachedOk = true } = {}) {
+    const fresh = lastReady && Date.now() - lastReady.at < readyTtlMs;
+    if (fresh && (cachedOk || isReady(lastReady.value))) return lastReady.value;
+    const value = await readiness();
+    lastReady = { at: Date.now(), value };
+    return value;
   }
   async function record(id, stepId, entry) {
     const cur = (await readRecorded(id)) ?? { id, steps: {} };
@@ -113,7 +153,7 @@ export function createConsoleApp({ demos, ctx, readiness, recordedDir, log = () 
 
   /** Readiness gate, then one thing at a time. */
   async function exclusive(req, res, label, fn) {
-    const r = await readiness();
+    const r = await readyNow({ cachedOk: false });
     if (!oracleReady(r)) return res.status(503).json({ error: NOT_READY });
     if (!r.mongo) return res.status(503).json({ error: MONGO_NOT_READY });
     if (running) return res.status(409).json({ error: `${running} is still running: wait for it to finish` });
@@ -135,8 +175,8 @@ export function createConsoleApp({ demos, ctx, readiness, recordedDir, log = () 
   });
 
   app.get('/api/ready', async (_req, res) => {
-    const r = await readiness();
-    res.json({ ...r, ready: oracleReady(r) && r.mongo, running });
+    const r = await readyNow();
+    res.json({ ...r, ready: isReady(r), running });
   });
 
   app.post('/api/demos/:id/steps/:step', (req, res) => {
@@ -151,10 +191,11 @@ export function createConsoleApp({ demos, ctx, readiness, recordedDir, log = () 
       if (g && at(step.id) < at(g.step)) st.revealed = false;
       const started = Date.now();
       const result = await invoke(demo, step, ctx);
-      const entry = { at: new Date().toISOString(), ms: Date.now() - started, result };
+      const entry = { at: new Date().toISOString(), result };
       st.results.set(step.id, entry);
-      if (g && step.id === g.step && result.ok) st.revealed = true;
-      log(`${demo.id} ${step.id} ${result.ok ? 'ok' : 'FAIL'} ${entry.ms} ms: ${result.summary}`);
+      // A passing gate reveals; a failing re-run of the gate hides again.
+      if (g && step.id === g.step) st.revealed = result.ok;
+      log(`${demo.id} ${step.id} ${result.ok ? 'ok' : 'FAIL'} ${Date.now() - started} ms: ${result.summary}`);
       if (result.ok) {
         await record(demo.id, step.id, entry).catch((err) => log(`could not save the recorded result: ${err.message}`));
       }
@@ -187,10 +228,11 @@ export function createConsoleApp({ demos, ctx, readiness, recordedDir, log = () 
 
   app.get('/api/demos/:id/recorded', async (req, res) => {
     const demo = req.demo;
-    const rec = await readRecorded(demo.id);
+    // This lab's recording first; after a full reset, the copy saved in the repo.
+    const live = await readRecorded(demo.id);
+    const rec = live ?? await readRecorded(demo.id, bakedDir);
     if (!rec) return res.status(404).json({ error: `nothing recorded for ${demo.id} yet: run its steps once at rehearsal` });
-    const steps = Object.fromEntries(Object.entries(rec.steps ?? {}).map(([id, e]) => [id, view(demo, id, e, false)]));
-    return res.json({ ...rec, steps });
+    return res.json({ ...rec, source: live ? 'live' : 'baked', steps: recordedView(demo, rec) });
   });
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'not found' }));

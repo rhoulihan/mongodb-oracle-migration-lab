@@ -4,7 +4,9 @@
 import { describe, expect, test } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { listDemos, runDemo, validateDemo, createContext } from '../../demos/contract.mjs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { gatedTimingLeaks, listDemos, runDemo, validateDemo, createContext, DEMOS_DIR } from '../../demos/contract.mjs';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const FIXTURES = fileURLToPath(new URL('../fixtures/demos', import.meta.url));
@@ -32,6 +34,37 @@ describe('every demo follows the contract', () => {
   test('real demo ids are unique', () => {
     const ids = real.map((d) => d.demo.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe('equal before timing (Ruling W): gated steps never spell out a time', () => {
+  test('gatedTimingLeaks flags a time in the summary, detail or verified text of a gated step only', () => {
+    const demo = {
+      revealAfter: { step: 'eq', steps: ['a'], metrics: ['readMs'] },
+      steps: [{ id: 'a' }, { id: 'b' }, { id: 'eq' }],
+    };
+    expect(gatedTimingLeaks(demo, [{ summary: 'read 234.8 ms (median)' }, { summary: '5 ms' }, {}])).toEqual(['a: summary']);
+    expect(gatedTimingLeaks(demo, [{ summary: 'rows 160', detail: 'took 1,200ms', verified: '3 ms' }])).toEqual(['a: detail', 'a: verified']);
+    expect(gatedTimingLeaks(demo, [{ summary: 'hidden until equal; 3491 bytes of redo, readMs metric' }])).toEqual([]);
+  });
+
+  // The steps need the stack to run, so the source is checked too: a gated
+  // step's code must not put a number next to "ms" in what it prints.
+  const SPELLED = /\$\{[^}]*\}\s*ms\b|\d[\d.,]*\s*ms\b|ms \(median\)/;
+  test.each(real.filter((d) => d.demo.revealAfter).map((d) => [d.dir, d]))('%s gated steps print no times', (_dir, { dir, demo }) => {
+    const src = readFileSync(join(DEMOS_DIR, dir, 'index.mjs'), 'utf8');
+    for (const id of demo.revealAfter.steps) {
+      const start = src.indexOf(`id: '${id}'`);
+      expect(start, id).toBeGreaterThan(-1);
+      const next = src.indexOf("\n      id: '", start + 1);
+      const block = src.slice(start, next < 0 ? undefined : next);
+      const printed = block.split('\n').filter((l) => !/^\s*(metrics|\/\/)/.test(l)).join('\n');
+      expect(printed.match(SPELLED)?.[0], `${dir} ${id}`).toBeUndefined();
+    }
+  });
+
+  test('D5 and D6 declare the gate', () => {
+    expect(real.filter((d) => d.demo.revealAfter).map((d) => d.demo.id)).toEqual(['d5', 'd6']);
   });
 });
 

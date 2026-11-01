@@ -90,6 +90,7 @@ describe('instructor console', () => {
     expect(existsSync(join(recordedDir, 'd6.json'))).toBe(true);
     const rec = await api(live, 'GET', '/api/demos/d6/recorded');
     expect(rec.status).toBe(200);
+    expect(rec.body.source).toBe('live');
     expect(rec.body.steps.setup).toMatchObject({ at: expect.any(String), result: { ok: true, summary: run.body.summary } });
   }, 900_000);
 });

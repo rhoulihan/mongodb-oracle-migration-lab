@@ -7,7 +7,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { createContext, runDemo } from '../../demos/contract.mjs';
+import { createContext, gatedTimingLeaks, runDemo } from '../../demos/contract.mjs';
 import { atCents, nativeRankPipeline, pipeline, sqlStage } from '../../demos/d6-sql/queries.mjs';
 import { sameDocs } from '../../lib/compare.mjs';
 import { prepareTarget } from '../../oracle/prep.mjs';
@@ -38,6 +38,10 @@ describe('D6 pipeline vs $sql', () => {
       ['sql-stage', 'terminal'], ['equal', 'console'], ['plans', 'console'], ['timing', 'console'],
     ]);
     expect(d6.steps.find((s) => s.id === 'sql-stage').command).toBe('./lab.sh mongosh ora demos/d6-sql/sql-stage.js');
+  });
+
+  test('no step before the equality step spells out a time (Ruling W)', () => {
+    expect(gatedTimingLeaks(d6, results)).toEqual([]);
   });
 
   test('every step passes', () => {

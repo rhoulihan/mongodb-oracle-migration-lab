@@ -6,7 +6,9 @@
 //
 // Recorded results (the "skip to result" fallback) go to LAB_RECORDED_DIR:
 // /state/recorded on the `state` volume in the container, .lab/recorded on
-// the host.
+// the host. When a demo has none there (a full reset deletes the volume),
+// the console serves the copy saved in the repo, fallback/recorded/<id>.json
+// (`./lab.sh bake-recordings`, Ruling V).
 //
 //   node console/server.mjs     listen on CONSOLE_PORT (3200), all interfaces
 //                               in the container, 127.0.0.1 on the host
@@ -17,6 +19,7 @@ import { readiness as probe } from '../lib/ready.mjs';
 import { createConsoleApp } from './routes.mjs';
 
 const inContainer = process.env.LAB_IN_CONTAINER === '1';
+const CLOSE_TIMEOUT_MS = 10_000;
 export const RECORDED_DIR = process.env.LAB_RECORDED_DIR ||
   (inContainer ? '/state/recorded' : fileURLToPath(new URL('../.lab/recorded', import.meta.url)));
 
@@ -50,7 +53,14 @@ export async function startConsole({
   let closing;
   const close = () => (closing ??= (async () => {
     await new Promise((resolve) => { server.close(() => resolve()); server.closeAllConnections?.(); });
-    await ctx.close?.();
+    // A wedged database must not keep the container from stopping.
+    let timer;
+    const limit = new Promise((resolve) => { timer = setTimeout(() => { log(`connections still closing after ${CLOSE_TIMEOUT_MS / 1000} s, exiting`); resolve(); }, CLOSE_TIMEOUT_MS); });
+    try {
+      await Promise.race([Promise.resolve(ctx.close?.()).catch((err) => log(`close: ${err.message}`)), limit]);
+    } finally {
+      clearTimeout(timer);
+    }
   })());
   return { url: `http://127.0.0.1:${bound}`, server, close };
 }

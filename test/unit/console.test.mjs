@@ -4,17 +4,20 @@
 // recorded fallback, and Ruling T's reveal gate (metrics hidden until a named
 // step has passed in this process).
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createConsoleApp, NOT_READY } from '../../console/routes.mjs';
+import { BSON } from 'mongodb';
+import { createConsoleApp, NOT_READY, toPlain } from '../../console/routes.mjs';
 import { validateDemo } from '../../demos/contract.mjs';
 import d4 from '../../demos/d4-bluegreen/index.mjs';
+import d5 from '../../demos/d5-topn/index.mjs';
 import d6 from '../../demos/d6-sql/index.mjs';
 
 const READY = { mongo: true, oracle: true, ords: true, oraMongo: true };
 const calls = [];
 let gate = null; // a pending promise the `slow` step waits on
+let equalOk = true;
 
 const timed = {
   id: 'd6',
@@ -28,7 +31,7 @@ const timed = {
     { id: 'sql', title: 'SQL', lane: 'terminal', command: './lab.sh mongosh ora x.js',
       async run() { calls.push('sql run'); return { ok: true, summary: 'ran' }; },
       async verify() { calls.push('sql verify'); return { ok: true, summary: '160 rows', metrics: { rows: 160, medianMs: 600 } }; } },
-    { id: 'equal', title: 'Equal', lane: 'console', async run() { return { ok: true, summary: 'equal', metrics: { rows: 160 } }; } },
+    { id: 'equal', title: 'Equal', lane: 'console', async run() { return { ok: equalOk, summary: equalOk ? 'equal' : 'differ', metrics: { rows: 160 } }; } },
     { id: 'timing', title: 'Timing', lane: 'console', async run() { return { ok: true, summary: '130x', metrics: { ratio: 130 } }; } },
   ],
 };
@@ -47,7 +50,7 @@ const broken = {
   ],
 };
 
-let server, base, recordedDir, readyState;
+let server, base, recordedDir, bakedDir, readyState;
 
 async function api(method, path) {
   const res = await fetch(base + path, { method });
@@ -57,8 +60,11 @@ const post = (path) => api('POST', path);
 
 beforeAll(async () => {
   recordedDir = mkdtempSync(join(tmpdir(), 'console-recorded-'));
+  bakedDir = mkdtempSync(join(tmpdir(), 'console-baked-'));
   readyState = { ...READY };
-  const app = createConsoleApp({ demos: [broken, timed], ctx: {}, readiness: async () => readyState, recordedDir });
+  const app = createConsoleApp({
+    demos: [broken, timed], ctx: {}, readiness: async () => readyState, recordedDir, bakedDir, readyTtlMs: 0,
+  });
   await new Promise((resolve) => { server = app.listen(0, '127.0.0.1', resolve); });
   base = `http://127.0.0.1:${server.address().port}`;
 });
@@ -141,7 +147,7 @@ describe('Ruling T: timings stay hidden until the equal step passes in this proc
     expect(s.body.metrics).toEqual({ rows: 160 });
     expect((await state()).revealed).toBe(false);
     expect((await state()).results.pipeline.result.metrics).toEqual({ rows: 160 });
-    // The step's own run time is a timing too.
+    // No run times in /state at all: a step's run time is a timing too.
     expect((await state()).results.pipeline.ms).toBeUndefined();
     expect((await state()).results.pipeline.at).toEqual(expect.any(String));
 
@@ -150,11 +156,25 @@ describe('Ruling T: timings stay hidden until the equal step passes in this proc
     expect(after.revealed).toBe(true);
     expect(after.results.pipeline.result.metrics).toEqual({ rows: 160, medianMs: 80000, runsMs: [80000] });
     expect(after.results.pipeline.result.hidden).toBeUndefined();
-    expect(after.results.pipeline.ms).toEqual(expect.any(Number));
+    expect(after.results.pipeline.ms).toBeUndefined();
+    expect(after.results.equal.ms).toBeUndefined();
 
     const again = await post('/api/demos/d6/steps/pipeline');
     expect(again.body.metrics).toEqual({ rows: 160 });
     expect((await state()).revealed).toBe(false);
+  });
+
+  test('a failed re-run of the gate step hides the metrics again', async () => {
+    await post('/api/demos/d6/steps/equal');
+    expect((await state()).revealed).toBe(true);
+    equalOk = false;
+    try {
+      await post('/api/demos/d6/steps/equal');
+      expect((await state()).revealed).toBe(false);
+      expect((await state()).results.pipeline.result.metrics).toEqual({ rows: 160 });
+    } finally {
+      equalOk = true;
+    }
   });
 
   test('reset forgets results and the reveal', async () => {
@@ -177,6 +197,24 @@ describe('Ruling T: timings stay hidden until the equal step passes in this proc
     expect(rec.steps.pipeline.ms).toBeUndefined();
     const onDisk = JSON.parse(readFileSync(join(recordedDir, 'd6.json'), 'utf8'));
     expect(onDisk.steps.pipeline.result.metrics.medianMs).toBe(80000);
+    expect(onDisk.steps.pipeline.ms).toBeUndefined();
+  });
+
+  test('a recording without its gate step never serves the steps after the gate', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'rec-nogate-'));
+    writeFileSync(join(d, 'd6.json'), JSON.stringify({ id: 'd6', steps: {
+      pipeline: { at: '2026-11-01T07:00:00.000Z', result: { ok: true, summary: 'rows', metrics: { rows: 160, medianMs: 1 } } },
+      timing: { at: '2026-11-01T07:01:00.000Z', result: { ok: true, summary: '130x', metrics: { ratio: 130 } } },
+    } }));
+    const app = createConsoleApp({ demos: [timed], ctx: {}, readiness: async () => READY, recordedDir: d, bakedDir: d });
+    const s = await new Promise((resolve) => { const x = app.listen(0, '127.0.0.1', () => resolve(x)); });
+    try {
+      const rec = await (await fetch(`http://127.0.0.1:${s.address().port}/api/demos/d6/recorded`)).json();
+      expect(Object.keys(rec.steps)).toEqual(['pipeline']);
+      expect(rec.steps.pipeline.result.metrics).toEqual({ rows: 160 });
+    } finally {
+      await new Promise((resolve) => s.close(resolve));
+    }
   });
 
   test('the real D6 declares the gate on its pipeline and $sql steps', () => {
@@ -193,12 +231,81 @@ describe('Ruling T: timings stay hidden until the equal step passes in this proc
     expect(bad({ banner: 5 })).toMatch(/banner/);
   });
 
+  test('the real D5 gates read ms on its three variants until same-shape (Ruling W)', () => {
+    expect(d5.revealAfter).toEqual({ step: 'same-shape', steps: ['embedded-write', 'lookup-read', 'converged'], metrics: ['readMs'] });
+  });
+
   test('D4 pins the stand-in label as its banner', () => {
     expect(d4.banner).toBe('Stand-in for Oracle GoldenGate');
   });
 });
 
+describe('readiness', () => {
+  test('a ready result is reused for 5 s on step POSTs; a not-ready one is probed again', async () => {
+    let probes = 0, now = { ...READY };
+    const app = createConsoleApp({
+      demos: [timed], ctx: {}, recordedDir: mkdtempSync(join(tmpdir(), 'rec-')), bakedDir: bakedDir,
+      readiness: async () => { probes++; return now; },
+    });
+    const s = await new Promise((resolve) => { const x = app.listen(0, '127.0.0.1', () => resolve(x)); });
+    const u = `http://127.0.0.1:${s.address().port}`;
+    try {
+      for (let i = 0; i < 3; i++) await fetch(`${u}/api/demos/d6/steps/equal`, { method: 'POST' });
+      await fetch(`${u}/api/ready`);
+      expect(probes).toBe(1);
+      now = { ...READY, ords: false };
+      const fresh = createConsoleApp({
+        demos: [timed], ctx: {}, recordedDir: mkdtempSync(join(tmpdir(), 'rec-')), bakedDir,
+        readiness: async () => { probes++; return now; },
+      });
+      const s2 = await new Promise((resolve) => { const x = fresh.listen(0, '127.0.0.1', () => resolve(x)); });
+      try {
+        const u2 = `http://127.0.0.1:${s2.address().port}`;
+        const before = probes;
+        for (let i = 0; i < 2; i++) expect((await fetch(`${u2}/api/demos/d6/steps/equal`, { method: 'POST' })).status).toBe(503);
+        expect(probes - before).toBe(2);
+      } finally {
+        await new Promise((resolve) => s2.close(resolve));
+      }
+    } finally {
+      await new Promise((resolve) => s.close(resolve));
+    }
+  });
+});
+
+describe('toPlain (Ruling K)', () => {
+  test('Longs stay exact strings; ints, doubles, dates and ObjectIds become plain values', () => {
+    const { Long, Decimal128, ObjectId } = BSON;
+    const id = new ObjectId('6ae6e4c53906ee57d3d2eae9');
+    expect(toPlain({
+      big: Long.fromString('9007199254740993'), n: 5, x: 0.5, huge: 2 ** 40,
+      d: new Date(0), id, dec: Decimal128.fromString('1.10'), list: [Long.fromNumber(7)],
+    })).toEqual({
+      big: '9007199254740993', n: 5, x: 0.5, huge: 2 ** 40,
+      d: '1970-01-01T00:00:00.000Z', id: '6ae6e4c53906ee57d3d2eae9', dec: '1.10', list: ['7'],
+    });
+  });
+});
+
 describe('recorded fallback', () => {
+  test('live recording first, else the baked repo copy (Ruling V), with its source', async () => {
+    const live = mkdtempSync(join(tmpdir(), 'rec-live-'));
+    const baked = mkdtempSync(join(tmpdir(), 'rec-baked-'));
+    const file = (summary) => JSON.stringify({ id: 'd3', steps: { bad: { at: '2026-11-01T07:00:00.000Z', result: { ok: true, summary } } } });
+    writeFileSync(join(baked, 'd3.json'), file('from the repo'));
+    const app = createConsoleApp({ demos: [broken], ctx: {}, readiness: async () => READY, recordedDir: live, bakedDir: baked });
+    const s = await new Promise((resolve) => { const x = app.listen(0, '127.0.0.1', () => resolve(x)); });
+    const get = async () => (await fetch(`http://127.0.0.1:${s.address().port}/api/demos/d3/recorded`)).json();
+    try {
+      expect(await get()).toMatchObject({ source: 'baked', steps: { bad: { result: { summary: 'from the repo' } } } });
+      mkdirSync(live, { recursive: true });
+      writeFileSync(join(live, 'd3.json'), file('from this lab'));
+      expect(await get()).toMatchObject({ source: 'live', steps: { bad: { result: { summary: 'from this lab' } } } });
+    } finally {
+      await new Promise((resolve) => s.close(resolve));
+    }
+  });
+
   test('a successful run is saved with its time; a failed one is not', async () => {
     const before = Date.now();
     await post('/api/demos/d6/steps/timing');
@@ -212,7 +319,10 @@ describe('recorded fallback', () => {
   });
 
   test('no recording yet is 404 with a plain message', async () => {
-    const fresh = createConsoleApp({ demos: [broken], ctx: {}, readiness: async () => READY, recordedDir: mkdtempSync(join(tmpdir(), 'rec-')) });
+    const fresh = createConsoleApp({
+      demos: [broken], ctx: {}, readiness: async () => READY,
+      recordedDir: mkdtempSync(join(tmpdir(), 'rec-')), bakedDir: mkdtempSync(join(tmpdir(), 'baked-')),
+    });
     const s = await new Promise((resolve) => { const x = fresh.listen(0, '127.0.0.1', () => resolve(x)); });
     try {
       const res = await fetch(`http://127.0.0.1:${s.address().port}/api/demos/d3/recorded`);

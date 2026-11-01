@@ -192,15 +192,20 @@ Pick a demo at the top, then work down its steps on the left.
 - **Results:** a summary, a strip of numbers, the left and right result panes,
   and plans side by side when a step has them. **Text output** is the same
   text `./lab.sh demo` prints.
-- **Timings wait for equal results:** in demo 6 the pipeline and `$sql` times
-  stay hidden until the "Equal results" step passes in this console (Ruling T).
+- **Timings wait for equal results:** in demo 5 the read times stay hidden
+  until "Same document, three ways" passes (Ruling W), and in demo 6 the
+  pipeline and `$sql` times stay hidden until "Equal results" passes (Ruling T).
   The console also never shows how long a step took, only a timer while it runs.
 - **Not ready:** while Oracle is still starting, steps answer "Oracle is still
-  starting (ORDS not ready)". The dots in the header show which service is up.
+  starting (ORDS not ready)". The dots in the header show which service is up
+  (checked every 10 s, not while a step runs).
 - **Recorded fallback:** every step that passes is saved as the rehearsal
   result in `/state/recorded/<demo>.json` (the `state` volume). **Skip to
   result** shows it, labeled "Recorded at rehearsal" with its time. A full
-  `./lab.sh reset` deletes the volumes, so rehearse after the last full reset.
+  `./lab.sh reset` deletes the volume, so after a good rehearsal run
+  `./lab.sh bake-recordings` and commit `fallback/recorded/`: with no
+  recording in the volume, the console serves that copy (labeled "saved in
+  the repo"; rebuild the image after baking). Re-bake after a demo changes.
 - **Reset demo** runs the demo's reset. For demo 4, run `./lab.sh reset d4`
   in the terminal instead: it stops the replicator container first.
 - **Theme:** the button at the top right switches light and dark;

@@ -57,7 +57,7 @@ header.top {
 .btn:hover { border-color: var(--muted); }
 .btn:focus-visible, .demos button:focus-visible, .steps button:focus-visible { outline: 3px solid var(--flow); outline-offset: 2px; }
 .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
-.btn.done { background: var(--green); border-color: var(--green); color: #fff; }
+.btn.done { background: #15803d; border-color: #15803d; color: #fff; } /* white on it: 5.0:1, AA */
 .btn.ghost { border-color: transparent; background: var(--chip); }
 .btn:disabled { opacity: .6; cursor: default; }
 

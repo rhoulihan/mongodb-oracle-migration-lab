@@ -69,6 +69,27 @@ function revealProblems({ revealAfter: r, steps }) {
   return p;
 }
 
+/** A spelled-out time, as in "234.8 ms". */
+export const TIMING_TEXT = /\d[\d.,]*\s*ms\b/;
+
+/**
+ * Text that spells out a time on a step the demo's revealAfter gates (Ruling
+ * W): the console can hide metrics but not words, so gated steps must keep
+ * times out of summary, detail and verified. Returns "step: field" strings.
+ * @param {Demo} demo
+ * @param {StepResult[]} results in step order (as runDemo returns them)
+ */
+export function gatedTimingLeaks(demo, results) {
+  const gated = new Set(demo.revealAfter?.steps ?? []);
+  const out = [];
+  results.forEach((r, i) => {
+    const id = demo.steps[i]?.id;
+    if (!gated.has(id) || !r) return;
+    for (const f of ['summary', 'detail', 'verified']) if (TIMING_TEXT.test(r[f] ?? '')) out.push(`${id}: ${f}`);
+  });
+  return out;
+}
+
 const isResult = (r) => r && typeof r === 'object' && typeof r.ok === 'boolean' && typeof r.summary === 'string';
 
 /** step[fn](ctx) as a StepResult: a throw or a malformed return becomes ok:false. */
@@ -144,5 +165,7 @@ export function createContext() {
     config,
     log: (...a) => console.log(...a),
     close: lazy('closeAll'),
+    // Drop a cached connection after an error that says it is broken (the console).
+    evictOnError: async (err) => (await db).evictOnError(err),
   };
 }

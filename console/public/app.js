@@ -50,6 +50,7 @@ async function api(method, path) {
 // ---- readiness ----------------------------------------------------------
 const SERVICES = [['mongo', 'MongoDB'], ['oracle', 'Oracle'], ['ords', 'ORDS'], ['oraMongo', 'MongoDB API']];
 async function pollReady() {
+  if (state.running) return; // no probing while a step runs
   let r;
   try { r = (await api('GET', '/api/ready')).body; } catch { r = null; }
   const box = $('ready');
@@ -257,7 +258,10 @@ function renderStage() {
 function renderResult({ at, result: r }, recorded) {
   const out = [];
   const card = h('section', `result ${r.ok ? 'ok' : 'fail'}`);
-  if (recorded) card.append(h('div', 'recorded-tag', `Recorded at rehearsal ${stamp(at)}`));
+  if (recorded) {
+    card.append(h('div', 'recorded-tag',
+      `Recorded at rehearsal ${stamp(at)}${state.recorded?.source === 'baked' ? ' (saved in the repo)' : ''}`));
+  }
   const head = h('div');
   head.append(h('span', 'status', r.ok ? 'Passed' : 'Failed'));
   // No run time here: a step's wall time is a timing (Ruling T, and D6 never

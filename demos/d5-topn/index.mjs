@@ -143,6 +143,9 @@ export const planChecks = {
 export default {
   id: 'd5',
   title: 'Top-N real-time counter: duality over a SQL join',
+  // Equal before timing (Ruling W): the console keeps read times off screen
+  // until same-shape proves the three dashboards identical.
+  revealAfter: { step: 'same-shape', steps: ['embedded-write', 'lookup-read', 'converged'], metrics: ['readMs'] },
   setup: startingState,
   reset: startingState,
   steps: [
@@ -210,7 +213,8 @@ export default {
         const ok = planChecks.lookup(r.plan);
         return {
           ok,
-          summary: `dashboard read takes ${r.readMs} ms (median): it groups every ${SHOW_REGION} order line on each refresh` +
+          summary: `${r.redoPerOrder} bytes of redo per order; every dashboard read groups each ${SHOW_REGION} order line again ` +
+            '(the read time stays hidden until the three dashboards are proven equal)' +
             (ok ? '' : '; the plan does not show a read of the orders table followed by a GROUP BY'),
           metrics: { redoPerOrder: r.redoPerOrder, batches: r.batches, readMs: r.readMs },
           panes: { left: r.docs.find((d) => d._id === SHOW_REGION) },
@@ -229,7 +233,8 @@ export default {
         const doc = r.docs.find((d) => d._id === SHOW_REGION);
         return {
           ok,
-          summary: `${r.redoPerOrder} bytes of redo per order; dashboard read ${r.readMs} ms (median) through an index range scan that stops after 10 rows per region (the view builds all ${r.docs.length} regions, then keeps ${SHOW_REGION} by _id)` +
+          summary: `${r.redoPerOrder} bytes of redo per order; the dashboard read is an index range scan that stops after 10 rows per region ` +
+            `(the view builds all ${r.docs.length} regions, then keeps ${SHOW_REGION} by _id; the read time stays hidden until the three dashboards are proven equal)` +
             (ok ? '' : '; the plan does not show INDEX RANGE SCAN DEVICE_SALES_TOPN with STOPKEY'),
           metrics: { redoPerOrder: r.redoPerOrder, batches: r.batches, readMs: r.readMs },
           panes: { left: doc },

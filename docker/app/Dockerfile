@@ -53,6 +53,7 @@ COPY app/ app/
 COPY demos/ demos/
 COPY replicator/ replicator/
 COPY console/ console/
+COPY fallback/ fallback/
 
 ENV LAB_IN_CONTAINER=1 NODE_ENV=production
 USER node

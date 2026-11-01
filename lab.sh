@@ -10,6 +10,7 @@
 #   ./lab.sh app-mode <ageout|normal>  D2: age-out router (old orders from MongoDB, new on Oracle) or back to MongoDB
 #   ./lab.sh agent read|write|retry --agent A|B  a D7 agent (runs in the runner)
 #   ./lab.sh repl fwd|rev|stop|status|logs  the D4 stand-in for Oracle GoldenGate
+#   ./lab.sh bake-recordings       save the console's rehearsal results in fallback/recorded/
 # demo, reset dN, generate and agent run Node in a one-off runner container (the app
 # image), so the laptop needs no Node. LAB_HOST_NODE=1 uses the host's node.
 set -uo pipefail
@@ -288,8 +289,20 @@ cmd_repl() {
   esac
 }
 
+# Ruling V: copy the console's recordings (/state/recorded on the state volume,
+# which a full reset deletes) into the repo, where the console finds them after
+# a reset. A container copy: no host Node needed. Commit fallback/recorded/.
+cmd_bake_recordings() {
+  mkdir -p fallback/recorded
+  "$ENGINE" cp lab-console:/state/recorded/. fallback/recorded/ \
+    || { echo "FAIL  could not copy from lab-console (is the console running? ./lab.sh up)" >&2; return 1; }
+  rm -f fallback/recorded/*.tmp
+  ls fallback/recorded/*.json 2>/dev/null | sed 's/^/saved  /' | grep . \
+    || { echo "FAIL  no recordings yet: run the demos in the console first" >&2; return 1; }
+}
+
 usage() {
-  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -317,5 +330,6 @@ case "$cmd" in
   app-mode)  [ $# -eq 1 ] || usage; cmd_app_mode "$1" ;;
   agent)     [ $# -ge 1 ] || usage; run_node demos/d7-etag/agent.mjs "$@" ;;
   repl)      [ $# -eq 1 ] || usage; cmd_repl "$1" ;;
+  bake-recordings) cmd_bake_recordings ;;
   *)         usage ;;
 esac

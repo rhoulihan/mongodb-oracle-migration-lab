@@ -4,7 +4,7 @@
 // three dashboards must be identical; then redo per order and the read plans
 // are checked. Leaves the lab at the D5 starting state (reset).
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { createContext, runDemo } from '../../demos/contract.mjs';
+import { createContext, gatedTimingLeaks, runDemo } from '../../demos/contract.mjs';
 import d5, { planChecks } from '../../demos/d5-topn/index.mjs';
 import { D5_ID_RANGE, seededOrders } from '../../demos/d5-topn/variants.mjs';
 import { canonical } from '../../lib/compare.mjs';
@@ -31,6 +31,10 @@ describe('D5 Top-N counter: embedded vs $lookup vs converged', () => {
     ]);
     expect(d5.steps.at(-1).command).toBe(
       `./lab.sh mongosh ora --eval 'db.region_top_devices_v.findOne({_id:"R03"})'`);
+  });
+
+  test('no step before the equality step spells out a time (Ruling W)', () => {
+    expect(gatedTimingLeaks(d5, results)).toEqual([]);
   });
 
   test('every step passes', () => {

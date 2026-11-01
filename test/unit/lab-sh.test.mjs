@@ -32,6 +32,14 @@ const sh = (args, env = {}) => {
   return spawnSync('./lab.sh', args, { cwd: root, encoding: 'utf8', env: e });
 };
 
+describe('lab.sh bake-recordings (Ruling V)', () => {
+  test('copies the console recordings out of the state volume with the container engine, no host Node', () => {
+    const r = sh(['bake-recordings'], { LAB_HOST_NODE: '' });
+    expect(r.stdout).toContain('ENGINE cp lab-console:/state/recorded/. fallback/recorded/\n');
+    expect(r.stdout).not.toMatch(/ node /);
+  });
+});
+
 describe('lab.sh runs Node work in a one-off runner container (Ruling O)', () => {
   // compose run --rm --no-deps runner: a fresh container from the app image, so
   // a step that switches the order service never touches the runner itself.
