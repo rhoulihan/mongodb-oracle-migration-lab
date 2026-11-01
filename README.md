@@ -185,6 +185,26 @@ npm run test:unit
 npm run lint:copy        # copy rules: no em dashes, say 26ai, no private references
 ```
 
+## Demo 1: compatibility check and type census
+
+`./lab.sh demo d1` runs it headless in a few seconds. It reads only: it needs
+a generated MongoDB source (`./lab.sh generate`) and nothing else, so
+`./lab.sh reset d1` has nothing to undo. Two console steps:
+
+- `scan`: the scripted operator scan (built for this lab). It parses the
+  order service (`app/**/*.mjs`) with acorn, lists every `$` operator it uses,
+  and sorts them into supported, caveat and unsupported on the Oracle API for
+  MongoDB. A second table does the same for the D5 and D6 pipelines. The
+  lookup table is `demos/d1-compat/compat-matrix.json`: the oracle-ai-dev
+  plugin's reference matrix plus findings measured in this lab, which win.
+- `census`: the BSON types per field on the MongoDB source, with the
+  landmines marked: regex, Timestamp, Int64 above 2^53, Decimal128 scale, and
+  arrays (on Oracle, `$type` does not match an array's elements).
+
+There is no advisor step: Oracle's MongoDB Compatibility Advisor does not run
+offline in this stack (`docs/spikes/d1-advisor.md`, with the probes behind the
+measured entries).
+
 ## Demo 3: dump and restore
 
 `./lab.sh demo d3` runs it headless; `./lab.sh reset d3` puts back the
