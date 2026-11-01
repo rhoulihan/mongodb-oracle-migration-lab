@@ -128,6 +128,90 @@ describe('lab.sh app-uri', () => {
   });
 });
 
+// D2: age-out mode is a third /admin/backend target. The app picks the cutoff
+// (from the data, never the clock) and lab.sh persists it with the mode.
+describe('lab.sh app-mode ageout|normal', () => {
+  const ENV = join(root, '.lab', 'app.env');
+  const CUTOFF = '2026-09-30T23:59:58.123Z';
+  let saved, stub, bodies;
+  const shAsync = (args, env) => new Promise((resolve) => {
+    const e = { ...process.env, PATH: `${fakeBin}:${process.env.PATH}`, ...env };
+    execFile('./lab.sh', args, { cwd: root, env: e }, (err, stdout, stderr) =>
+      resolve({ status: err ? err.code : 0, stdout, stderr }));
+  });
+
+  beforeAll(async () => {
+    saved = existsSync(ENV) ? readFileSync(ENV, 'utf8') : null;
+    stub = createServer((req, res) => {
+      if (req.method === 'GET') { // /health, for the app-env sync after a demo
+        res.writeHead(200, { 'content-type': 'application/json' });
+        return res.end(`{"backend":"ageout","ok":true,"cutoff":"${CUTOFF}","legacy":{"backend":"mongodb"}}`);
+      }
+      let b = '';
+      req.on('data', (d) => { b += d; });
+      req.on('end', () => {
+        const t = JSON.parse(b).target;
+        bodies.push(JSON.parse(b));
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(t === 'ageout' ? `{"target":"ageout","backend":"ageout","cutoff":"${CUTOFF}"}` : `{"target":"${t}","backend":"mongodb"}`);
+      });
+    });
+    await new Promise((r) => stub.listen(0, '127.0.0.1', r));
+  });
+  afterAll(() => {
+    stub?.close();
+    if (saved === null) writeFileSync(ENV, 'APP_MONGO_URI=mongodb://mongo:27017/telco?replicaSet=rs0&directConnection=true\n');
+    else writeFileSync(ENV, saved);
+  });
+  const url = () => `http://127.0.0.1:${stub.address().port}`;
+
+  test('ageout switches the running app and persists the mode and its cutoff', async () => {
+    bodies = [];
+    writeFileSync(ENV, 'APP_MONGO_URI=before\n');
+    const r = await shAsync(['app-mode', 'ageout'], { LAB_APP_URL: url() });
+    expect(r.status).toBe(0);
+    expect(bodies).toEqual([{ target: 'ageout' }]);
+    expect(r.stdout).toMatch(new RegExp(`age-out mode.*${CUTOFF.replace(/\./g, '\\.')}`));
+    expect(r.stdout).not.toMatch(/ENGINE/);
+    const env = readFileSync(ENV, 'utf8');
+    expect(env).toMatch(/^APP_MODE=ageout$/m);
+    expect(env).toContain(`APP_CUTOFF=${CUTOFF}\n`);
+    expect(env).toMatch(/^APP_MONGO_URI=mongodb:\/\/mongo:27017\/telco/m);
+  });
+
+  test('normal switches back to the MongoDB source and drops the age-out lines', async () => {
+    bodies = [];
+    const r = await shAsync(['app-mode', 'normal'], { LAB_APP_URL: url() });
+    expect(r.status).toBe(0);
+    expect(bodies).toEqual([{ target: 'mongo' }]);
+    const env = readFileSync(ENV, 'utf8');
+    expect(env).not.toMatch(/APP_MODE|APP_CUTOFF/);
+    expect(env).toMatch(/mongo:27017\/telco/);
+  });
+
+  test('app-uri also leaves age-out mode', async () => {
+    bodies = [];
+    writeFileSync(ENV, `APP_MONGO_URI=x\nAPP_MODE=ageout\nAPP_CUTOFF=${CUTOFF}\n`);
+    const r = await shAsync(['app-uri', 'mongo'], { LAB_APP_URL: url() });
+    expect(r.status).toBe(0);
+    expect(readFileSync(ENV, 'utf8')).not.toMatch(/APP_MODE/);
+  });
+
+  test('after a demo that leaves the app in age-out mode, app.env follows it', async () => {
+    writeFileSync(ENV, 'APP_MONGO_URI=before\n');
+    const r = await shAsync(['demo', 'd2'], { LAB_APP_URL: url() });
+    expect(r.status).toBe(0);
+    const env = readFileSync(ENV, 'utf8');
+    expect(env).toMatch(/^APP_MODE=ageout$/m);
+    expect(env).toContain(`APP_CUTOFF=${CUTOFF}\n`);
+  });
+
+  test('an unknown mode prints usage and exits 2', () => {
+    expect(sh(['app-mode', 'sideways']).status).toBe(2);
+    expect(sh(['app-mode']).status).toBe(2);
+  });
+});
+
 describe('lab.sh mongosh src|ora', () => {
   test('src runs mongosh in the mongo container against the source replica set', () => {
     const r = sh(['mongosh', 'src', '--eval', 'db.orders.countDocuments()']);

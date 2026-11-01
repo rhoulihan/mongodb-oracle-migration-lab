@@ -7,6 +7,7 @@
 #   ./lab.sh mongosh src|ora [args...]  mongosh against the source or the Oracle API for MongoDB
 #   ./lab.sh exec <service> <cmd...>
 #   ./lab.sh app-uri <mongo|oracle>  switch the order service's backend (no restart)
+#   ./lab.sh app-mode <ageout|normal>  D2: age-out router (old orders from MongoDB, new on Oracle) or back to MongoDB
 #   ./lab.sh agent read|write|retry --agent A|B  a D7 agent (runs in the runner)
 #   ./lab.sh repl fwd|rev|stop|status|logs  the D4 stand-in for Oracle GoldenGate
 # demo, reset dN, generate and agent run Node in a one-off runner container (the app
@@ -32,11 +33,29 @@ app_uri() {
   esac
 }
 write_app_env() { mkdir -p .lab && printf 'APP_MONGO_URI=%s\n' "$(app_uri "$1")" > .lab/app.env; }
+# D2 age-out mode: both backends behind the router, split at the cutoff the app chose.
+write_ageout_env() {
+  mkdir -p .lab && printf 'APP_MONGO_URI=%s\nAPP_MODE=ageout\nAPP_CUTOFF=%s\n' "$(app_uri mongo)" "$1" > .lab/app.env
+}
 # compose needs .lab/app.env to exist; default the app to the MongoDB source.
 ensure_app_env() { [ -f .lab/app.env ] || write_app_env mongo; }
 
 # The order service as seen from the host. LAB_APP_URL overrides it (tests).
 APP_URL="${LAB_APP_URL:-http://127.0.0.1:3300}"
+
+# POST /admin/backend {target: $1}; sets BODY (the response), CODE and RC (curl's exit code).
+post_backend() {
+  local f; f="$(mktemp)"
+  RC=0
+  CODE="$(curl -s --max-time 30 -o "$f" -w '%{http_code}' -X POST -H 'content-type: application/json' \
+    -d "{\"target\":\"$1\"}" "$APP_URL/admin/backend")" || RC=$?
+  BODY="$(cat "$f")"; rm -f "$f"
+}
+json_field() { printf '%s' "$BODY" | sed -n "s/.*\"$1\":\"\([^\"]*\)\".*/\1/p"; }
+switch_failed() {
+  echo "FAIL  order service did not switch to $1: $(json_field error | grep . || echo "HTTP ${CODE:-none}, curl exit $RC")" >&2
+  return 1
+}
 
 # Ruling O: switch the running service in place through POST /admin/backend,
 # then write .lab/app.env so a restart keeps the choice. Three outcomes:
@@ -48,22 +67,45 @@ APP_URL="${LAB_APP_URL:-http://127.0.0.1:3300}"
 #                  as they were, exit 1
 cmd_app_uri() {
   app_uri "$1" >/dev/null || usage
-  local body code rc=0 err
-  body="$(mktemp)"
-  code="$(curl -s --max-time 30 -o "$body" -w '%{http_code}' -X POST -H 'content-type: application/json' \
-    -d "{\"target\":\"$1\"}" "$APP_URL/admin/backend")" || rc=$?
-  err="$(sed -n 's/.*"error":"\([^"]*\)".*/\1/p' "$body")"
-  rm -f "$body"
-  if [ "$rc" -eq 0 ] && [ "$code" = "200" ]; then
+  post_backend "$1"
+  if [ "$RC" -eq 0 ] && [ "$CODE" = "200" ]; then
     write_app_env "$1"
     echo "order service now uses $1 (127.0.0.1:3300)"
-  elif [ "$rc" -eq 7 ]; then
+  elif [ "$RC" -eq 7 ]; then
     write_app_env "$1"
     echo "order service is not running; starting it on $1" >&2
     compose up -d --no-deps app && echo "order service now uses $1 (127.0.0.1:3300)"
   else
-    echo "FAIL  order service did not switch to $1: ${err:-HTTP ${code:-none}, curl exit $rc}" >&2
-    return 1
+    switch_failed "$1"
+  fi
+}
+
+# D2 (Ruling O, same switch): ageout puts the order service in front of both
+# backends, the age-out router; the app picks the cutoff from the data and
+# answers with it, and .lab/app.env keeps mode and cutoff for a restart.
+# normal is app-uri mongo. A stopped service is started on mongo first.
+cmd_app_mode() {
+  case "$1" in
+    normal) cmd_app_uri mongo; return ;;
+    ageout) ;;
+    *) usage ;;
+  esac
+  post_backend ageout
+  if [ "$RC" -eq 7 ]; then
+    cmd_app_uri mongo >/dev/null || return 1
+    local i
+    for i in $(seq 1 30); do
+      curl -s --max-time 2 -o /dev/null "$APP_URL/health" && break
+      sleep 1
+    done
+    post_backend ageout
+  fi
+  if [ "$RC" -eq 0 ] && [ "$CODE" = "200" ]; then
+    local cutoff; cutoff="$(json_field cutoff)"
+    write_ageout_env "$cutoff"
+    echo "order service now in age-out mode: orders before $cutoff read from MongoDB, new orders go to Oracle"
+  else
+    switch_failed ageout
   fi
 }
 
@@ -74,6 +116,7 @@ sync_app_env() {
   local h
   h="$(curl -sf --max-time 5 "$APP_URL/health" 2>/dev/null)" || return 0
   case "$h" in
+    *'"backend":"ageout"'*)  BODY="$h"; write_ageout_env "$(json_field cutoff)" ;;
     *'"backend":"oracle"'*)  write_app_env oracle ;;
     *'"backend":"mongodb"'*) write_app_env mongo ;;
   esac
@@ -247,7 +290,7 @@ cmd_repl() {
 }
 
 usage() {
-  sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -272,6 +315,7 @@ case "$cmd" in
   mongosh)   [ $# -ge 1 ] || usage; cmd_mongosh "$@" ;;
   exec)      [ $# -ge 2 ] || usage; lab_exec "$@" ;;
   app-uri)   [ $# -eq 1 ] || usage; cmd_app_uri "$1" ;;
+  app-mode)  [ $# -eq 1 ] || usage; cmd_app_mode "$1" ;;
   agent)     [ $# -ge 1 ] || usage; run_node demos/d7-etag/agent.mjs "$@" ;;
   repl)      [ $# -eq 1 ] || usage; cmd_repl "$1" ;;
   *)         usage ;;

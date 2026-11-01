@@ -198,6 +198,21 @@ export function createStore(db) {
       return orders.findOne({ _id });
     },
 
+    // One subscriber's orders placed in [from, to), newest first (either end
+    // may be left open). D2's age-out router merges this read across the
+    // MongoDB archive and Oracle.
+    async listOrders({ subscriberId, from, to } = {}) {
+      if (typeof subscriberId !== 'string' || !subscriberId) throw new InputError('subscriberId is required');
+      for (const [k, v] of [['from', from], ['to', to]]) {
+        if (v !== undefined && !(v instanceof Date && !Number.isNaN(v.getTime()))) throw new InputError(`${k} must be a date`);
+      }
+      const placedAt = {};
+      if (from) placedAt.$gte = from;
+      if (to) placedAt.$lt = to;
+      const filter = { 'subscriber.id': subscriberId, ...(from || to ? { placedAt } : {}) };
+      return orders.find(filter).sort({ placedAt: -1, _id: -1 }).toArray();
+    },
+
     async topDevices(region) {
       const doc = await top.findOne({ _id: region });
       if (!doc) throw new NotFound(`no Top-N for region ${region}`);

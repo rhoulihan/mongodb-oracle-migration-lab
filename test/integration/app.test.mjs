@@ -127,6 +127,26 @@ describe('orders', () => {
   });
 });
 
+// D2's age-out router merges this read across two backends; on one backend it
+// is a plain range query on the subscriber's orders.
+describe('GET /subscribers/:id/orders (listOrders)', () => {
+  test("a subscriber's orders in [from, to), newest first; bad dates get 400", async () => {
+    const sub = data.orders[0].subscriber.id;
+    const mine = data.orders.filter((o) => o.subscriber.id === sub);
+    const from = new Date(Math.min(...mine.map((o) => o.placedAt)));
+    const to = new Date(Math.max(...mine.map((o) => o.placedAt)));
+    const want = mine.filter((o) => o.placedAt >= from && o.placedAt < to)
+      .sort((a, b) => b.placedAt - a.placedAt || (a._id.toHexString() < b._id.toHexString() ? 1 : -1))
+      .map((o) => o._id.toHexString());
+    const r = await call('GET', `/subscribers/${sub}/orders?from=${from.toISOString()}&to=${to.toISOString()}`);
+    expect(r.status).toBe(200);
+    expect(r.body.map((o) => o._id.toHexString())).toEqual(want);
+    const all = await call('GET', `/subscribers/${sub}/orders`);
+    expect(all.body).toHaveLength(mine.length);
+    expect((await call('GET', `/subscribers/${sub}/orders?from=yesterday`)).status).toBe(400);
+  });
+});
+
 describe('Top-N counts are index-backed', () => {
   test("the outsider count (orders by region and lines.sku) uses orders {region, 'lines.sku'}", async () => {
     const plan = await db.collection('orders')

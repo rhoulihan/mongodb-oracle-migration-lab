@@ -80,6 +80,7 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh mongosh ora [args...]` | mongosh against the Oracle API for MongoDB as `MIG`, run inside `lab-oracle` from `/opt/lab`, where the image keeps the demo scripts (`demos/d6-sql/`) |
 | `./lab.sh exec <service> <cmd...>` | Run a command inside a lab container, for example `./lab.sh exec mongo mongosh` |
 | `./lab.sh app-uri <mongo\|oracle>` | Point the order service at MongoDB or at the Oracle API for MongoDB (switched live, no restart) |
+| `./lab.sh app-mode <ageout\|normal>` | Demo 2: put the order service in age-out mode (orders before the cutoff read from MongoDB, new orders on Oracle) or back to MongoDB alone (switched live, no restart) |
 | `./lab.sh agent read\|write\|retry --agent A\|B` | One of demo 7's two agents (`--api sql` on `read` to use SQL instead of the MongoDB API) |
 | `./lab.sh repl fwd\|rev\|stop\|status\|logs` | Demo 4's stand-in for Oracle GoldenGate: start it forward (MongoDB to Oracle) or reverse (Oracle to MongoDB), stop it (drains to lag 0 first), show its state, follow its log |
 
@@ -170,9 +171,10 @@ file to the live backend afterwards.
 | `GET /orders/:id` | One order, as canonical Extended JSON (Decimal128 totals, Int64 versions) |
 | `POST /orders` | Body `{subscriberId, lines: [{sku, qty}]}`. Writes the order, its `orderEvents` entry, and keeps the region's Top 10 in `regionTopDevices` exact. Returns `{_id}` |
 | `PATCH /orders/:id` | Body `{status}` and/or `{deviceSwap: {from, to}}` |
+| `GET /subscribers/:id/orders?from=&to=` | One subscriber's orders placed in `[from, to)` (ISO dates, either may be left out), newest first |
 | `GET /dashboard/top-devices/:region` | The region's Top 10 devices |
-| `GET /health` | `{backend: 'mongodb' or 'oracle', ok}` for the live backend |
-| `POST /admin/backend` | Body `{target: 'mongo' or 'oracle'}`. Connects and pings the new backend, then swaps it in; 503 and no change if it cannot be reached. Port 3300 is bound to 127.0.0.1 only |
+| `GET /health` | `{backend: 'mongodb' or 'oracle', ok}` for the live backend; in age-out mode `{backend: 'ageout', cutoff, legacy, current}` |
+| `POST /admin/backend` | Body `{target: 'mongo' or 'oracle'}`, or `{target: 'ageout'}` for demo 2 (answers with the cutoff). Connects and pings the new backend(s), then swaps them in; 503 and no change if one cannot be reached. Port 3300 is bound to 127.0.0.1 only |
 
 `/health` tells the backends apart through `buildInfo`: MongoDB includes a
 `gitVersion`, the Oracle API for MongoDB reports only a MongoDB-compatible
@@ -208,6 +210,38 @@ a generated MongoDB source (`./lab.sh generate`) and nothing else, so
 There is no advisor step: Oracle's MongoDB Compatibility Advisor does not run
 offline in this stack (`docs/spikes/d1-advisor.md`, with the probes behind the
 measured entries).
+
+## Demo 2: age out
+
+Strategy A: move only what lives long. `./lab.sh demo d2` runs it headless;
+`./lab.sh reset d2` puts back the starting state (order service on MongoDB in
+normal mode, the eight MIG collections empty, no order the demo placed left on
+the source). It needs a generated source (`./lab.sh generate`, within 30
+minutes of the session so carts are still expiring). The presenter's terminal
+commands:
+
+```sh
+./lab.sh exec mongo mongodump --archive=/dumps/d2-entities.archive --gzip --db telco \
+  --excludeCollection orders --excludeCollection carts --excludeCollection orderEvents --excludeCollection regionTopDevices \
+  && ./lab.sh exec mongo mongorestore --archive=/dumps/d2-entities.archive --gzip \
+  --nsInclude telco.regions --nsInclude telco.catalog --nsInclude telco.accounts --nsInclude telco.subscribers \
+  --nsFrom 'telco.*' --nsTo 'MIG.*' --uri 'mongodb://MIG:MigUser2026@oracle:27017/?authMechanism=PLAIN&authSource=$external&tls=false&retryWrites=false&loadBalanced=true'
+./lab.sh app-mode ageout
+```
+
+`mongodump` has no `--nsInclude`, so the dump leaves out what stays and the
+restore names what moves. In age-out mode the order service holds both
+backends behind `app/router.mjs`: new orders (and their events and the Top-N
+update) go to Oracle; `GET /orders/:id` tries Oracle, then MongoDB; old orders
+are read-only; a subscriber's order list is split at the cutoff and merged,
+newest first. The cutoff comes from the data, never the clock: 1 ms after the
+newest order on MongoDB, kept in `.lab/app.env` (`APP_MODE`, `APP_CUTOFF`) so
+a restart keeps it. The dashboard in age-out mode is Oracle's, exact for the
+orders placed since the cutoff; an all-time Top 10 cannot be merged from two
+Top 10s. Console steps: `new-order` (lands in Oracle, not MongoDB),
+`cross-cutoff-read` (MongoDB rows, Oracle rows, the merged read, equal to the
+union by `_id`) and `ttl-expiry` (the cart count dropping live; Oracle has no
+carts at all).
 
 ## Demo 3: dump and restore
 
