@@ -9,7 +9,9 @@ shown), and checks each slide for:
 
   * overflow: scroll overflow, or any element outside the 1280x720 frame
   * overlap: an element spilling out of its slide row (a direct child of the section),
-    or two rows intersecting; ``data-qa-allow-overlap`` opts out a deliberate layer
+    or two rows intersecting; ``data-qa-allow-overlap`` opts out a deliberate layer inside a
+    row (or a whole row); on the section itself it does nothing. Each slide reports its
+    ``allow_overlap`` count so an opt-out is never silent
   * an SVG figure (``svg.fig`` or ``figure svg``) drawn below 0.80 px per viewBox unit
   * a missing or empty ``<aside class="notes">``
   * the em dash character (U+2014), anywhere in the slide or its notes
@@ -94,7 +96,9 @@ QA_JS = r"""<script>
       rows.forEach(row => {
         const rr = row.getBoundingClientRect();
         row.querySelectorAll('*').forEach(el => {
-          if (el.parentElement.closest('svg') || el.closest('[data-qa-allow-overlap]')) return;
+          if (el.parentElement.closest('svg')) return;
+          const hit = el.closest('[data-qa-allow-overlap]');   // scoped: only a layer inside this row
+          if (hit && row.contains(hit)) return;
           if (getComputedStyle(el).display === 'inline') return;
           const r = el.getBoundingClientRect();
           if (!r.width && !r.height) return;
@@ -130,7 +134,9 @@ QA_JS = r"""<script>
                  segment: seg ? seg.dataset.segment : null,
                  title: h ? h.textContent.trim().slice(0, 80) : (s.getAttribute('aria-label') || ''),
                  demo: demo, word_count: wc, min_svg_k: k === null ? null : +k.toFixed(2),
-                 note_len: note ? note.textContent.trim().length : 0, issues: [...new Set(bad)] });
+                 note_len: note ? note.textContent.trim().length : 0,
+                 allow_overlap: s.querySelectorAll('[data-qa-allow-overlap]').length,
+                 issues: [...new Set(bad)] });
     });
     const urls = performance.getEntriesByType('navigation').concat(performance.getEntriesByType('resource')).map(e => e.name);
     done({ scale: Reveal.getScale(), viewport: innerWidth + 'x' + innerHeight, slides: out, requests: [...new Set(urls)] });

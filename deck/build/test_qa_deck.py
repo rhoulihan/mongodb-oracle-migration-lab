@@ -145,13 +145,33 @@ def test_figure_spilling_over_takeaway_fails(tmp_path):
                               ' style="flex:1;min-height:0;display:block"'))
     r = run_qa(tmp_path, html)
     assert r.returncode == 1, r.stdout
-    assert "overlap" in r.stdout
+    assert '"overlap:' in r.stdout
+
+
+def test_allow_overlap_on_section_does_not_disable_check(tmp_path):
+    # the opt-out is scoped to a layer inside a row: on the <section> it must change nothing
+    slide = _figure_slide('style="display:block;width:100%;height:auto"',
+                          ' style="flex:1;min-height:0;display:block"')
+    slide = slide.replace("<section>", "<section data-qa-allow-overlap>", 1)
+    r = run_qa(tmp_path, deck(slide))
+    assert r.returncode == 1, r.stdout
+    assert '"overlap:' in r.stdout
+    assert '"allow_overlap": 0' in r.stdout
+
+
+def test_allow_overlap_inside_row_is_counted(tmp_path):
+    body = (f'<section><h2>Layered</h2><div class="body"><div style="position:relative;height:80px">'
+            f'<div data-qa-allow-overlap style="position:absolute;top:60px;height:60px">layer</div>'
+            f'</div></div>{NOTE}</section>')
+    r = run_qa(tmp_path, deck(body))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert '"allow_overlap": 1' in r.stdout
 
 
 def test_theme_keeps_tall_figure_inside_its_row(tmp_path):
     # same tall figure with the house classes: the theme fits it to the row (no collision)
     r = run_qa(tmp_path, deck(_figure_slide('class="fig"')))
-    assert "overlap" not in r.stdout, r.stdout
+    assert '"overlap:' not in r.stdout, r.stdout
 
 
 def test_eyebrow_and_clock_do_not_count_as_words(tmp_path):
