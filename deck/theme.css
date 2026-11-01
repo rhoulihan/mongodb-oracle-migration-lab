@@ -232,6 +232,7 @@ html, body { background: var(--paper); }
 .fig-stack .ov { position: absolute; box-sizing: border-box; border-radius: 8px; z-index: 0; }
 .fig-stack .ov.cool { background: var(--cool-soft); border: 2px solid var(--cool); }
 .fig-stack .ov.flow { background: var(--flow-soft); border: 2px solid var(--flow); }
+.fig-stack .ov.hot { background: var(--hot-soft); border: 2px solid var(--hot); }
 .fig-stack .ov.gone { border-width: 0; }
 .fig-stack .ov.ring { border-radius: 50%; border: 2.4px solid var(--hot); z-index: 2; }
 /* build_figs.ov(): a solid wire, and an arrowhead pointing right or left (blue/green figure).

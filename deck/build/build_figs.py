@@ -33,7 +33,7 @@ DECK_DIR = BUILD.parent
 DECK = DECK_DIR / "index.html"
 FIGS = DECK_DIR / "figures"
 sys.path.insert(0, str(BUILD))
-from deckfig import HEAD, MONO, SANS, TONE, Fig, FigureError, Flow  # noqa: E402
+from deckfig import HEAD, MONO, SANS, TONE, Fig, FigureError, Flow, tw  # noqa: E402
 
 MARK = re.compile(r"(<!-- FIG:([a-z0-9-]+) -->)(.*?)(<!-- /FIG:\2 -->)", re.S)
 
@@ -87,7 +87,7 @@ def group(f: Fig, cls: str = "", **attrs):
     f.raw(f'<g{f" class={chr(34)}{cls}{chr(34)}" if cls else ""}{extra}>')
 
 
-def overlay(f: Fig, data_id: str, cls: str, x, y, w, h, extra: str = "") -> None:
+def overlay(f: Fig, data_id: str, cls: str, x, y, w, h, extra: str = "", attrs: str = "") -> None:
     """A shape that Reveal auto-animate must move or resize. Reveal measures matched elements
     with offsetLeft/offsetWidth, which SVG shapes do not have, so a shape inside the SVG never
     morphs. The deck gets an HTML box laid over the SVG (percent of the viewBox, behind the SVG
@@ -95,7 +95,7 @@ def overlay(f: Fig, data_id: str, cls: str, x, y, w, h, extra: str = "") -> None
     deck by .fig-stack .overlay-twin."""
     if not hasattr(f, "overlays"):
         f.overlays = []
-    tone = {"cool": "cool", "flow": "flow", "ring": "hot"}[cls]
+    tone = {"cool": "cool", "flow": "flow", "hot": "hot", "ring": "hot"}[cls]
     f.raw('<g class="overlay-twin">')
     if cls == "ring":
         f.circle(x + w / 2, y + h / 2, w / 2 - 1.2, fill="none", stroke=TONE[tone][0], sw=2.4)
@@ -103,7 +103,7 @@ def overlay(f: Fig, data_id: str, cls: str, x, y, w, h, extra: str = "") -> None
         f.rect(x, y, w, h, fill=TONE[tone][1], stroke=TONE[tone][0], sw=1.8, rx=8, name=data_id)
     f.raw("</g>")
     pct = lambda v, t: f"{v / t * 100:.3f}%"
-    f.overlays.append(f'<div class="ov {cls}{" " + extra if extra else ""}" data-id="{data_id}" style="left:{pct(x, f.w)};top:{pct(y, f.h)};'
+    f.overlays.append(f'<div class="ov {cls}{" " + extra if extra else ""}" data-id="{data_id}"{" " + attrs if attrs else ""} style="left:{pct(x, f.w)};top:{pct(y, f.h)};'
                       f'width:{pct(w, f.w)};height:{pct(h, f.h)}"></div>')
 
 
@@ -743,6 +743,466 @@ def fig_fallback_constrains_model() -> Fig:
     fl.edge("dv", "blue", 770, tone="flow", ay=182, by=230)
     f.text(18, 318, "GoldenGate in 26ai can replicate duality views as JSON. For a MongoDB target: verify first.",
            size=15, fill="var(--muted)")
+    return f
+
+
+# ----------------------------------------------------------------------------- segment 5
+CP_YS = [52, 150, 248]
+CP_PROJ = ["Rows on tables", "Embedded documents", "Graph edges"]
+CP_SHAPES = [["Rowset", "for reports"], ["Order document", "for the app"], ["Graph result", "for hierarchy walks"]]
+CP_SURF = ["SQL", "MongoDB API", "SQL/PGQ"]
+
+
+def _canon(state: str) -> Fig:
+    """umt_chain (segment 2), extended for segment 5: the same canonical form and layout, with
+    the access surface on each query edge, in two auto-animate states. The projection boxes are
+    overlays: in "seed" they sit hidden behind the canonical box, in "fan" they slide out to
+    their columns while the shapes and edges fade in."""
+    fan = state == "fan"
+    f = Fig(1120, 360, {
+        "seed": "One canonical form: the telecom domain modeled once, as entities, properties and "
+                "relationships, before any storage choice",
+        "fan": "One canonical form fans out into three projections (rows on tables, embedded "
+               "documents, graph edges); queries on an access surface (SQL, the MongoDB API, SQL/PGQ) "
+               "turn each projection into the shape a consumer reads: a rowset, the order document "
+               "(a duality view over the rows), a graph result",
+    }[state])
+    fl = Flow(f)
+    f.text(18, 34, "CANONICAL FORM", size=13, weight=700, font=MONO, fill="var(--muted)")
+    for i, y in enumerate(CP_YS):
+        if fan:
+            overlay(f, f"cp-p{i}", "flow", 420, y, 280, 80)
+        else:  # tucked behind the canonical box (drawn after it, so it covers them)
+            overlay(f, f"cp-p{i}", "flow", 40, 140 + i * 34, 226, 28)
+    fl.node("canon", 18, 124, 270, 132, ["Telecom domain", "subscriber, order, device:", "entities, properties,",
+                                         "relationships"], tone="cool", size=18, sub=15)
+    if not fan:
+        f.text(420, 178, "Model the business once:", size=24, weight=800, font=HEAD)
+        f.text(420, 212, "what exists, and how it relates.", size=20, fill="var(--muted)")
+        auto_ids(f, "cp")
+        return f
+    f.text(420, 34, "PROJECTIONS", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(850, 34, "PROJECTED SHAPES", size=13, weight=700, font=MONO, fill="var(--muted)")
+    for i, y in enumerate(CP_YS):
+        fl.nodes[f"p{i}"] = (420, y, 280, 80)
+        f.text(562, y + 46, CP_PROJ[i], size=18, weight=700, font=HEAD, anchor="middle")
+        fl.node(f"s{i}", 850, y, 252, 80, CP_SHAPES[i], tone="ink", size=18, sub=15)
+        fl.edge("canon", f"p{i}", 354, tone="cool")
+    fl.edge("p0", "s0", 770, tone="flow", label=CP_SURF[0])
+    fl.edge("p1", "s1", 770, tone="flow", ay=200, by=200, label=CP_SURF[1])
+    fl.edge("p2", "s2", 770, tone="flow", label=CP_SURF[2])
+    fl.edge("p0", "s1", 742, tone="cool", ay=106, by=170, dash="6 4")
+    f.text(796, 162, "duality view", size=13, weight=600, font=MONO, fill="var(--cool)", anchor="middle")
+    auto_ids(f, "cp")
+    return f
+
+
+def fig_canonical_to_projections_seed() -> Fig:
+    return _canon("seed")
+
+
+def fig_canonical_to_projections() -> Fig:
+    return _canon("fan")
+
+
+def fig_forced_embeds() -> Fig:
+    """Why so many embeds exist: a read-only view was the only joined shape, so the copy was
+    forced. On Oracle the joined shape takes writes."""
+    f = Fig(1120, 380, "Forced embeds: the app wants an order with its subscriber joined in. A MongoDB "
+                       "view can join it but is read only, so the order embeds a copy of the subscriber's "
+                       "name, tier and address. One address change then rewrites every order that copied "
+                       "it. On Oracle a duality view is that joined shape and takes writes, with the "
+                       "subscriber stored once")
+    fl = Flow(f)
+    y, h = 36, 104
+    fl.node("want", 18, y, 300, h, ["The app wants", "an order with its", "subscriber joined in"], size=18, sub=15)
+    fl.node("view", 410, y, 300, h, ["A MongoDB view", "joins it, but read only:", "no writes through it"],
+            tone="hot", size=18, sub=15)
+    fl.node("copy", 802, y, 300, h, ["So the order embeds", "a copy: name, tier,", "address in every order"],
+            tone="hot", size=18, sub=15)
+    fl.edge("want", "view", 364, tone="flow")
+    fl.edge("view", "copy", 756, tone="hot")
+    # the write amplification that follows
+    ry = 176
+    f.text(18, ry + 30, "One address change", size=19, weight=800, font=HEAD, fill="var(--hot)")
+    f.text(18, ry + 56, "rewrites every order that copied it", size=15, fill="var(--muted)")
+    f.line(330, ry + 34, 404, ry + 34, stroke="var(--hot)", sw=1.8, arrow=True, name="fan")
+    for k in range(11):
+        x = 420 + k * 62
+        f.rect(x, ry, 50, 68, fill="var(--panel)", stroke="var(--hot)", sw=1.4, rx=4, name="doc")
+        for j, (fill, stroke) in enumerate((("var(--chip)", "var(--chip)"), ("var(--chip)", "var(--chip)"),
+                                            ("var(--hot-soft)", "var(--hot)"))):
+            f.rect(x + 8, ry + 12 + j * 16, 34, 8, fill=fill, stroke=stroke, sw=1, rx=2, name="bar")
+    f.text(420, ry + 96, "order 1 ... order N: the same copied address, N writes", size=14, font=MONO,
+           fill="var(--hot)")
+    f.box(18, 300, 1084, 62, ["On Oracle: a duality view is that joined shape, and it takes writes",
+                              "the subscriber is stored once, so one change is one row"], tone="cool",
+          size=18, sub_size=15)
+    return f
+
+
+def _bars(f: Fig, x, y, w, n, hot=(), cool=(), h=6, gap=4):
+    """A stack of thin bars (rows of a document or a table); hot/cool are highlighted rows."""
+    for j in range(n):
+        if j in hot:
+            fill, stroke = "var(--hot-soft)", "var(--hot)"
+        elif j in cool:
+            fill, stroke = "var(--cool-soft)", "var(--cool)"
+        else:
+            fill, stroke = "var(--chip)", "var(--hairline)"
+        f.rect(x, y + j * (h + gap), w, h, fill=fill, stroke=stroke, sw=1, rx=2, name="bar")
+
+
+TOPN = [  # title, sub lines, tone, write (glyph, lines, tag, tone), read (glyph, lines, tag, tone)
+    ("(a) Embedded", ["Top 10 stored in one", "document per region"], "hot",
+     ("doc-all", ["rewrites the region's", "whole Top-N document"], "pays on every write", "hot"),
+     ("doc-one", ["reads one document", "by its key"], "fast read", "cool")),
+    ("(b) $lookup pipeline", ["count the orders", "at read time"], "hot",
+     ("row-new", ["inserts the order,", "nothing else"], "cheap write", "cool"),
+     ("funnel", ["groups every order", "line in the region"], "pays on every read", "hot")),
+    ("(c) Converged", ["counter rows, a sorted", "index, a view"], "cool",
+     ("row-one", ["one counter row, +1,", "same transaction"], "one row per order", "cool"),
+     ("index", ["10 index entries, in", "order, then a join"], "short scan, cheap join", "cool")),
+]
+
+
+def _topn_glyph(f: Fig, kind: str, x, y):
+    """Small pictures, 64 wide and 84 tall, for each write and read."""
+    if kind in ("doc-all", "doc-one"):
+        f.rect(x, y, 60, 84, fill="var(--panel)", stroke="var(--muted)", sw=1.4, rx=5, name="doc")
+        _bars(f, x + 9, y + 9, 42, 7, hot=range(7) if kind == "doc-all" else (),
+              cool=() if kind == "doc-all" else range(7))
+    elif kind in ("row-new", "row-one"):
+        _bars(f, x, y + 4, 60, 6, h=8, gap=5, cool=(5,) if kind == "row-new" else (2,))
+        if kind == "row-one":
+            f.text(x + 66, y + 39, "+1", size=13, weight=700, font=MONO, fill="var(--cool)")
+    elif kind == "funnel":
+        for r in range(6):
+            for c in range(4):
+                f.rect(x + c * 12, y + 4 + r * 13, 8, 8, fill="var(--hot-soft)", stroke="var(--hot)", sw=1,
+                       rx=1, name="cell")
+    elif kind == "index":
+        _bars(f, x, y + 2, 52, 8, h=5, gap=3.5, cool=range(5))
+        f.line(x - 4, y + 44, x + 58, y + 44, stroke="var(--hot)", sw=1.6, dash="4 3", name="stop", seg=False)
+        f.text(x + 60, y + 48, "stop", size=11, weight=700, font=MONO, fill="var(--hot)")
+
+
+def fig_topn_three_ways() -> Fig:
+    """D5's question three ways. Each row is a fragment: the whole-document rewrite, then the
+    re-aggregation, then the one counter row."""
+    f = Fig(1120, 414, "Top 10 devices per region, three ways. Embedded: every order rewrites the "
+                       "region's whole Top-N document; the read is one document by key. $lookup pipeline: "
+                       "every order inserts only itself, and every dashboard read groups every order line "
+                       "in the region. Converged: every order adds one to one counter row in the same "
+                       "transaction, and the read takes 10 entries from a pre-sorted index, then joins "
+                       "the device names")
+    c2, c3, cw2, cw3 = 300, 700, 380, 402
+    f.text(18, 34, "THE MODEL", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(c2, 34, "WHAT EACH ORDER WRITES", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(c3, 34, "WHAT EACH DASHBOARD READ DOES", size=13, weight=700, font=MONO, fill="var(--muted)")
+    top, rh, ch = 52, 118, 108
+    for i, (title, subs, tone, wr, rd) in enumerate(TOPN):
+        y = top + i * rh
+        group(f, "fragment", data_fragment_index=i + 1)
+        f.text(18, y + 34, title, size=19, weight=800, font=HEAD, fill=TONE[tone][0])
+        for k, s in enumerate(subs):
+            f.text(18, y + 62 + k * 20, s, size=15, fill="var(--muted)")
+        for x, w, (glyph, lines, tag, t) in ((c2, cw2, wr), (c3, cw3, rd)):
+            col, soft = TONE[t]
+            f.rect(x, y, w, ch, fill=soft, stroke=col, sw=1.4, rx=8, name="cell")
+            _topn_glyph(f, glyph, x + 16, y + 12)
+            tx = x + 112
+            for k, s in enumerate(lines):
+                f.text(tx, y + 32 + k * 21, s, size=15)
+            f.text(tx, y + 88, tag, size=15, weight=700, fill=col)
+        f.raw("</g>")
+    return f
+
+
+def fig_duality_tradeoff() -> Fig:
+    """D5's measured result: where each model pays, after the dashboards were proven identical."""
+    f = Fig(1120, 392, "Where each model pays, measured in D5 on the laptop after the three dashboards "
+                       "were proven identical, relative only. Counter write per order: embedded about "
+                       "2,600 bytes of redo, the lookup pipeline nothing extra, converged about 900 bytes. "
+                       "Dashboard read for one region: embedded about 0.4 ms, the lookup pipeline about "
+                       "236 ms, converged about 0.7 ms. A costlier read than one stored document, zero "
+                       "write amplification, and the optimizer plans the join")
+    cols = [(320, "(a) Embedded", "hot"), (580, "(b) $lookup", "hot"), (840, "(c) Converged", "cool")]
+    cw = 262
+    for x, t, tone in cols:
+        f.text(x + cw / 2, 40, t, size=19, weight=800, font=HEAD, fill=TONE[tone][0], anchor="middle")
+    rows = [
+        ("Counter write", "redo per order, on top", "of the order itself",
+         [("~2,600 B", "every order", "hot"), ("0 B", "nothing extra", "ink"), ("~900 B", "one row, +1", "cool")]),
+        ("Dashboard read", "one region,", "median of 7",
+         [("~0.4 ms", "fastest: one document", "cool"), ("~236 ms", "counts every order", "hot"),
+          ("~0.7 ms", "index scan and a join", "cool")]),
+    ]
+    top, rh = 60, 104
+    for i, (label, s1, s2, cells) in enumerate(rows):
+        y = top + i * (rh + 12)
+        f.text(18, y + 38, label, size=19, weight=800, font=HEAD)
+        f.text(18, y + 62, s1, size=14, fill="var(--muted)")
+        f.text(18, y + 80, s2, size=14, fill="var(--muted)")
+        for (x, _, _), (big, sub, tone) in zip(cols, cells):
+            col, soft = TONE[tone] if tone != "ink" else ("var(--ink)", "var(--panel)")
+            f.rect(x, y, cw, rh, fill=soft, stroke=col if tone != "ink" else "var(--hairline)", sw=1.4, rx=8,
+                   name="cell")
+            f.text(x + cw / 2, y + 50, big, size=30, weight=800, font=HEAD, fill=col, anchor="middle")
+            f.text(x + cw / 2, y + 80, sub, size=15, fill="var(--muted)", anchor="middle")
+    f.box(18, 300, 1084, 74, ["A costlier read than one stored document. Zero write amplification.",
+                              "The optimizer plans the join. Laptop, relative only, after the dashboards matched."],
+          tone="cool", size=18, sub_size=15)
+    return f
+
+
+def fig_api_tax_by_shape() -> Fig:
+    """The field PoC's finding as a routing rule: finds stay on the API, pipelines move to $sql."""
+    f = Fig(1120, 340, "Route by shape. Finds and CRUD ran at parity through the Oracle API for MongoDB "
+                       "in a field proof of concept, so they stay on the API. Aggregation pipelines ran "
+                       "about 3 to 15 times slower through the API, so rewrite the hot ones as $sql and "
+                       "the optimizer gets the whole question")
+    fl = Flow(f)
+    f.text(18, 34, "THE REQUEST", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(360, 34, "THROUGH THE API (FIELD POC)", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(790, 34, "WHAT TO DO", size=13, weight=700, font=MONO, fill="var(--muted)")
+    fl.node("app", 18, 135, 250, 100, ["Your app", "same driver,", "same code"], size=18, sub=15)
+    fl.node("finds", 360, 50, 340, 100, ["Finds and CRUD", "at parity"], tone="cool", size=18, sub=15)
+    fl.node("pipes", 360, 220, 340, 100, ["Aggregation pipelines", "about 3 to 15x slower"], tone="hot",
+            size=18, sub=15)
+    fl.node("api", 790, 50, 312, 100, ["Keep them on the API", "nothing to change"], tone="cool", size=18, sub=15)
+    fl.node("sql", 790, 220, 312, 100, ["Rewrite the hot ones", "as $sql: the optimizer", "sees the whole question"],
+            tone="cool", size=18, sub=15)
+    fl.edge("app", "finds", 314, tone="cool")
+    fl.edge("app", "pipes", 314, tone="hot")
+    fl.edge("finds", "api", 745, tone="cool")
+    fl.edge("pipes", "sql", 745, tone="cool")
+    return f
+
+
+SQL_FORMS = [
+    ("1  Opening stage", ["SQL starts the pipeline;", "later stages keep going"],
+     ["db.aggregate([", '  {$sql: "SELECT ..."},', "  {$match: {...}} ])"]),
+    ("2  Mid-pipeline", ["earlier stages feed SQL", "as a table named input"],
+     ["db.orders.aggregate([", "  {$match: {...}},", '  {$sql: "... FROM input"} ])']),
+    ("3  The only stage", ["DDL and DML, and", "named binds"],
+     ["db.aggregate([{$sql: {", '  statement: "...",', "  binds: {fromTs} }}])"]),
+]
+
+
+def fig_sql_stage_forms() -> Fig:
+    """The three places a $sql stage can sit, with the shape of each call."""
+    f = Fig(1120, 346, "Three forms of the $sql stage. Opening stage: SQL starts the pipeline and later "
+                       "stages keep going. Mid-pipeline: the earlier stages' documents become a table named "
+                       "input. The only stage: DDL and DML are allowed, and named binds work only here")
+    w, y, h = 348, 18, 270
+    for i, (title, subs, code) in enumerate(SQL_FORMS):
+        x = 18 + i * (w + 19)
+        f.rect(x, y, w, h, fill="var(--panel)", stroke="var(--cool)", sw=1.4, rx=8, name="card")
+        f.raw(f'<rect x="{x}" y="{y}" width="4" height="{h}" rx="2" fill="var(--cool)"/>')
+        f.text(x + 22, y + 38, title, size=20, weight=800, font=HEAD, fill="var(--cool)")
+        for k, s in enumerate(subs):
+            f.text(x + 22, y + 70 + k * 22, s, size=16, fill="var(--muted)")
+        f.rect(x + 16, y + 132, w - 32, 112, fill="var(--chip)", stroke="var(--chip)", sw=1, rx=6, name="code")
+        for k, s in enumerate(code):
+            ind = len(s) - len(s.lstrip(" "))   # SVG collapses spaces: indent by position
+            f.text(x + 28 + ind * 14 * 0.61, y + 166 + k * 28, s.strip(), size=14, font=MONO)
+    f.text(560, 324, "Inside $sql: no 100 MB stage memory cap, no 16 MiB document cap.", size=17,
+           weight=600, fill="var(--ink)", anchor="middle")
+    return f
+
+
+ET_STATES = {  # state: (A packet x, B packet x, B tone, B box sub, order lines, A note, B note, footer)
+    "read": (330, 330, "flow", ["read the order:", "ETag E1"],
+             ("placed", "phone A", "E1", "0"), "", "", ""),
+    "clash": (470, 440, "hot", ["read the order:", "ETag E1"],
+              ("provisioned", "phone A", "E2", "1"), "accepted: ETag now E2", "rejected: ORA-42699", ""),
+    "retry": (470, 470, "cool", ["re-read: ETag E2,", "swapped again"],
+              ("provisioned", "phone B", "E3", "2"), "accepted", "accepted: ETag now E3",
+              "No ETag sent? Oracle accepts it: last writer wins."),
+}
+
+
+def _etag(state: str) -> Fig:
+    """Two agents write one order. The write requests are overlays, so Reveal auto-animate moves
+    them; B's starts later (data-auto-animate-delay) and turns red when the ETag check refuses it."""
+    ax, bx, btone, bsub, (status, dev, etag, n), anote, bnote, foot = ET_STATES[state]
+    f = Fig(1120, 400, {
+        "read": "Two agents read the same order from its duality view; both hold ETag E1. Agent A will "
+                "change the status, agent B will swap the device",
+        "clash": "Agent A writes first with ETag E1: accepted, and the order's ETag becomes E2. Agent B "
+                 "writes its device swap with the stale ETag E1: rejected with ORA-42699, nothing written",
+        "retry": "Agent B re-reads (ETag E2), swaps the device again and writes: accepted. The order has "
+                 "both changes, 2 updates applied. Without an ETag the write is accepted: last writer wins",
+    }[state])
+    f.box(18, 46, 290, 104, ["Agent A", "read the order:", "ETag E1"], tone="flow", size=19, sub_size=15, name="a")
+    f.box(18, 226, 290, 104, ["Agent B"] + bsub, tone=btone if state != "read" else "flow", size=19,
+          sub_size=15, name="b")
+    pw, ph = 230, 56
+    overlay(f, "et-a", "flow", ax, 70, pw, ph)
+    overlay(f, "et-b", btone, bx, 250, pw, ph, attrs='data-auto-animate-delay="0.7"')
+    f.text(ax + 16, 93, "status: provisioned", size=14, weight=600, font=MONO)
+    f.text(ax + 16, 114, "with ETag E1", size=14, font=MONO, fill="var(--muted)")
+    f.text(bx + 16, 273, "device: phone B", size=14, weight=600, font=MONO)
+    f.text(bx + 16, 294, f"with ETag {'E2' if state == 'retry' else 'E1'}", size=14, font=MONO,
+           fill="var(--muted)")
+    if anote:
+        f.text(ax + 8, 150, anote, size=14, weight=700, fill="var(--cool)")
+    if bnote:
+        f.text(bx + 8, 330, bnote, size=14, weight=700, fill="var(--hot)" if state == "clash" else "var(--cool)")
+    # the order document, from the duality view
+    ox, oy, ow, oh = 720, 46, 382, 284
+    f.rect(ox, oy, ow, oh, fill="var(--cool-soft)", stroke="var(--cool)", sw=1.6, rx=8, name="order")
+    f.text(ox + 22, oy + 36, "The order", size=20, weight=800, font=HEAD, fill="var(--cool)")
+    f.text(ox + 22, oy + 60, "one document, from a duality view", size=14, fill="var(--muted)")
+    for k, (key, val) in enumerate((("status", status), ("device", dev), ("etag", etag))):
+        f.text(ox + 22, oy + 104 + k * 38, f"{key}:", size=16, font=MONO, fill="var(--muted)")
+        f.text(ox + 120, oy + 104 + k * 38, val, size=16, weight=700, font=MONO,
+               fill="var(--cool)" if key == "etag" else "var(--ink)")
+    f.text(ox + 22, oy + 252, f"updates applied: {n}", size=15, weight=600, font=MONO)
+    if foot:
+        f.text(560, 376, foot, size=17, weight=700, fill="var(--hot)", anchor="middle")
+    auto_ids(f, "et")
+    return f
+
+
+def fig_etag_collision() -> Fig:
+    return _etag("read")
+
+
+def fig_etag_collision_clash() -> Fig:
+    return _etag("clash")
+
+
+def fig_etag_collision_retry() -> Fig:
+    return _etag("retry")
+
+
+WHEN = [  # row, A, B, C (each a list of lines, or (text, tone) for the risk pills)
+    ("Remodel the data", ["From day one:", "Oracle starts empty"], ["After cutover,", "in place"],
+     ["During the move,", "behind blue's shape"]),
+    ("$sql for hot pipelines", ["From day one"], ["Day one after", "cutover; no data moves"],
+     ["On green,", "during validation"]),
+    ("Risk it adds", ("Low", "cool"), ("None: its own project", "cool"), ("Medium: two shapes", "hot")),
+]
+
+
+def fig_when_to_optimize() -> Fig:
+    """Outline section 5's table, as a graphic: when to optimize, by door."""
+    f = Fig(1120, 372, "When to optimize, by door. Age out: remodel from day one because Oracle starts "
+                       "empty, $sql from day one, low added risk. Dump and restore: remodel after cutover in "
+                       "place, $sql from day one after cutover with no data move, no added risk because it is "
+                       "a separate project. Blue/green: remodel during the move behind a projection of blue's "
+                       "shape, $sql on green during validation, medium added risk with two shapes to validate")
+    cx = [300, 570, 840]
+    cw = 262
+    heads = [("A  Age out", "flow"), ("B  Dump/restore", "hot"), ("C  Blue/green", "cool")]
+    for x, (t, tone) in zip(cx, heads):
+        f.text(x + cw / 2, 38, t, size=19, weight=800, font=HEAD, fill=TONE[tone][0], anchor="middle")
+    top, rh = 56, 96
+    for i, (label, *cells) in enumerate(WHEN):
+        y = top + i * (rh + 8)
+        f.text(18, y + rh / 2 + 7, label, size=19, weight=700, font=HEAD)
+        for x, cell in zip(cx, cells):
+            if isinstance(cell, tuple):
+                t, tone = cell
+                col, soft = TONE[tone]
+                f.rect(x, y + 24, cw, rh - 48, fill=soft, stroke=col, sw=1.4, rx=(rh - 48) / 2, name="pill")
+                f.text(x + cw / 2, y + rh / 2 + 6, t, size=17, weight=700, fill=col, anchor="middle")
+                continue
+            f.rect(x, y, cw, rh, fill="var(--panel)", stroke="var(--hairline)", sw=1.4, rx=8, name="cell")
+            y0 = y + rh / 2 + 6 - (len(cell) - 1) * 11
+            for k, s in enumerate(cell):
+                f.text(x + cw / 2, y0 + k * 22, s, size=16, anchor="middle",
+                       weight=600 if k == 0 else 400, fill="var(--ink)" if k == 0 else "var(--muted)")
+    return f
+
+
+# ----------------------------------------------------------------------------- segment 6
+FINAL = [  # door, tone, downtime, way back, how long, ops load, optimize, top 3 risks
+    ("A  Age out", "flow", ["near zero"], ["partial:", "old side stays"], ["months", "to years"],
+     ["two systems", "for years"], ["best: Oracle", "starts empty"],
+     ["seams across the cutoff", "an archive nobody retires", "two stacks to run"]),
+    ("B  Dump and", "hot", ["planned", "window"], ["free until", "writes open"], ["one window"],
+     ["lowest"], ["lift first,", "remodel later"],
+     ["the window overruns", "types drift quietly", "no free way back later"]),
+    ("C  Blue/green", "cool", ["near zero"], ["reverse sync"], ["weeks"],
+     ["highest:", "replicator"], ["during, behind", "blue's shape"],
+     ["oplog window too short", "split brain at the flip", "lag freezes writes"]),
+]
+
+
+def fig_decision_matrix_final() -> Fig:
+    """Segment 1's matrix, filled in: each door on six columns."""
+    f = Fig(1120, 400, "The decision matrix, filled in. Age out: near-zero downtime, a partial way back "
+                       "since the old side stays, months to years, two systems to run, the best fit for "
+                       "optimization; risks are the seams across the cutoff, an archive nobody retires, two "
+                       "stacks. Dump and restore: a planned window, a free way back until writes open, one "
+                       "window, the lowest ops load, lift first and remodel later; risks are a window "
+                       "overrun, quiet type drift, no free way back later. Blue/green: near-zero downtime, "
+                       "a reverse sync, weeks, the highest ops load, optimize during the move behind blue's "
+                       "shape; risks are a short oplog window, split brain at the flip, lag that freezes writes")
+    xs = [210, 340, 470, 600, 730]
+    cw = 122
+    heads = ["DOWNTIME", "WAY BACK", "HOW LONG", "OPS LOAD", "OPTIMIZE"]
+    for x, t in zip(xs, heads):
+        f.text(x + cw / 2, 38, t, size=13, weight=700, font=MONO, fill="var(--muted)", anchor="middle")
+    rx = 870
+    f.text(rx, 38, "TOP 3 RISKS", size=13, weight=700, font=MONO, fill="var(--muted)")
+    top, rh = 54, 106
+    for i, (door_, tone, *cells) in enumerate(FINAL):
+        y = top + i * (rh + 6)
+        col = TONE[tone][0]
+        f.rect(18, y, 1084, rh, fill="var(--chip)" if i % 2 == 0 else "var(--panel)",
+               stroke="var(--chip)" if i % 2 == 0 else "var(--hairline)", sw=1, rx=8, name="band")
+        f.raw(f'<rect x="18" y="{y}" width="5" height="{rh}" rx="2" fill="{col}"/>')
+        name = door_ if i != 1 else "B  Dump and"
+        f.text(36, y + rh / 2 - (6 if i == 1 else -7), name, size=19, weight=800, font=HEAD, fill=col)
+        if i == 1:
+            f.text(36 + 21, y + rh / 2 + 20, "restore", size=19, weight=800, font=HEAD, fill=col)
+        for x, cell in zip(xs, cells[:5]):
+            y0 = y + rh / 2 + 6 - (len(cell) - 1) * 10
+            for k, s in enumerate(cell):
+                f.text(x + cw / 2, y0 + k * 20, s, size=15, anchor="middle",
+                       weight=600 if k == 0 else 400, fill="var(--ink)" if k == 0 else "var(--muted)")
+        for k, s in enumerate(cells[5]):
+            f.text(rx, y + 32 + k * 25, f"{k + 1}  {s}", size=15, fill="var(--ink)")
+    return f
+
+
+HYBRIDS = [  # title, [(door letter, door name, tone, [collections])]
+    ("Age out the events, dump and restore the entities",
+     [("B", "dump and restore", "hot", ["subscribers", "accounts", "catalog", "regions"]),
+      ("A", "age out", "flow", ["orders", "orderEvents", "carts"])]),
+    ("Dump and restore now, live sync for the one you can't freeze",
+     [("B", "dump and restore", "hot", ["subscribers", "accounts", "catalog", "regions", "orderEvents", "carts"]),
+      ("C", "live sync", "cool", ["orders"])]),
+]
+
+
+def fig_hybrids() -> Fig:
+    """Two common hybrids: a door per collection, not one door for the estate."""
+    f = Fig(1120, 300, "Two common hybrids, a door per collection. One: dump and restore the entity "
+                       "collections (subscribers, accounts, catalog, regions) and age out the event "
+                       "collections (orders, order events, carts). Two: dump and restore everything now, "
+                       "with live sync for the one collection the business cannot freeze, here orders")
+    for i, (title, groups) in enumerate(HYBRIDS):
+        y = 18 + i * 140
+        f.text(18, y + 22, f"{i + 1}  {title}", size=20, weight=800, font=HEAD)
+        x = 18
+        for letter, name, tone, colls in groups:
+            col, soft = TONE[tone]
+            x0 = x
+            for c in colls:
+                w = tw(c, 15, MONO, 600) + 26
+                f.rect(x, y + 40, w, 38, fill=soft, stroke=col, sw=1.4, rx=19, name="chip")
+                f.text(x + w / 2, y + 64, c, size=15, weight=600, font=MONO, fill=col, anchor="middle")
+                x += w + 10
+            x1 = x - 10
+            f.path(f"M{x0},{y + 88} V{y + 96} H{x1} V{y + 88}", [(x0, y + 88), (x1, y + 96)], stroke=col,
+                   sw=1.6, name="bracket", seg=False)
+            f.text((x0 + x1) / 2, y + 118, f"{letter}  {name}", size=16, weight=700, fill=col, anchor="middle")
+            x += 24
     return f
 
 
