@@ -15,6 +15,17 @@ ORDS_POOL_CONFIG="$ORDS_CONFIG/databases/default/pool.xml"
 /opt/oracle/container-entrypoint.sh &
 ORACLE_PID=$!
 
+# On stop (TERM/INT): stop ORDS, then hand TERM to the base entrypoint, whose own
+# handler runs SHUTDOWN IMMEDIATE, and wait for it so the database closes cleanly.
+on_stop() {
+  echo "=== Stop requested: stopping ORDS and shutting down Oracle ==="
+  [ -n "${ORDS_PID:-}" ] && kill -TERM "$ORDS_PID" 2>/dev/null
+  kill -TERM "$ORACLE_PID" 2>/dev/null
+  wait "$ORACLE_PID"
+  exit 0
+}
+trap on_stop TERM INT
+
 echo "=== Waiting for Oracle to be ready ==="
 until /opt/oracle/healthcheck.sh > /dev/null 2>&1; do sleep 2; done
 echo "=== Oracle is ready ==="

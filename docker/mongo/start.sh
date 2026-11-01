@@ -6,7 +6,9 @@ set -euo pipefail
 docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all \
   --setParameter ttlMonitorSleepSecs=5 &
 MONGOD_PID=$!
-trap 'kill -TERM "$MONGOD_PID" 2>/dev/null' TERM INT
+# A trap firing during wait makes wait return early, so wait again inside the
+# trap: PID 1 must not exit until mongod has finished its clean shutdown.
+trap 'kill -TERM "$MONGOD_PID" 2>/dev/null; wait "$MONGOD_PID"; exit $?' TERM INT
 
 until mongosh --quiet --eval 'db.adminCommand({ ping: 1 })' >/dev/null 2>&1; do
   kill -0 "$MONGOD_PID" 2>/dev/null || exit 1
