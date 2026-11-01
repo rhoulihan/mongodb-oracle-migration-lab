@@ -44,6 +44,8 @@ const windowFilter = { placedAt: { $gte: WINDOW.fromTs, $lt: WINDOW.toTs } };
 const day = (d) => d.toISOString().slice(0, 10);
 const runs = (n) => `${n} run${n === 1 ? '' : 's'}`;
 const timed = (n) => (n === 1 ? '1 run' : `median of ${n} runs`);
+// The timing table's last column: "(1 run)", or the median's runs in ms.
+export const measured = (runsMs) => (runsMs.length === 1 ? '(1 run)' : `median of ${runsMs.length}: ${runsMs.map(Math.round).join(', ')} ms`);
 
 async function windowCounts(ctx) {
   const src = await (await ctx.mongoSrc()).collection('orders').countDocuments(windowFilter);
@@ -268,8 +270,8 @@ export default {
         const r = await runPipelineOracle(ctx);
         return {
           ok: r.docs.length === ROWS,
-          summary: `the unchanged pipeline returns ${r.docs.length} rows on Oracle (timed over ${runs(r.runsMs.length)}; ` +
-            'the times stay hidden until the results are proven equal)',
+          // Neutral copy: the console marks the times hidden while they are (Ruling T).
+          summary: `the unchanged pipeline returns ${r.docs.length} rows on Oracle (timed over ${runs(r.runsMs.length)})`,
           metrics: { rows: r.docs.length, medianMs: r.medianMs, runsMs: r.runsMs },
           detail: showRows(r.docs, 5),
         };
@@ -284,8 +286,8 @@ export default {
         const r = await runSql(ctx);
         return {
           ok: r.docs.length === ROWS,
-          summary: `$sql returns ${r.docs.length} rows through the MongoDB API (timed over ${runs(r.runsMs.length)}; ` +
-            'the times stay hidden until the results are proven equal)',
+          // Neutral copy: the console marks the times hidden while they are (Ruling T).
+          summary: `$sql returns ${r.docs.length} rows through the MongoDB API (timed over ${runs(r.runsMs.length)})`,
           metrics: { rows: r.docs.length, medianMs: r.medianMs, runsMs: r.runsMs },
           detail: `${showRows(r.docs)}\n\nthe statement (demos/d6-sql/top-spenders.sql):\n${sqlText}`,
         };
@@ -357,9 +359,9 @@ export default {
             `$sql ${(sqlMs / 1000).toFixed(2)} s (${timed(s.runsMs.length)}): ${ratio}x. Laptop numbers, relative only`,
           metrics: { pipelineMs, sqlMs, ratio },
           detail: [
-            'run                                   median ms   runs ms',
-            `(2) pipeline through the MongoDB API  ${String(pipelineMs).padStart(9)}   ${p.runsMs.map(Math.round).join(', ')}`,
-            `(3) $sql through the MongoDB API      ${String(sqlMs).padStart(9)}   ${s.runsMs.map(Math.round).join(', ')}`,
+            'run                                          ms   how measured',
+            `(2) pipeline through the MongoDB API  ${String(pipelineMs).padStart(9)}   ${measured(p.runsMs)}`,
+            `(3) $sql through the MongoDB API      ${String(sqlMs).padStart(9)}   ${measured(s.runsMs)}`,
             `ratio ${ratio}x (laptop, relative only; no MongoDB timing is taken)`,
           ].join('\n'),
         };

@@ -63,3 +63,17 @@ describe('D6 timing defaults', () => {
     }
   });
 });
+
+// The timing table names how each time was taken: one run is not a median.
+describe('D6 timing table', () => {
+  test('one run reads "(1 run)", several read as a median with their runs', async () => {
+    const { measured } = await import('../../demos/d6-sql/index.mjs');
+    expect(measured([84123.4])).toBe('(1 run)');
+    expect(measured([601.2, 598.7, 610])).toBe('median of 3: 601, 599, 610 ms');
+  });
+
+  test('the header says ms, not median ms', () => {
+    const src = readFileSync(new URL('../../demos/d6-sql/index.mjs', import.meta.url), 'utf8');
+    expect(src).not.toMatch(/median ms/);
+  });
+});

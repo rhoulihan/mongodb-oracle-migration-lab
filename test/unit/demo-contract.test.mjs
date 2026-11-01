@@ -63,6 +63,20 @@ describe('equal before timing (Ruling W): gated steps never spell out a time', (
     }
   });
 
+  // A gated step's result is shown again after the gate reveals its time, so
+  // its printed copy must not claim the time is hidden: the console's own
+  // "Times hidden until ..." chip says that while it is true.
+  test.each(real.filter((d) => d.demo.revealAfter).map((d) => [d.dir, d]))('%s gated steps never say the time is hidden', (_dir, { dir, demo }) => {
+    const src = readFileSync(join(DEMOS_DIR, dir, 'index.mjs'), 'utf8');
+    for (const id of demo.revealAfter.steps) {
+      const start = src.indexOf(`id: '${id}'`);
+      const next = src.indexOf("\n      id: '", start + 1);
+      const block = src.slice(start, next < 0 ? undefined : next);
+      const printed = block.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+      expect(printed.match(/hidden/)?.[0], `${dir} ${id}`).toBeUndefined();
+    }
+  });
+
   test('D5 and D6 declare the gate', () => {
     expect(real.filter((d) => d.demo.revealAfter).map((d) => d.demo.id)).toEqual(['d5', 'd6']);
   });

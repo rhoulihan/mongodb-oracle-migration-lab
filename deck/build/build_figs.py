@@ -925,7 +925,7 @@ def fig_duality_tradeoff() -> Fig:
                        "were proven identical, relative only, ranges over the measured runs. Counter write per "
                        "order: embedded 2,600 to 3,500 bytes of redo, the lookup pipeline nothing extra, "
                        "converged 870 to 950 bytes. Dashboard read for one region: embedded 0.3 to 0.8 ms, "
-                       "the lookup pipeline 236 to 262 ms, converged 0.7 to 0.9 ms. A costlier read than "
+                       "the lookup pipeline 234 to 262 ms, converged 0.6 to 0.9 ms. A costlier read than "
                        "one stored document, zero "
                        "write amplification, and the optimizer plans the join")
     cols = [(320, "(a) Embedded", "hot"), (580, "(b) $lookup", "hot"), (840, "(c) Converged", "cool")]
@@ -936,8 +936,8 @@ def fig_duality_tradeoff() -> Fig:
         ("Counter write", "redo per order, on top", "of the order itself",
          [("2.6 to 3.5 KB", "every order", "hot"), ("0 B", "nothing extra", "ink"), ("870 to 950 B", "one row, +1", "cool")]),
         ("Dashboard read", "one region, median", "of 7, across runs",
-         [("0.3 to 0.8 ms", "usually fastest: one document", "cool"), ("236 to 262 ms", "counts every order", "hot"),
-          ("0.7 to 0.9 ms", "index scan and a join", "cool")]),
+         [("0.3 to 0.8 ms", "usually fastest: one document", "cool"), ("234 to 262 ms", "counts every order", "hot"),
+          ("0.6 to 0.9 ms", "index scan and a join", "cool")]),
     ]
     top, rh = 60, 104
     for i, (label, s1, s2, cells) in enumerate(rows):
