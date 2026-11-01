@@ -29,6 +29,9 @@ export default {
         state.count++;
         return { ok: state.count === 2, summary: `count is ${state.count}`, metrics: { ctx: typeof ctx } };
       },
+      async verify() {
+        return { ok: state.count === 2, summary: `saw count ${state.count}` };
+      },
     },
   ],
 };

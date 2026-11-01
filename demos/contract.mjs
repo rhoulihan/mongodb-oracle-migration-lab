@@ -7,8 +7,15 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { config } from '../lib/config.mjs';
 
-/** @typedef {{ok:boolean, summary:string, panes?:{left?:any,right?:any}, metrics?:object, plan?:{left?:string,right?:string}}} StepResult */
-/** @typedef {{id:string,title:string,lane:'console'|'terminal',command?:string,run:(ctx)=>Promise<StepResult>}} Step */
+/** @typedef {{ok:boolean, summary:string, panes?:{left?:any,right?:any}, metrics?:object, plan?:{left?:string,right?:string}, detail?:string, verified?:string}} StepResult */
+/** @typedef {{id:string,title:string,lane:'console'|'terminal',command?:string,run:(ctx)=>Promise<StepResult>,verify?:(ctx)=>Promise<StepResult>}} Step */
+// Terminal steps (Ruling O) carry three things:
+//   command  what the presenter types on the host
+//   run      the same operation done in-process, for headless runs and tests
+//   verify   checks the effect only; the console calls it after "Mark done",
+//            and runDemo calls it after every successful terminal run
+// `detail` is optional monospace text (a table, a plan) that the CLI prints
+// under the summary line.
 /** @typedef {{id:'d1'|'d2'|'d3'|'d4'|'d5'|'d6'|'d7', title:string, steps:Step[], setup:(ctx)=>Promise<void>, reset:(ctx)=>Promise<void>}} Demo */
 
 export const DEMOS_DIR = fileURLToPath(new URL('.', import.meta.url));
@@ -33,14 +40,28 @@ export function validateDemo(demo) {
       p.push(`step ${s.id}: a terminal step needs a command`);
     }
     if (typeof s.run !== 'function') p.push(`step ${s.id}: run is not a function`);
+    if (s.verify !== undefined && typeof s.verify !== 'function') p.push(`step ${s.id}: verify is not a function`);
+    else if (s.lane === 'terminal' && s.verify === undefined) p.push(`step ${s.id}: a terminal step needs verify`);
   }
   return p;
 }
 
 const isResult = (r) => r && typeof r === 'object' && typeof r.ok === 'boolean' && typeof r.summary === 'string';
 
+/** step[fn](ctx) as a StepResult: a throw or a malformed return becomes ok:false. */
+export async function call(step, fn, ctx) {
+  try {
+    const r = await step[fn](ctx);
+    return isResult(r) ? r : { ok: false, summary: `step ${step.id} ${fn} did not return a StepResult` };
+  } catch (err) {
+    return { ok: false, summary: `step ${step.id} ${fn} threw: ${err?.message ?? err}` };
+  }
+}
+
 /**
  * Run a demo's steps in order (all of them, or only the ids in `only`).
+ * A terminal step's verify runs after its run succeeds; its summary lands in
+ * `verified`, and a failed verify fails the step.
  * Stops after the first step that fails; a throw counts as ok:false.
  * Does not call setup: callers decide when the starting state is restored.
  * @param {Demo} demo
@@ -57,12 +78,10 @@ export async function runDemo(demo, { only, ctx } = {}) {
   }
   const results = [];
   for (const step of steps) {
-    let r;
-    try {
-      r = await step.run(ctx);
-      if (!isResult(r)) r = { ok: false, summary: `step ${step.id} did not return a StepResult` };
-    } catch (err) {
-      r = { ok: false, summary: `step ${step.id} threw: ${err?.message ?? err}` };
+    let r = await call(step, 'run', ctx);
+    if (r.ok && step.lane === 'terminal' && step.verify) {
+      const v = await call(step, 'verify', ctx);
+      r = v.ok ? { ...r, verified: v.summary } : { ...r, ok: false, summary: `verify failed: ${v.summary}` };
     }
     results.push(r);
     if (!r.ok) break;

@@ -21,16 +21,18 @@ const handle = (fn) => async (req, res) => {
   }
 };
 
-export function routes(store) {
+// `backend.store` is read per request, so a live backend switch
+// (POST /admin/backend, app/server.mjs) takes effect on the next request.
+export function routes(backend) {
   const r = express.Router();
   r.use(express.json());
-  r.get('/orders/:id', handle(async (q) => [200, await store.getOrder(q.params.id)]));
-  r.post('/orders', handle(async (q) => [201, await store.placeOrder(q.body)]));
-  r.patch('/orders/:id', handle(async (q) => [200, await store.patchOrder(q.params.id, q.body)]));
-  r.get('/dashboard/top-devices/:region', handle(async (q) => [200, await store.topDevices(q.params.region)]));
+  r.get('/orders/:id', handle(async (q) => [200, await backend.store.getOrder(q.params.id)]));
+  r.post('/orders', handle(async (q) => [201, await backend.store.placeOrder(q.body)]));
+  r.patch('/orders/:id', handle(async (q) => [200, await backend.store.patchOrder(q.params.id, q.body)]));
+  r.get('/dashboard/top-devices/:region', handle(async (q) => [200, await backend.store.topDevices(q.params.region)]));
   r.get('/health', async (_q, res) => {
     try {
-      const h = await store.health();
+      const h = await backend.store.health();
       send(res, h.ok ? 200 : 503, h);
     } catch (err) {
       send(res, 503, { backend: 'unknown', ok: false, error: err.message });

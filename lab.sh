@@ -6,9 +6,9 @@
 #   ./lab.sh generate [--scale S]  load the deterministic dataset into the MongoDB source
 #   ./lab.sh mongosh src|ora [args...]  mongosh against the source or the Oracle API for MongoDB
 #   ./lab.sh exec <service> <cmd...>
-#   ./lab.sh app-uri <mongo|oracle>  point the order service at a backend and restart it
-# demo, reset dN and generate run Node inside the app container (lab-app), so the
-# laptop needs no Node. LAB_HOST_NODE=1 runs them with the host's node instead.
+#   ./lab.sh app-uri <mongo|oracle>  switch the order service's backend (no restart)
+# demo, reset dN and generate run Node in a one-off runner container (the app
+# image), so the laptop needs no Node. LAB_HOST_NODE=1 uses the host's node.
 set -uo pipefail
 cd "$(dirname "$0")"
 
@@ -33,11 +33,34 @@ write_app_env() { mkdir -p .lab && printf 'APP_MONGO_URI=%s\n' "$(app_uri "$1")"
 # compose needs .lab/app.env to exist; default the app to the MongoDB source.
 ensure_app_env() { [ -f .lab/app.env ] || write_app_env mongo; }
 
+# The order service as seen from the host. LAB_APP_URL overrides it (tests).
+APP_URL="${LAB_APP_URL:-http://127.0.0.1:3300}"
+
+# Ruling O: write .lab/app.env (so a restart keeps the choice) and switch the
+# running service in place through POST /admin/backend. Only when the service
+# does not answer is it (re)started, which reads the new file.
 cmd_app_uri() {
   app_uri "$1" >/dev/null || usage
   write_app_env "$1"
-  # A restart keeps the old env; recreating the container reads the new file.
-  compose up -d --no-deps --force-recreate app && echo "order service now uses $1 (127.0.0.1:3300)"
+  if curl -sf --max-time 30 -X POST -H 'content-type: application/json' \
+       -d "{\"target\":\"$1\"}" "$APP_URL/admin/backend" >/dev/null; then
+    echo "order service now uses $1 (127.0.0.1:3300)"
+  else
+    echo "order service did not answer; starting it on $1" >&2
+    compose up -d --no-deps app && echo "order service now uses $1 (127.0.0.1:3300)"
+  fi
+}
+
+# After a demo or reset (which may switch the backend through the endpoint),
+# make .lab/app.env match the live backend, so a later restart keeps it.
+# Silent no-op when the service does not answer.
+sync_app_env() {
+  local h
+  h="$(curl -sf --max-time 5 "$APP_URL/health" 2>/dev/null)" || return 0
+  case "$h" in
+    *'"backend":"oracle"'*)  write_app_env oracle ;;
+    *'"backend":"mongodb"'*) write_app_env mongo ;;
+  esac
 }
 
 MIG_PASSWORD="${MIG_PASSWORD:-MigUser2026}"
@@ -130,20 +153,22 @@ cmd_preflight() {
   return "$FAILED"
 }
 
-# Run a repo script with Node: inside lab-app by default (its image carries
-# lib/, gen/, oracle/, app/, demos/ and node_modules; rebuild after code changes),
-# or on the host when LAB_HOST_NODE=1 (developers, the vitest suite).
+# Run a repo script with Node (Ruling O): in a one-off `runner` container from
+# the app image (it carries lib/, gen/, oracle/, app/, demos/, node_modules, the
+# MongoDB Database Tools and mongosh; rebuild after code changes), never inside
+# lab-app, so a demo step can switch the order service without touching the
+# runner. LAB_HOST_NODE=1 runs on the host instead (developers, the vitest suite).
 run_node() {
   if [ "${LAB_HOST_NODE:-}" = "1" ]; then
     node "$@"; return
   fi
-  if [ "$("$ENGINE" container inspect -f '{{.State.Running}}' lab-app 2>/dev/null)" != "true" ]; then
-    echo "lab-app is not running: start the stack with ./lab.sh up" >&2; return 1
-  fi
-  lab_exec_env app "MIG_PASSWORD=$MIG_PASSWORD" node "$@"
+  local tty=-T
+  [ -t 0 ] && [ -t 1 ] && tty=
+  # $tty is unquoted on purpose: empty means "allocate a TTY" (no argument).
+  compose run --rm --no-deps $tty -e "MIG_PASSWORD=$MIG_PASSWORD" runner node "$@"
 }
 
-run_demo_cli() { run_node demos/run.mjs "$@"; }
+run_demo_cli() { local rc=0; run_node demos/run.mjs "$@" || rc=$?; sync_app_env; return "$rc"; }
 
 # mongosh inside the database containers, so terminal steps need no host tools.
 #   src: the MongoDB source replica set, database telco (in lab-mongo)

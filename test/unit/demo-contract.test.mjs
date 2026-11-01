@@ -47,6 +47,13 @@ describe('validateDemo', () => {
     expect(validateDemo(demo({ id: 'd8' })).join()).toMatch(/id/);
     expect(validateDemo(demo({ setup: undefined })).join()).toMatch(/setup/);
   });
+
+  test('a terminal step needs verify (Ruling O); verify, when present, must be a function', () => {
+    const term = (o) => step({ lane: 'terminal', command: './lab.sh x', verify: async () => ({ ok: true, summary: '' }), ...o });
+    expect(validateDemo(demo({ steps: [term()] }))).toEqual([]);
+    expect(validateDemo(demo({ steps: [term({ verify: undefined })] })).join()).toMatch(/terminal step needs verify/);
+    expect(validateDemo(demo({ steps: [step({ verify: 'yes' })] })).join()).toMatch(/verify is not a function/);
+  });
 });
 
 describe('runDemo', () => {
@@ -67,6 +74,24 @@ describe('runDemo', () => {
     expect(r.map((x) => x.ok)).toEqual([true, false]);
     const t = await runDemo(failing, { only: ['boom'], ctx: {} });
     expect(t[0]).toMatchObject({ ok: false, summary: expect.stringMatching(/kaboom/) });
+  });
+
+  test('a terminal step runs verify after a successful run; a failed verify fails the step', async () => {
+    const calls = [];
+    const mk = (verifyOk) => ({
+      ...fixture,
+      steps: [{
+        id: 't', title: 'T', lane: 'terminal', command: './lab.sh x',
+        run: async () => { calls.push('run'); return { ok: true, summary: 'ran' }; },
+        verify: async () => { calls.push('verify'); return { ok: verifyOk, summary: verifyOk ? 'seen' : 'not seen' }; },
+      }],
+    });
+    const [good] = await runDemo(mk(true), { ctx: {} });
+    expect(calls).toEqual(['run', 'verify']);
+    expect(good).toMatchObject({ ok: true, summary: 'ran', verified: 'seen' });
+    const [bad] = await runDemo(mk(false), { ctx: {} });
+    expect(bad.ok).toBe(false);
+    expect(bad.summary).toMatch(/verify failed: not seen/);
   });
 
   test('a non-StepResult return is a failure', async () => {

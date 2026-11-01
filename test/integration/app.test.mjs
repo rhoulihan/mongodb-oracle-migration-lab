@@ -230,3 +230,42 @@ describe('/health', () => {
     } finally { await s.close(); }
   });
 });
+
+describe('POST /admin/backend (Ruling O: runtime backend switch, no restart)', () => {
+  test('switches to oracle and back to mongo; /health follows; bad targets get 400', async () => {
+    const s = await startServer({ uri: testUri, uris: { mongo: testUri, oracle: config.oraMongoUri }, port: 0 });
+    const post = (target) => fetch(s.url + '/admin/backend', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target }),
+    });
+    const health = async () => (await (await fetch(s.url + '/health')).json()).backend;
+    try {
+      expect(await health()).toBe('mongodb');
+      const toOra = await post('oracle');
+      expect(toOra.status).toBe(200);
+      expect(await toOra.json()).toMatchObject({ target: 'oracle', backend: 'oracle' });
+      expect(await health()).toBe('oracle');
+
+      const back = await post('mongo');
+      expect(back.status).toBe(200);
+      expect(await back.json()).toMatchObject({ target: 'mongo', backend: 'mongodb' });
+      expect(await health()).toBe('mongodb');
+      // The store works on the new client: the dashboard reads the scratch db.
+      expect((await fetch(s.url + '/dashboard/top-devices/R03')).status).toBe(200);
+
+      expect((await post('postgres')).status).toBe(400);
+      expect(await health()).toBe('mongodb');
+    } finally { await s.close(); }
+  }, 60_000);
+
+  test('a backend that cannot be reached leaves the old one in place (503)', async () => {
+    const dead = 'mongodb://127.0.0.1:9/x?serverSelectionTimeoutMS=500&directConnection=true';
+    const s = await startServer({ uri: testUri, uris: { mongo: testUri, oracle: dead }, port: 0 });
+    try {
+      const res = await fetch(s.url + '/admin/backend', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target: 'oracle' }),
+      });
+      expect(res.status).toBe(503);
+      expect((await (await fetch(s.url + '/health')).json()).backend).toBe('mongodb');
+    } finally { await s.close(); }
+  }, 30_000);
+});

@@ -3,6 +3,11 @@
 # no-op when the set already exists, for example on a reused volume).
 set -euo pipefail
 
+# /dumps (the dumps volume) is written by root here (./lab.sh exec mongo
+# mongodump) and by the node user in the runner, so anyone may create and
+# replace files in it. No sticky bit: either side may replace the other's dump.
+mkdir -p /dumps && chmod 0777 /dumps
+
 docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all \
   --setParameter ttlMonitorSleepSecs=5 &
 MONGOD_PID=$!

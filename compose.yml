@@ -5,7 +5,10 @@ name: lab
 #   oracle      Oracle AI Database 26ai Free + ORDS + Oracle API for MongoDB (the target)
 #   console     web console (placeholder until the console task lands)
 #   app         order service the demos drive (127.0.0.1:3300); its backend is
-#               APP_MONGO_URI in .lab/app.env, set by `./lab.sh app-uri mongo|oracle`
+#               APP_MONGO_URI in .lab/app.env at start, switched live through
+#               POST /admin/backend by `./lab.sh app-uri mongo|oracle`
+#   runner      one-off demo / reset / generator container from the app image,
+#               profile runner (`./lab.sh demo|reset dN|generate` use it)
 #   replicator  D4 stand-in replicator, profile d4 (placeholder until its task lands)
 services:
   mongo:
@@ -23,6 +26,7 @@ services:
       start_period: 10s
     volumes:
       - mongo-data:/data/db
+      - dumps:/dumps             # D3 mongodump archive, shared with the runner
 
   oracle:
     build: ./docker/oracle
@@ -68,11 +72,25 @@ services:
     env_file: .lab/app.env
     environment:
       LAB_IN_CONTAINER: '1'
+      MIG_PASSWORD: '${MIG_PASSWORD:-MigUser2026}'   # for the oracle target of /admin/backend
     ports:
       - '127.0.0.1:3300:3300'
     depends_on:
       mongo:
         condition: service_healthy
+
+  # Demo runner (Ruling O): `compose run --rm --no-deps runner node ...`, a fresh
+  # container per command, never started by `up`. Same image as app, so it has
+  # the demo code, the MongoDB Database Tools and mongosh; it reaches the other
+  # services over the compose network.
+  runner:
+    image: mongodb-oracle-migration-lab-app:latest
+    profiles: ['runner']
+    environment:
+      LAB_IN_CONTAINER: '1'
+      MIG_PASSWORD: '${MIG_PASSWORD:-MigUser2026}'
+    volumes:
+      - dumps:/dumps
 
   # Placeholder: only starts with `--profile d4`. The real replicator replaces this.
   replicator:
@@ -86,3 +104,4 @@ services:
 volumes:
   mongo-data:
   oracle-data:
+  dumps:

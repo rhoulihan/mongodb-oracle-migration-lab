@@ -15,7 +15,6 @@ beforeAll(() => {
   fakeBin = mkdtempSync(join(tmpdir(), 'lab-engine-'));
   const fake = [
     '#!/bin/sh',
-    'if [ "$1" = container ] && [ "$2" = inspect ]; then echo "${FAKE_RUNNING:-true}"; exit 0; fi',
     'echo "ENGINE $*"',
   ].join('\n');
   for (const name of ['podman', 'docker']) {
@@ -27,38 +26,44 @@ beforeAll(() => {
 const sh = (args, env = {}) => {
   const e = { ...process.env, PATH: `${fakeBin}:${process.env.PATH}`, ...env };
   delete e.LAB_HOST_NODE;
+  // A dead app URL keeps the app-env sync after demo/reset off the real stack.
+  e.LAB_APP_URL = 'http://127.0.0.1:9';
   return spawnSync('./lab.sh', args, { cwd: root, encoding: 'utf8', env: e });
 };
 
-describe('lab.sh runs Node work inside the app container', () => {
+describe('lab.sh runs Node work in a one-off runner container (Ruling O)', () => {
+  // compose run --rm --no-deps runner: a fresh container from the app image, so
+  // a step that switches the order service never touches the runner itself.
+  const RUN = 'ENGINE compose -f compose.yml run --rm --no-deps -T -e MIG_PASSWORD=MigUser2026 runner node';
+
   test('demo dN --step S', () => {
     const r = sh(['demo', 'd3', '--step', 'flip']);
     expect(r.status).toBe(0);
-    expect(r.stdout).toMatch(/^ENGINE exec .*lab-app node demos\/run\.mjs d3 --step flip$/m);
+    expect(r.stdout).toContain(`${RUN} demos/run.mjs d3 --step flip\n`);
+    expect(r.stdout).not.toMatch(/exec .*lab-app/);
   });
 
   test('reset dN', () => {
     const r = sh(['reset', 'd2']);
     expect(r.status).toBe(0);
-    expect(r.stdout).toMatch(/^ENGINE exec .*lab-app node demos\/run\.mjs d2 --reset$/m);
+    expect(r.stdout).toContain(`${RUN} demos/run.mjs d2 --reset\n`);
   });
 
   test('generate --scale S', () => {
     const r = sh(['generate', '--scale', 'tiny']);
     expect(r.status).toBe(0);
-    expect(r.stdout).toMatch(/^ENGINE exec .*lab-app node gen\/generate\.mjs --scale tiny$/m);
+    expect(r.stdout).toContain(`${RUN} gen/generate.mjs --scale tiny\n`);
   });
 
   test('passes MIG_PASSWORD into the container', () => {
     const r = sh(['demo', 'd1'], { MIG_PASSWORD: 'Other2026' });
-    expect(r.stdout).toMatch(/-e MIG_PASSWORD=Other2026 /);
+    expect(r.stdout).toMatch(/ -e MIG_PASSWORD=Other2026 runner /);
   });
+});
 
-  test('says how to start the stack when the app container is not running', () => {
-    const r = sh(['demo', 'd1'], { FAKE_RUNNING: 'false' });
-    expect(r.status).toBe(1);
-    expect(r.stderr).toMatch(/lab-app is not running.*\.\/lab\.sh up/);
-    expect(r.stdout).not.toMatch(/ENGINE exec/);
+describe('lab.sh app-uri', () => {
+  test('an unknown backend prints usage and exits 2', () => {
+    expect(sh(['app-uri', 'postgres']).status).toBe(2);
   });
 });
 

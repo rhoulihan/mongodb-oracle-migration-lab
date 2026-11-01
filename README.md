@@ -79,12 +79,16 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh mongosh src [args...]` | mongosh against the MongoDB source (`telco`), run inside `lab-mongo` |
 | `./lab.sh mongosh ora [args...]` | mongosh against the Oracle API for MongoDB as `MIG`, run inside `lab-oracle` |
 | `./lab.sh exec <service> <cmd...>` | Run a command inside a lab container, for example `./lab.sh exec mongo mongosh` |
-| `./lab.sh app-uri <mongo\|oracle>` | Point the order service at MongoDB or at the Oracle API for MongoDB, then restart it |
+| `./lab.sh app-uri <mongo\|oracle>` | Point the order service at MongoDB or at the Oracle API for MongoDB (switched live, no restart) |
 
-`demo`, `reset dN` and `generate` run Node inside the `lab-app` container, so
-the stack must be up. Their code (`lib/`, `gen/`, `oracle/`, `app/`,
-`demos/`) is baked into the app image, not mounted, so after changing any of
-it run `./lab.sh build` and `./lab.sh up` again. Developers can run them with
+`demo`, `reset dN` and `generate` run Node in a one-off `runner` container
+(`compose run --rm runner`, the app image), never inside `lab-app`, so a demo
+step can switch the order service without stopping itself. The runner reaches
+the databases over the compose network, so the stack must be up. The app image
+also carries the MongoDB Database Tools and mongosh, and the runner mounts the
+`dumps` volume (also mounted in `lab-mongo` at `/dumps`) for demo 3. The code
+(`lib/`, `gen/`, `oracle/`, `app/`, `demos/`) is baked into the app image, not
+mounted, so after changing any of it run `./lab.sh build` and `./lab.sh up` again. Developers can run them with
 the host's Node instead by setting `LAB_HOST_NODE=1`.
 
 Example terminal commands:
@@ -144,12 +148,15 @@ shared by demos 2, 3 and 4. Indexes are not created here: `mongorestore` carries
 
 `app/server.mjs` is a small order service written the way a typical MongoDB
 app is written (`find`, `insertOne`, `updateOne` with `$set`, `$inc`, `$push`,
-`$sort`, `$slice`). Its only setting is `APP_MONGO_URI`, which is what demos 3
+`$sort`, `$slice`). Its only setting is the backend URI, which is what demos 3
 and 4 flip. It is built into its own image (`docker/app/Dockerfile`, which runs
 `npm ci` inside the image), so the laptop needs only Podman: `./lab.sh build`
 builds it and `./lab.sh preflight` checks it is present. Rebuild after changing
-the app code. In compose it reads `.lab/app.env`; `./lab.sh app-uri oracle`
-rewrites that file and recreates the container.
+the app code. It starts on `APP_MONGO_URI` from `.lab/app.env`.
+`./lab.sh app-uri oracle` rewrites that file (so a restart keeps the choice) and
+switches the running service through `POST /admin/backend`, with no restart;
+the demo runner calls the same endpoint. `./lab.sh demo` and `reset dN` sync the
+file to the live backend afterwards.
 
 | Route | What it does |
 |---|---|
@@ -157,7 +164,8 @@ rewrites that file and recreates the container.
 | `POST /orders` | Body `{subscriberId, lines: [{sku, qty}]}`. Writes the order, its `orderEvents` entry, and keeps the region's Top 10 in `regionTopDevices` exact. Returns `{_id}` |
 | `PATCH /orders/:id` | Body `{status}` and/or `{deviceSwap: {from, to}}` |
 | `GET /dashboard/top-devices/:region` | The region's Top 10 devices |
-| `GET /health` | `{backend: 'mongodb' or 'oracle', ok}` |
+| `GET /health` | `{backend: 'mongodb' or 'oracle', ok}` for the live backend |
+| `POST /admin/backend` | Body `{target: 'mongo' or 'oracle'}`. Connects and pings the new backend, then swaps it in; 503 and no change if it cannot be reached. Port 3300 is bound to 127.0.0.1 only |
 
 `/health` tells the backends apart through `buildInfo`: MongoDB includes a
 `gitVersion`, the Oracle API for MongoDB reports only a MongoDB-compatible

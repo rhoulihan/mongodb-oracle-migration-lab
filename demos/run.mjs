@@ -44,7 +44,11 @@ async function main() {
     if (!values.step) await demo.setup(ctx);
     const results = await runDemo(demo, { only: values.step, ctx });
     const steps = values.step ? demo.steps.filter((s) => values.step.includes(s.id)) : demo.steps;
-    results.forEach((r, i) => console.log(`${r.ok ? 'ok  ' : 'FAIL'}  ${steps[i].id}  ${r.summary}`));
+    results.forEach((r, i) => {
+      console.log(`${r.ok ? 'ok  ' : 'FAIL'}  ${steps[i].id}  ${r.summary}`);
+      if (r.verified) console.log(`      verified: ${r.verified}`);
+      if (r.detail) console.log(r.detail.replace(/^/gm, '      '));
+    });
     return results.every((r) => r.ok) ? 0 : 1;
   } finally {
     await ctx.close();
