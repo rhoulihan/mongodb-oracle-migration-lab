@@ -144,9 +144,15 @@ describe('demos/run.mjs CLI', () => {
     expect(r.stderr).toMatch(/no demo d7/);
   });
 
-  test('lab.sh demo and lab.sh reset dN run the runner on the host', () => {
+  test('--help prints usage and exits 0', () => {
+    const r = run('--help');
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/usage: run\.mjs dN/);
+  });
+
+  test('with LAB_HOST_NODE=1, lab.sh demo and lab.sh reset dN run the runner on the host', () => {
     const sh = (...args) => spawnSync('./lab.sh', args, {
-      cwd: root, encoding: 'utf8', env: { ...process.env, LAB_DEMOS_DIR: FIXTURES },
+      cwd: root, encoding: 'utf8', env: { ...process.env, LAB_DEMOS_DIR: FIXTURES, LAB_HOST_NODE: '1' },
     });
     const ok = sh('demo', 'd1');
     expect(ok.status).toBe(0);

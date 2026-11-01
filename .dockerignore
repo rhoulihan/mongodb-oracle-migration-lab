@@ -1,4 +1,4 @@
-# Build context for docker/app (the repo root). Only package*.json, lib/, gen/,
+# Build context for docker/app (the repo root). Only package*.json, lib/, gen/, oracle/,
 # app/ and demos/ are copied; keep everything heavy or private out.
 node_modules
 .git

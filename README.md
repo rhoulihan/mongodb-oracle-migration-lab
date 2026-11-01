@@ -43,17 +43,21 @@ Every port binds to `127.0.0.1` only. Nothing is published to the network.
    podman machine start
    ```
 
-2. Install Node.js 22 or newer, then the Node packages: `npm install`.
-3. With network, fetch and build the images:
+2. With network, fetch and build the images:
 
    ```sh
    ./lab.sh pull
    ./lab.sh build
    ```
 
-4. Confirm the laptop is ready: `./lab.sh preflight`. It checks the CPU is
+3. Confirm the laptop is ready: `./lab.sh preflight`. It checks the CPU is
    arm64, the Podman machine has at least 12 GB of memory, every image is
    present, and nothing else is listening on the lab ports.
+
+That is all a presenter needs: Podman. Node is not required on the laptop.
+Demos, resets, the data generator and every terminal command run inside the
+lab containers. Node.js 22 or newer (plus `npm install`) is only for
+developers who run the test suite (see Tests).
 
 On Linux the same commands work with Docker. `lab.sh` uses `podman compose`
 when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`.
@@ -70,16 +74,32 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh down` | Stop the stack and keep the data |
 | `./lab.sh reset` | Wipe the lab data volumes and start fresh |
 | `./lab.sh reset dN` | Reset one demo to its starting state |
-| `./lab.sh demo dN [--step S]` | Run a demo from the terminal |
+| `./lab.sh demo dN [--step S]` | Run a demo from the terminal (`--help` for usage) |
+| `./lab.sh generate [--scale S]` | Load the deterministic dataset into the MongoDB source (`--scale demo` by default, `--seed N` to change the seed) |
+| `./lab.sh mongosh src [args...]` | mongosh against the MongoDB source (`telco`), run inside `lab-mongo` |
+| `./lab.sh mongosh ora [args...]` | mongosh against the Oracle API for MongoDB as `MIG`, run inside `lab-oracle` |
 | `./lab.sh exec <service> <cmd...>` | Run a command inside a lab container, for example `./lab.sh exec mongo mongosh` |
 | `./lab.sh app-uri <mongo\|oracle>` | Point the order service at MongoDB or at the Oracle API for MongoDB, then restart it |
+
+`demo`, `reset dN` and `generate` run Node inside the `lab-app` container, so
+the stack must be up. Their code (`lib/`, `gen/`, `oracle/`, `app/`,
+`demos/`) is baked into the app image, not mounted, so after changing any of
+it run `./lab.sh build` and `./lab.sh up` again. Developers can run them with
+the host's Node instead by setting `LAB_HOST_NODE=1`.
+
+Example terminal commands:
+
+```sh
+./lab.sh mongosh src --eval 'db.orders.countDocuments()'
+./lab.sh mongosh ora --eval 'db.getCollectionNames()'
+```
 
 The first Oracle boot can take a few minutes. Run `./lab.sh check` after
 `./lab.sh up` and wait for four `OK` lines.
 
 ## Dataset
 
-`node gen/generate.mjs --seed 20261114 --scale demo` drops the MongoDB
+`./lab.sh generate --seed 20261114 --scale demo` drops the MongoDB
 database `telco` and loads a deterministic telecom dataset: the same seed always
 gives the same documents (only `carts.updatedAt` and `orderEvents.createdAt`
 follow the load clock). On the
@@ -107,6 +127,19 @@ it, so they expire steadily over the first hour. Each order event gets a
 log ages out steadily over the next week. The TTL index sits on `createdAt`
 because a TTL index only expires Date values; `ts` stays a BSON Timestamp.
 
+## Oracle target prep
+
+Before any data moves, the target collections are created explicitly in SQL,
+never by a first write through the MongoDB API (implicit schema creation is a
+known ORA-00600 risk once supplemental logging is on).
+`oracle/sql/00-target-prep.sql` creates one JSON collection table per source
+collection in the `MIG` schema, with quoted names that match the MongoDB
+collection names exactly (`"orderEvents"`, `"regionTopDevices"`).
+`prepareTarget({ drop })` in `oracle/prep.mjs` runs it (dropping the tables
+first when `drop` is true, for an empty target) and confirms `MIG` is
+ORDS-enabled through `user_ords_schemas`. It is idempotent and
+shared by demos 2, 3 and 4. Indexes are not created here: `mongorestore` carries them.
+
 ## Order service app
 
 `app/server.mjs` is a small order service written the way a typical MongoDB
@@ -131,6 +164,9 @@ rewrites that file and recreates the container.
 version (7.0.22 on 26ai Free) and names itself through `serverStatus.ordsVersion`.
 
 ## Tests
+
+Developers only: needs Node.js 22 or newer and `npm install` on the host. The
+tests run Node on the host (`LAB_HOST_NODE=1` where they call `lab.sh`).
 
 ```sh
 npm test                 # everything (integration tests need the stack up)

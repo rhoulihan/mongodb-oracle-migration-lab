@@ -3,8 +3,12 @@
 #   ./lab.sh pull | build | up | down | check | preflight
 #   ./lab.sh reset [dN]            no arg: wipe lab volumes and restart; dN: reset one demo
 #   ./lab.sh demo dN [--step S]    run a demo headless
+#   ./lab.sh generate [--scale S]  load the deterministic dataset into the MongoDB source
+#   ./lab.sh mongosh src|ora [args...]  mongosh against the source or the Oracle API for MongoDB
 #   ./lab.sh exec <service> <cmd...>
 #   ./lab.sh app-uri <mongo|oracle>  point the order service at a backend and restart it
+# demo, reset dN and generate run Node inside the app container (lab-app), so the
+# laptop needs no Node. LAB_HOST_NODE=1 runs them with the host's node instead.
 set -uo pipefail
 cd "$(dirname "$0")"
 
@@ -46,11 +50,15 @@ ok()   { printf 'OK    %s\n' "$*"; }
 warn() { printf 'WARN  %s\n' "$*"; }
 fail() { printf 'FAIL  %s\n' "$*"; FAILED=1; }
 
-lab_exec() {
-  local svc="$1"; shift
-  local tty=""
-  [ -t 0 ] && [ -t 1 ] && tty="-t"
-  "$ENGINE" exec -i $tty "lab-$svc" "$@"
+lab_exec() { local svc="$1"; shift; lab_exec_env "$svc" "" "$@"; }
+
+# lab_exec with one VAR=value set in the container ("" for none).
+lab_exec_env() {
+  local svc="$1" envvar="$2"; shift 2
+  local opts=(-i)
+  [ -t 0 ] && [ -t 1 ] && opts+=(-t)
+  [ -n "$envvar" ] && opts+=(-e "$envvar")
+  "$ENGINE" exec "${opts[@]}" "lab-$svc" "$@"
 }
 
 # --- readiness probes (each returns 0 when ready) ---------------------------
@@ -122,15 +130,35 @@ cmd_preflight() {
   return "$FAILED"
 }
 
-run_demo_cli() {
-  if [ ! -f demos/run.mjs ]; then
-    echo "demos/run.mjs not found: demos are not installed yet" >&2; return 1
+# Run a repo script with Node: inside lab-app by default (its image carries
+# lib/, gen/, oracle/, app/, demos/ and node_modules; rebuild after code changes),
+# or on the host when LAB_HOST_NODE=1 (developers, the vitest suite).
+run_node() {
+  if [ "${LAB_HOST_NODE:-}" = "1" ]; then
+    node "$@"; return
   fi
-  node demos/run.mjs "$@"
+  if [ "$("$ENGINE" container inspect -f '{{.State.Running}}' lab-app 2>/dev/null)" != "true" ]; then
+    echo "lab-app is not running: start the stack with ./lab.sh up" >&2; return 1
+  fi
+  lab_exec_env app "MIG_PASSWORD=$MIG_PASSWORD" node "$@"
+}
+
+run_demo_cli() { run_node demos/run.mjs "$@"; }
+
+# mongosh inside the database containers, so terminal steps need no host tools.
+#   src: the MongoDB source replica set, database telco (in lab-mongo)
+#   ora: the Oracle API for MongoDB as MIG (in lab-oracle)
+cmd_mongosh() {
+  local target="$1"; shift
+  case "$target" in
+    src) lab_exec mongo mongosh 'mongodb://localhost:27017/telco?replicaSet=rs0&directConnection=true' "$@" ;;
+    ora) lab_exec oracle mongosh "mongodb://MIG:${MIG_PASSWORD}@localhost:27017/MIG?authMechanism=PLAIN&authSource=\$external&tls=false&retryWrites=false&loadBalanced=true" "$@" ;;
+    *)   usage ;;
+  esac
 }
 
 usage() {
-  sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -149,6 +177,8 @@ case "$cmd" in
       run_demo_cli "$1" --reset
     fi ;;
   demo)      [ $# -ge 1 ] || usage; run_demo_cli "$@" ;;
+  generate)  run_node gen/generate.mjs "$@" ;;
+  mongosh)   [ $# -ge 1 ] || usage; cmd_mongosh "$@" ;;
   exec)      [ $# -ge 2 ] || usage; lab_exec "$@" ;;
   app-uri)   [ $# -eq 1 ] || usage; cmd_app_uri "$1" ;;
   *)         usage ;;

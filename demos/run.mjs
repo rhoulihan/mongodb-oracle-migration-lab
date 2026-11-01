@@ -4,19 +4,30 @@
 //   node demos/run.mjs dN               setup, then every step
 //   node demos/run.mjs dN --step S ...  only the named steps (repeatable), no setup
 //   node demos/run.mjs dN --reset       the demo's reset
+//   node demos/run.mjs --help           usage
 //
 // Prints one line per StepResult and exits 1 if any step returns ok:false.
 // LAB_DEMOS_DIR points it at another demos folder (the tests use fixtures).
 import { parseArgs } from 'node:util';
 import { createContext, DEMOS_DIR, findDemo, runDemo, validateDemo } from './contract.mjs';
 
+const USAGE = 'usage: run.mjs dN [--step S]... | dN --reset';
+
 async function main() {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
-    options: { step: { type: 'string', multiple: true }, reset: { type: 'boolean' } },
+    options: {
+      step: { type: 'string', multiple: true },
+      reset: { type: 'boolean' },
+      help: { type: 'boolean', short: 'h' },
+    },
   });
+  if (values.help) {
+    console.log(USAGE);
+    return 0;
+  }
   const id = positionals[0];
-  if (!id || positionals.length > 1) throw new Error('usage: run.mjs dN [--step S]... | dN --reset');
+  if (!id || positionals.length > 1) throw new Error(USAGE);
   const dir = process.env.LAB_DEMOS_DIR || DEMOS_DIR;
   const demo = await findDemo(id, dir);
   if (!demo) throw new Error(`no demo ${id} in ${dir}`);

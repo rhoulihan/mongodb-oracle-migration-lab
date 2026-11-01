@@ -2,7 +2,9 @@
 # web console later (same image, different command). Dependencies are
 # installed inside the image, so the laptop needs only Podman, not Node.
 # Build context is the repo root (see compose.yml); .dockerignore keeps
-# node_modules, .git and .lab out of it.
+# node_modules, .git and .lab out of it. Demo, generator and target-prep code
+# is baked in (nothing is bind-mounted), so rebuild with ./lab.sh build after
+# changing it.
 FROM docker.io/library/node:22-alpine
 
 WORKDIR /lab
@@ -11,6 +13,7 @@ RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 
 COPY lib/ lib/
 COPY gen/ gen/
+COPY oracle/ oracle/
 COPY app/ app/
 COPY demos/ demos/
 
