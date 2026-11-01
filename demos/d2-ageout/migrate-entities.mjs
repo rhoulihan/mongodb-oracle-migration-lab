@@ -25,12 +25,9 @@ const restoreArgs = () => ['mongorestore', `--archive=${DUMP}`, '--gzip',
   ...ENTITIES.flatMap((c) => ['--nsInclude', `${SRC_DB}.${c}`]),
   '--nsFrom', `${SRC_DB}.*`, '--nsTo', 'MIG.*', '--uri', config.toolOraUri];
 
-// What the presenter types (two tools, from lab-mongo, over the compose network).
-export const MIGRATE_CMD = `./lab.sh exec mongo mongodump --archive=${DUMP} --gzip --db ${SRC_DB} ` +
-  STAY.map((c) => `--excludeCollection ${c}`).join(' ') +
-  ` && ./lab.sh exec mongo mongorestore --archive=${DUMP} --gzip ` +
-  ENTITIES.map((c) => `--nsInclude ${SRC_DB}.${c}`).join(' ') +
-  ` --nsFrom '${SRC_DB}.*' --nsTo 'MIG.*' --uri '${config.toolOraUri}'`;
+// What the presenter types: lab.sh runs migrateEntities() in the runner, so the
+// password never appears in the command, the slide or the console.
+export const MIGRATE_CMD = './lab.sh migrate-entities';
 
 const tail = (s, n = 3) => s.trim().split('\n').slice(-n).join(' | ');
 

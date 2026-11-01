@@ -23,13 +23,13 @@ const DUMP = '/dumps/telco.archive';
 const SRC_DB = 'telco';
 const EXPLAIN_FILTER = { region: 'R03', status: 'provisioned' };
 
-// Shown on the slide and typed by the presenter. The restore URI has no
-// database in its path: with `/MIG` mongorestore restores 0 documents and
-// still exits 0 (Ruling Q). It carries the lab's MIG password.
-const RESTORE_URI = config.toolOraUri;
+// Shown on the slide and typed by the presenter. lab.sh adds the restore URI
+// (MIG, password from MIG_PASSWORD, no database in the path: with `/MIG`
+// mongorestore restores 0 documents and still exits 0, Ruling Q), so the
+// command never shows the password.
 const DUMP_CMD = `./lab.sh exec mongo mongodump --archive=${DUMP} --gzip --db ${SRC_DB}`;
-const RESTORE_CMD = `./lab.sh exec mongo mongorestore --archive=${DUMP} --gzip --nsFrom '${SRC_DB}.*' --nsTo 'MIG.*' ` +
-  `--numParallelCollections=4 --uri '${RESTORE_URI}'`;
+const RESTORE_CMD = `./lab.sh mongorestore-ora --archive=${DUMP} --gzip --nsFrom '${SRC_DB}.*' --nsTo 'MIG.*' ` +
+  '--numParallelCollections=4';
 const EXPLAIN_CMD = `./lab.sh mongosh ora --eval 'db.orders.find(${JSON.stringify(EXPLAIN_FILTER).replace(/"(\w+)":/g, '$1:')}).explain()'`;
 
 // What the last in-process restore reported, per collection (the restore

@@ -132,8 +132,8 @@ def clock(f: Fig, cx, cy, r, tone: str) -> None:
 
 # ----------------------------------------------------------------------------- segment 0
 DOORS = [  # letter, title, two sub lines, tone, door x offset, door y offset, locked
-    ("A", "Age out", ["near-zero downtime, slow", "old system becomes the archive"], "flow", 230, 128, False),
-    ("B", "Dump and restore", ["planned downtime, fast", "one-way once writes resume"], "hot", 560, 214, True),
+    ("A", "Age out", ["near-zero downtime, slow", "old system becomes the archive"], "flow", 40, 124, False),
+    ("B", "Dump and restore", ["planned downtime, fast", "one-way once writes resume"], "hot", 620, 214, True),
     ("C", "Blue/green", ["near-zero downtime, reversible", "the most moving parts"], "cool", 40, 18, False),
 ]
 
@@ -415,6 +415,63 @@ def auto_ids(f: Fig, prefix: str) -> None:
         seen[h] = n + 1
         sp = el.index(" ")
         f.els[i] = el[:sp] + f' data-id="{h}{"-" + str(n) if n else ""}"' + el[sp:]
+
+
+
+STACK = ["Patch cycle", "Login model", "Attack surface", "Backups", "On-call runbook"]
+
+
+def fig_two_stacks() -> Fig:
+    """Age out's cost: the same operational stack, twice, for the whole retention window."""
+    f = Fig(1120, 400, "The cost of age out: two full operational stacks, one for the MongoDB archive and "
+                       "one for Oracle, each with its own patch cycle, login model, attack surface, backups "
+                       "and on-call runbook, for every year of the retention window")
+    w, lh, gap, top = 330, 46, 8, 74
+    cols = [(150, "MongoDB archive", "flow"), (640, "Oracle", "cool")]
+    for x, title, tone in cols:
+        col, soft = TONE[tone]
+        f.rect(x, 24, w, 40, fill=soft, stroke=col, sw=1.8, rx=8, name="head")
+        f.text(x + w / 2, 50, title, size=19, weight=800, font=HEAD, fill=col, anchor="middle")
+        for i, layer in enumerate(STACK):
+            y = top + i * (lh + gap)
+            f.rect(x, y, w, lh, fill="var(--panel)", stroke="var(--hot)", sw=1.4, rx=6, name="layer")
+            f.text(x + w / 2, y + lh / 2 + 6, layer, size=17, weight=600, anchor="middle")
+    mid = (150 + w + 640) / 2
+    f.text(mid, top + 2 * (lh + gap) + lh / 2 + 12, "×2", size=34, weight=800, font=HEAD, fill="var(--hot)",
+           anchor="middle")
+    yb = top + len(STACK) * (lh + gap) + 14
+    f.text(560, yb + 14, "for every year of the retention window", size=17, weight=600, fill="var(--hot)",
+           anchor="middle")
+    return f
+
+
+def fig_umt_chain() -> Fig:
+    """Greenfield on Oracle: canonical form first, then projections, then the shapes consumers read."""
+    f = Fig(1120, 360, "Model the domain, project the access: the canonical form (entities, properties, "
+                       "relationships) is stored as projections (rows on tables, embedded documents, graph "
+                       "edges), and each consumer reads a projected shape: a document for the app (a duality "
+                       "view over the rows), a rowset for reports, a graph result for hierarchy walks")
+    fl = Flow(f)
+    f.text(18, 34, "CANONICAL FORM", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(420, 34, "PROJECTIONS", size=13, weight=700, font=MONO, fill="var(--muted)")
+    f.text(850, 34, "PROJECTED SHAPES", size=13, weight=700, font=MONO, fill="var(--muted)")
+    fl.node("canon", 18, 124, 270, 132, ["Telecom domain", "subscriber, order, device:", "entities, properties,", "relationships"],
+            tone="cool", size=18, sub=15)
+    ys = [52, 150, 248]
+    proj = [["Rows on tables"], ["Embedded documents"], ["Graph edges"]]
+    shapes = [["Rowset", "for reports"], ["Order document", "for the app"], ["Graph result", "for hierarchy walks"]]
+    for i, y in enumerate(ys):
+        fl.node(f"p{i}", 420, y, 280, 80, proj[i], tone="flow", size=18, sub=15)
+        fl.node(f"s{i}", 850, y, 252, 80, shapes[i], tone="ink", size=18, sub=15)
+    for i, y in enumerate(ys):
+        fl.edge("canon", f"p{i}", 354, tone="cool")
+    fl.edge("p0", "s0", 770, tone="flow")
+    fl.edge("p1", "s1", 770, tone="flow", ay=200, by=200)
+    fl.edge("p2", "s2", 770, tone="flow")
+    # the duality view: rows on tables projected as the app's document
+    fl.edge("p0", "s1", 742, tone="cool", ay=106, by=170, dash="6 4")
+    f.text(796, 162, "duality view", size=13, weight=600, font=MONO, fill="var(--cool)", anchor="middle")
+    return f
 
 
 def fig_ageout_router() -> Fig:

@@ -71,6 +71,13 @@ describe('lab.sh runs Node work in a one-off runner container (Ruling O)', () =>
     expect(sh(['agent']).status).toBe(2);
   });
 
+  test('migrate-entities (D2 step 1) runs the entity dump and restore in the runner, no password on the command line', () => {
+    const r = sh(['migrate-entities'], { MIG_PASSWORD: 'Other2026' });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain(' -e MIG_PASSWORD=Other2026 runner node demos/d2-ageout/migrate-cli.mjs\n');
+    expect(sh(['migrate-entities', 'extra']).status).toBe(2);
+  });
+
   test('passes MIG_PASSWORD into the container', () => {
     const r = sh(['demo', 'd1'], { MIG_PASSWORD: 'Other2026' });
     expect(r.stdout).toMatch(/ -e MIG_PASSWORD=Other2026 runner /);
@@ -234,6 +241,15 @@ describe('lab.sh mongosh src|ora', () => {
     expect(r.stdout).toContain(
       'lab-oracle mongosh mongodb://MIG:MigUser2026@localhost:27017/MIG?authMechanism=PLAIN&authSource=$external' +
       '&tls=false&retryWrites=false&loadBalanced=true --eval db.getCollectionNames()');
+  });
+
+  test('mongorestore-ora (D3) restores from lab-mongo as MIG with the URI built from MIG_PASSWORD', () => {
+    const r = sh(['mongorestore-ora', '--archive=/dumps/telco.archive', '--gzip'], { MIG_PASSWORD: 'Other2026' });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain(
+      'lab-mongo mongorestore --archive=/dumps/telco.archive --gzip --uri mongodb://MIG:Other2026@oracle:27017/' +
+      '?authMechanism=PLAIN&authSource=$external&tls=false&retryWrites=false&loadBalanced=true\n');
+    expect(r.stdout).not.toMatch(/27017\/MIG\?/);   // Ruling Q: no database in the path
   });
 
   // D6: the oracle image carries the demo scripts under /opt/lab, so

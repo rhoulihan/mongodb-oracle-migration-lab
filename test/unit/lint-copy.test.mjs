@@ -40,3 +40,16 @@ test('private folder name fails', () => {
   const r = lintWith('c.md', `see ${JOB}/notes\n`);
   expect(r.status).toBe(1); expect(r.stderr).toContain(JOB);
 });
+// Ruling X: the lab's default MIG password never appears on a slide or in the README.
+const PW = 'MigUser' + '2026';
+test('default MIG password in the deck fails', () => {
+  const r = lintWith('deck/index.html', `<code>--uri mongodb://MIG:${PW}@oracle</code>\n`);
+  expect(r.status).toBe(1); expect(r.stderr).toMatch(/default MIG password/);
+});
+test('default MIG password in README.md fails', () => {
+  const r = lintWith('README.md', `--uri 'mongodb://MIG:${PW}@oracle:27017/'\n`);
+  expect(r.status).toBe(1); expect(r.stderr).toMatch(/default MIG password/);
+});
+test('default MIG password where the lab sets it (lab.sh) is allowed', () => {
+  expect(lintWith('lab.sh', `MIG_PASSWORD="\${MIG_PASSWORD:-${PW}}"\n`).status).toBe(0);
+});

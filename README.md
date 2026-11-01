@@ -15,8 +15,11 @@ After a one-time setup it runs fully offline.
 | `app` | `lab-app` | Order service the demos drive (its backend is switchable) |
 | `replicator` | `lab-replicator` | Stand-in for Oracle GoldenGate, used in demo 4 only (profile `d4`) |
 
-The Oracle app schema is `MIG` (password from `MIG_PASSWORD`, default
-`MigUser2026`). It is created and ORDS-enabled when the database first boots.
+The Oracle app schema is `MIG` (password from `MIG_PASSWORD`; the lab default
+is set in `lab.sh` and `lib/config.mjs`). It is created and ORDS-enabled when
+the database first boots. Commands that log in as MIG (`./lab.sh mongosh ora`,
+`./lab.sh migrate-entities`, `./lab.sh mongorestore-ora`) build the URI from
+`MIG_PASSWORD`, so no command, slide or console step shows the password.
 
 MongoDB is 8.2 rather than 8.0 because mongod 8.0 will not start on Linux
 kernel 6.19 or newer (MongoDB issue SERVER-121912).
@@ -289,16 +292,15 @@ minutes of the session so carts are still expiring). The presenter's terminal
 commands:
 
 ```sh
-./lab.sh exec mongo mongodump --archive=/dumps/d2-entities.archive --gzip --db telco \
-  --excludeCollection orders --excludeCollection carts --excludeCollection orderEvents --excludeCollection regionTopDevices \
-  && ./lab.sh exec mongo mongorestore --archive=/dumps/d2-entities.archive --gzip \
-  --nsInclude telco.regions --nsInclude telco.catalog --nsInclude telco.accounts --nsInclude telco.subscribers \
-  --nsFrom 'telco.*' --nsTo 'MIG.*' --uri 'mongodb://MIG:MigUser2026@oracle:27017/?authMechanism=PLAIN&authSource=$external&tls=false&retryWrites=false&loadBalanced=true'
+./lab.sh migrate-entities
 ./lab.sh app-mode ageout
 ```
 
-`mongodump` has no `--nsInclude`, so the dump leaves out what stays and the
-restore names what moves. In age-out mode the order service holds both
+`./lab.sh migrate-entities` runs the entity-only dump and restore in the
+runner (`demos/d2-ageout/migrate-entities.mjs`). `mongodump` has no
+`--nsInclude`, so the dump leaves out what stays (`--excludeCollection` orders,
+carts, orderEvents, regionTopDevices) and the restore names what moves
+(`--nsInclude` regions, catalog, accounts, subscribers). In age-out mode the order service holds both
 backends behind `app/router.mjs`: new orders (and their events and the Top-N
 update) go to Oracle; `GET /orders/:id` tries Oracle, then MongoDB; old orders
 are read-only; a subscriber's order list is split at the cutoff and merged,
@@ -319,8 +321,8 @@ dump). The presenter's terminal commands:
 
 ```sh
 ./lab.sh exec mongo mongodump --archive=/dumps/telco.archive --gzip --db telco
-./lab.sh exec mongo mongorestore --archive=/dumps/telco.archive --gzip --nsFrom 'telco.*' --nsTo 'MIG.*' \
-  --numParallelCollections=4 --uri 'mongodb://MIG:MigUser2026@oracle:27017/?authMechanism=PLAIN&authSource=$external&tls=false&retryWrites=false&loadBalanced=true'
+./lab.sh mongorestore-ora --archive=/dumps/telco.archive --gzip --nsFrom 'telco.*' --nsTo 'MIG.*' \
+  --numParallelCollections=4
 ./lab.sh app-uri oracle
 ./lab.sh mongosh ora --eval 'db.orders.find({region:"R03",status:"provisioned"}).explain()'
 ```

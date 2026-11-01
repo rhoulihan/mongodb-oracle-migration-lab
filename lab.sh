@@ -8,6 +8,8 @@
 #   ./lab.sh exec <service> <cmd...>
 #   ./lab.sh app-uri <mongo|oracle>  switch the order service's backend (no restart)
 #   ./lab.sh app-mode <ageout|normal>  D2: age-out router (old orders from MongoDB, new on Oracle) or back to MongoDB
+#   ./lab.sh migrate-entities      D2: dump the long-lived collections and restore them into MIG (runner)
+#   ./lab.sh mongorestore-ora [args...]  D3: mongorestore into MIG (lab-mongo); the URI and password come from MIG_PASSWORD
 #   ./lab.sh agent read|write|retry --agent A|B  a D7 agent (runs in the runner)
 #   ./lab.sh repl fwd|rev|stop|status|logs  the D4 stand-in for Oracle GoldenGate
 #   ./lab.sh bake-recordings       save the console's rehearsal results in fallback/recorded/
@@ -231,6 +233,15 @@ run_node() {
   compose --profile runner run --rm --no-deps $tty -e "MIG_PASSWORD=$MIG_PASSWORD" runner node "$@"
 }
 
+# mongorestore into the Oracle API for MongoDB as MIG, from lab-mongo over the
+# compose network. The URI is built here from MIG_PASSWORD so no typed command,
+# slide or console step shows the password. No database in the URI path: with
+# /MIG mongorestore restores 0 documents and still exits 0 (Ruling Q).
+cmd_mongorestore_ora() {
+  lab_exec mongo mongorestore "$@" \
+    --uri "mongodb://MIG:${MIG_PASSWORD}@oracle:27017/?authMechanism=PLAIN&authSource=\$external&tls=false&retryWrites=false&loadBalanced=true"
+}
+
 run_demo_cli() { local rc=0; run_node demos/run.mjs "$@" || rc=$?; sync_app_env; return "$rc"; }
 
 # mongosh inside the database containers, so terminal steps need no host tools.
@@ -302,7 +313,7 @@ cmd_bake_recordings() {
 }
 
 usage() {
-  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -329,6 +340,8 @@ case "$cmd" in
   app-uri)   [ $# -eq 1 ] || usage; cmd_app_uri "$1" ;;
   app-mode)  [ $# -eq 1 ] || usage; cmd_app_mode "$1" ;;
   agent)     [ $# -ge 1 ] || usage; run_node demos/d7-etag/agent.mjs "$@" ;;
+  migrate-entities) [ $# -eq 0 ] || usage; run_node demos/d2-ageout/migrate-cli.mjs ;;
+  mongorestore-ora) cmd_mongorestore_ora "$@" ;;
   repl)      [ $# -eq 1 ] || usage; cmd_repl "$1" ;;
   bake-recordings) cmd_bake_recordings ;;
   *)         usage ;;
