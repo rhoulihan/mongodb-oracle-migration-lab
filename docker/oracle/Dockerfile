@@ -1,5 +1,6 @@
 # Oracle AI Database 26ai Free + ORDS + Oracle API for MongoDB.
 #
+# Build context is the repo root (compose.yml).
 # Adapted from the converged-modeling-patterns lab image (app schema renamed to MIG).
 #   * gvenzl faststart release line 23.26.3 (year.quarter numbering; the 23.26.x
 #     line IS the 26ai release). The base image is multi-arch (amd64 + arm64).
@@ -12,7 +13,7 @@ USER root
 # --- ORDS (latest) -----------------------------------------------------------
 # Installs Oracle REST Data Services, which fronts both the Database API and the
 # Oracle API for MongoDB (port 27017).
-COPY scripts/install-ords.sh /tmp/install-ords.sh
+COPY docker/oracle/scripts/install-ords.sh /tmp/install-ords.sh
 RUN chmod +x /tmp/install-ords.sh && /tmp/install-ords.sh && rm /tmp/install-ords.sh
 RUN chown -R oracle:oinstall /etc/ords
 
@@ -27,9 +28,15 @@ RUN printf '[mongodb-org-8.0]\nname=MongoDB Repository\nbaseurl=https://repo.mon
 # initdb scripts pre-create MIG and grant the privileges the demos use. The entrypoint
 # installs ORDS, ORDS-enables MIG, and turns the Mongo API on (TLS off for
 # local dev), then starts both Oracle and ORDS.
-COPY init/ /container-entrypoint-initdb.d/
-COPY scripts/entrypoint.sh /opt/oracle/scripts/entrypoint.sh
+COPY docker/oracle/init/ /container-entrypoint-initdb.d/
+COPY docker/oracle/scripts/entrypoint.sh /opt/oracle/scripts/entrypoint.sh
 RUN chmod +x /opt/oracle/scripts/entrypoint.sh
+
+# --- demo scripts for mongosh -------------------------------------------------
+# `./lab.sh mongosh ora demos/d6-sql/sql-stage.js` runs mongosh here with
+# /opt/lab as its working directory. Baked in, not bind-mounted, so nothing
+# depends on host file sharing; rebuild with ./lab.sh build after editing them.
+COPY demos/d6-sql/sql-stage.js demos/d6-sql/top-spenders.sql /opt/lab/demos/d6-sql/
 
 USER oracle
 EXPOSE 1521 8181 27017

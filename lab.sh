@@ -98,6 +98,7 @@ lab_exec_env() {
   local opts=(-i)
   [ -t 0 ] && [ -t 1 ] && opts+=(-t)
   [ -n "$envvar" ] && opts+=(-e "$envvar")
+  [ -n "${LAB_EXEC_WORKDIR:-}" ] && opts+=(-w "$LAB_EXEC_WORKDIR")
   "$ENGINE" exec "${opts[@]}" "lab-$svc" "$@"
 }
 
@@ -190,12 +191,14 @@ run_demo_cli() { local rc=0; run_node demos/run.mjs "$@" || rc=$?; sync_app_env;
 
 # mongosh inside the database containers, so terminal steps need no host tools.
 #   src: the MongoDB source replica set, database telco (in lab-mongo)
-#   ora: the Oracle API for MongoDB as MIG (in lab-oracle)
+#   ora: the Oracle API for MongoDB as MIG (in lab-oracle), run from /opt/lab,
+#        where the oracle image keeps the repo's mongosh scripts (demos/d6-sql/),
+#        so `./lab.sh mongosh ora demos/d6-sql/sql-stage.js` names the repo path
 cmd_mongosh() {
   local target="$1"; shift
   case "$target" in
     src) lab_exec mongo mongosh 'mongodb://localhost:27017/telco?replicaSet=rs0&directConnection=true' "$@" ;;
-    ora) lab_exec oracle mongosh "mongodb://MIG:${MIG_PASSWORD}@localhost:27017/MIG?authMechanism=PLAIN&authSource=\$external&tls=false&retryWrites=false&loadBalanced=true" "$@" ;;
+    ora) LAB_EXEC_WORKDIR=/opt/lab lab_exec oracle mongosh "mongodb://MIG:${MIG_PASSWORD}@localhost:27017/MIG?authMechanism=PLAIN&authSource=\$external&tls=false&retryWrites=false&loadBalanced=true" "$@" ;;
     *)   usage ;;
   esac
 }

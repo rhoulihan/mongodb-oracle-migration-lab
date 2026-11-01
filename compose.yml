@@ -29,7 +29,11 @@ services:
       - dumps:/dumps             # D3 mongodump archive, shared with the runner
 
   oracle:
-    build: ./docker/oracle
+    # Repo root as the build context (like app), so the image can carry the
+    # demos' mongosh scripts (demos/d6-sql) under /opt/lab.
+    build:
+      context: .
+      dockerfile: docker/oracle/Dockerfile
     image: mongodb-oracle-migration-lab-oracle:latest
     container_name: lab-oracle
     stop_grace_period: 60s
@@ -89,6 +93,7 @@ services:
     environment:
       LAB_IN_CONTAINER: '1'
       MIG_PASSWORD: '${MIG_PASSWORD:-MigUser2026}'
+      D6_PIPELINE_RUNS: '${D6_PIPELINE_RUNS:-3}'   # D6: timed runs of the slow pipeline
     volumes:
       - dumps:/dumps
       - state:/state             # small state kept between one-off runs (D7 agents' memory)

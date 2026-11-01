@@ -144,6 +144,14 @@ describe('lab.sh mongosh src|ora', () => {
       '&tls=false&retryWrites=false&loadBalanced=true --eval db.getCollectionNames()');
   });
 
+  // D6: the oracle image carries the demo scripts under /opt/lab, so
+  // `./lab.sh mongosh ora demos/d6-sql/sql-stage.js` names the repo path.
+  test('ora runs mongosh from /opt/lab, where the oracle image keeps the demo scripts', () => {
+    const r = sh(['mongosh', 'ora', 'demos/d6-sql/sql-stage.js']);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/^ENGINE exec -i -w \/opt\/lab lab-oracle mongosh .* demos\/d6-sql\/sql-stage\.js$/m);
+  });
+
   test('an unknown target prints usage and exits 2', () => {
     expect(sh(['mongosh', 'prod']).status).toBe(2);
   });

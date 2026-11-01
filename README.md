@@ -77,7 +77,7 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh demo dN [--step S]` | Run a demo from the terminal (`--help` for usage) |
 | `./lab.sh generate [--scale S]` | Load the deterministic dataset into the MongoDB source (`--scale demo` by default, `--seed N` to change the seed) |
 | `./lab.sh mongosh src [args...]` | mongosh against the MongoDB source (`telco`), run inside `lab-mongo` |
-| `./lab.sh mongosh ora [args...]` | mongosh against the Oracle API for MongoDB as `MIG`, run inside `lab-oracle` |
+| `./lab.sh mongosh ora [args...]` | mongosh against the Oracle API for MongoDB as `MIG`, run inside `lab-oracle` from `/opt/lab`, where the image keeps the demo scripts (`demos/d6-sql/`) |
 | `./lab.sh exec <service> <cmd...>` | Run a command inside a lab container, for example `./lab.sh exec mongo mongosh` |
 | `./lab.sh app-uri <mongo\|oracle>` | Point the order service at MongoDB or at the Oracle API for MongoDB (switched live, no restart) |
 | `./lab.sh agent read\|write\|retry --agent A\|B` | One of demo 7's two agents (`--api sql` on `read` to use SQL instead of the MongoDB API) |
@@ -228,6 +228,31 @@ The presenter's terminal command:
 Top 10 document comes from `region_top_devices_v`, and the duality view
 carries the full device list and the write path. Details, errors and the
 measured numbers: `docs/spikes/d5-duality-nested-order.md`.
+
+## Demo 6: Pipeline vs `$sql`
+
+`./lab.sh demo d6` runs it headless; `./lab.sh reset d6` puts back the
+starting state. The question: top 5 subscribers by spend per region and plan
+tier, over the last 90 days of the data (`2026-07-03` to `2026-10-01`, fixed
+by the generator, never the wall clock), with plan name. D6 runs on Oracle
+after D3: if `MIG` does not hold the source's orders for that window, setup
+runs D3's dump and restore first, then gathers optimizer statistics on
+`orders`, `subscribers`, `accounts` and `catalog` (a bulk load leaves none).
+The same pipeline (`demos/d6-sql/queries.mjs`) runs on MongoDB for its
+explain only, then on Oracle through the MongoDB API (timed); the same
+question as SQL (`demos/d6-sql/top-spenders.sql`) runs as one `$sql` stage
+(timed). Results are proven equal before any time is shown; no MongoDB
+timing is taken. The presenter's terminal command (the script is baked into
+the oracle image under `/opt/lab`; rebuild with `./lab.sh build` after
+editing it):
+
+```sh
+./lab.sh mongosh ora demos/d6-sql/sql-stage.js
+```
+
+The pipeline through the API takes minutes per run on a laptop, so it is
+timed over 3 runs (`D6_PIPELINE_RUNS=1 ./lab.sh demo d6` for a quick
+rehearsal). Plans, medians and the ratio: `docs/spikes/d6-ratio.md`.
 
 ## Demo 7: ETags, two agents, no lost update
 
