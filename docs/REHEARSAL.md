@@ -185,7 +185,7 @@ Segment 5, slide 34 (clock 1:00, 4 min).
 | 2 | console | (a) Embedded Top-N document: every order rewrites it | Redo per order; the Top-N document is about 800 bytes |
 | 3 | console | (b) $lookup pipeline: every read re-aggregates the orders | Plan shown, read time hidden |
 | 4 | console | (c) Converged: one counter row per order, a pre-sorted index | INDEX RANGE SCAN on DEVICE_SALES_TOPN under COUNT STOPKEY |
-| 5 | console | Same document, three ways | All 8 dashboards identical, **then** the read times appear |
+| 5 | console | Same document, three ways | All 8 dashboards identical, **then** the read times appear (Linux lab: embedded 0.3 to 0.8 ms, converged 0.7 to 0.9, lookup 236 to 262; counter redo per order embedded 2,600 to 3,500 bytes, converged 870 to 950) |
 | 6 | terminal | `./lab.sh mongosh ora --eval 'db.region_top_devices_v.findOne({_id:"R03"})'` | Ten devices, sorted. Mark done |
 
 If step 1 fails: `./lab.sh reset d5`. Reset after: none.
@@ -196,16 +196,17 @@ Segment 5, slide 38 (clock 1:08, 4 min).
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
-| 1 | console | Same data on both sides, statistics gathered | Same window counts; stats gathered |
+| 1 | console | Same data on both sides, statistics gathered | **Click it right after D5's last step**, then go back to the deck for slides 35 to 37 while it runs (about 2.5 min: statistics, then one untimed warm-up run of the pipeline and of $sql). Expect: same window counts, stats gathered, both sides warmed once. Say "both sides warmed once during setup" |
 | 2 | console | (1) The pipeline on MongoDB: the stage tree (plan shape only, no timing) | COLLSCAN, three $lookups, $unwinds, $groups, $sort |
-| 3 | console | (2) The same pipeline on Oracle through the MongoDB API | **One timed run, about 2 min 15 s** (130 to 135 s measured on the Linux lab: the first run after the restore is cold; warm runs take 82 to 89 s). The timer runs. Narrate the plan while it runs: it is one run, not three, to keep the demo inside its 4 minutes. No time is shown yet |
+| 3 | console | (2) The same pipeline on Oracle through the MongoDB API | **One timed run, warm, about 80 to 90 s** (81 to 91 s measured on the Linux lab). The timer runs. Narrate the plan while it runs: it is one run, not three, to keep the demo inside its 4 minutes. No time is shown yet |
 | 4 | terminal | `./lab.sh mongosh ora demos/d6-sql/sql-stage.js` | The first 10 of 160 rows. Mark done: 160 rows, ranks 1 to 5 for 32 pairs |
 | 5 | console | Equal results, proven before any timing | 160 rows identical on all three; **now** the times appear |
 | 6 | console | Both Oracle plans, side by side | Nested loops vs hash joins + WINDOW SORT PUSHED RANK |
-| 7 | console | Relative timing: the pipeline vs $sql, same engine | The ratio, read live (Linux lab: about 180 to 205x for this cold single run; about 138x warm, median of 3, headless). Laptop, relative only. Then the field number: 3 to 15x |
+| 7 | console | Relative timing: the pipeline vs $sql, same engine | The ratio, read live (Linux lab, warm against warm: about 125 to 150x; 126 to 146x measured). Laptop, relative only. Then the field number: 3 to 15x |
 
 If setup fails: `./lab.sh reset d6`. It always re-runs D3's dump and
-restore, about a minute. Reset after: none.
+restore, gathers statistics and warms both sides once: about 3 to 4
+minutes, so do it before the segment, not in the middle of the demo. Reset after: none.
 
 ### D7: ETags, two agents, one order
 

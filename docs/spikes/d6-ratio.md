@@ -72,11 +72,33 @@ with plan name. Shared definitions (`demos/d6-sql/queries.mjs`):
 ## Medians and ratio (laptop, relative only)
 
 Ruling T: live (the console, no `D6_PIPELINE_RUNS`) the pipeline is timed
-once, about 80 s, while the presenter talks through its plan; headless runs
-and the tests time it over 3 runs (compose passes `D6_PIPELINE_RUNS=3` to the
-runner). `$sql` is timed over 7 runs. Neither side gets a warmup run (the
-median of 7 absorbs `$sql`'s cold first run), so nothing is pre-warmed in
-either side's favour. Results proven equal first in every run.
+once while the presenter talks through its plan; headless runs and the tests
+time it over 3 runs (compose passes `D6_PIPELINE_RUNS=3` to the runner).
+`$sql` is timed over 7 runs. Results proven equal first in every run.
+
+Ruling Z (2026-11-01): setup warms both sides once, untimed (one pipeline
+run, one `$sql` run) after the restore and the statistics. Why: the first
+pipeline run after a restore is cold, 130 to 135 s on the Linux lab (134.9,
+135.4 s as run 1 of the headless 3-run medians; 133.9, 132.6 s as the
+console's single live run), against 81 to 91 s warm, and live there is
+only one timed run, so it was always the cold one (180 to 205x, and over the
+4-minute slot). Both sides are warmed the same way, so neither is favoured;
+the deck notes and the run sheet disclose it.
+
+Measured after Ruling Z on the Linux lab host (warm against warm):
+
+| run | (2) pipeline, 1 run | (3) `$sql`, median of 7 | ratio |
+|---|---|---|---|
+| `D6_PIPELINE_RUNS=1 ./lab.sh demo d6` | 89.4 s | 0.61 s | 145.8x |
+| `D6_PIPELINE_RUNS=1 ./lab.sh demo d6` | 81.5 s | 0.60 s | 136.8x |
+| console, the baked `fallback/recorded/d6.json` | 90.3 s | 0.66 s | 136.6x |
+| full-run test, `./lab.sh demo d6` (3 runs: 82.1, 90.2, 82.4 s) | 82.4 s median | 0.65 s | 127.3x |
+
+Warm runs from before Ruling Z agree: runs 2 and 3 of the headless medians
+were 89.0/82.3 s and 89.4/83.9 s. The deck states 80 to 90 s (81 to 91
+measured) and about 125 to 150x (126 to 146 measured).
+
+History, before Ruling Z:
 
 Re-measured 2026-11-01 after the fix round (no warmups), `./lab.sh demo d6`
 from the runner container:

@@ -27,9 +27,12 @@ const ROWS = GROUPS * 5;
 // The pipeline through the API takes over a minute per run on a laptop, so
 // live it is timed once (Ruling T: the presenter narrates the plan while it
 // runs); headless runs and the tests set D6_PIPELINE_RUNS=3 (compose passes 3
-// to the runner). $sql is fast, so it keeps a median of 7. Neither side gets
-// a warmup: the median of 7 absorbs $sql's cold first run, and nothing is
-// pre-warmed to flatter either side. Laptop timings are relative only.
+// to the runner). $sql is fast, so it keeps a median of 7. Ruling Z: setup
+// (and so reset) runs each side once, untimed, after the restore and the
+// statistics, so the timed runs compare warm with warm. The first run after
+// a restore is cold (about 135 s for the pipeline on the Linux lab, against
+// 82 to 89 s warm), and live there is only one timed run, which would
+// otherwise always be the cold one. Laptop timings are relative only.
 export const PIPELINE_RUNS = Object.freeze({ runs: Number(process.env.D6_PIPELINE_RUNS || 1), warmup: 0 });
 export const SQL_RUNS = Object.freeze({ runs: 7, warmup: 0 });
 
@@ -78,7 +81,18 @@ async function startingState(ctx, { force = false } = {}) {
   last.clear();
   const n = await ensureRestored(ctx, { force });
   await gatherStats(await ctx.oraSql());
-  return n;
+  return { ...n, warmed: await warmUp(ctx) };
+}
+
+/**
+ * Ruling Z: one untimed run of each side, so the timed runs are warm vs warm.
+ * Returns the rows each side gave (no times: nothing is timed before equal).
+ */
+async function warmUp(ctx) {
+  const ora = await ctx.oraMongo();
+  const pipelineRows = (await ora.collection('orders').aggregate(pipeline).toArray()).length;
+  const sqlRows = (await runSqlOnce(ctx)).length;
+  return { pipelineRows, sqlRows };
 }
 
 // --- the three runs ---------------------------------------------------------
@@ -221,10 +235,11 @@ export default {
       run: guarded(async (ctx) => {
         const n = await startingState(ctx);
         return {
-          ok: n.ora > 0,
+          ok: n.ora > 0 && n.warmed.pipelineRows === ROWS && n.warmed.sqlRows === ROWS,
           summary: `${n.ora} orders in the 90-day window (${day(WINDOW.fromTs)} to ${day(WINDOW.toTs)}) on both MongoDB and Oracle; ` +
-            `optimizer statistics gathered on ${TABLES.join(', ')}`,
-          metrics: { windowOrders: n.ora },
+            `optimizer statistics gathered on ${TABLES.join(', ')}; the pipeline and $sql each run once, untimed, ` +
+            'so both sides are warm before anything is timed',
+          metrics: { windowOrders: n.ora, warmUpRows: n.warmed.pipelineRows },
         };
       }),
     },

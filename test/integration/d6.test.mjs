@@ -18,12 +18,12 @@ process.env.D6_PIPELINE_RUNS ??= '3';
 const { default: d6, planChecks, PIPELINE_RUNS } = await import('../../demos/d6-sql/index.mjs');
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
-let ctx, results;
+let ctx, results, started;
 const result = (id) => results[d6.steps.findIndex((s) => s.id === id)];
 
 beforeAll(async () => {
   ctx = createContext();
-  await d6.setup(ctx);
+  started = await d6.setup(ctx);
   results = await runDemo(d6, { ctx });
 }, 1_800_000);
 
@@ -38,6 +38,22 @@ describe('D6 pipeline vs $sql', () => {
       ['sql-stage', 'terminal'], ['equal', 'console'], ['plans', 'console'], ['timing', 'console'],
     ]);
     expect(d6.steps.find((s) => s.id === 'sql-stage').command).toBe('./lab.sh mongosh ora demos/d6-sql/sql-stage.js');
+  });
+
+  test('setup warms both sides once, untimed (Ruling Z)', () => {
+    expect(started.warmed).toEqual({ pipelineRows: 160, sqlRows: 160 });
+    const s = result('setup');
+    expect(s.summary).toMatch(/the pipeline and \$sql each run once, untimed/);
+    expect(JSON.stringify(s.metrics)).not.toMatch(/ms/i);
+  });
+
+  test('live (no D6_PIPELINE_RUNS) the pipeline is still timed once (Ruling T)', () => {
+    const env = { ...process.env };
+    delete env.D6_PIPELINE_RUNS;
+    const r = spawnSync('node', ['--input-type=module', '-e',
+      "const m = await import('./demos/d6-sql/index.mjs'); console.log(JSON.stringify([m.PIPELINE_RUNS, m.SQL_RUNS]))"],
+    { cwd: root, encoding: 'utf8', env });
+    expect(JSON.parse(r.stdout)).toEqual([{ runs: 1, warmup: 0 }, { runs: 7, warmup: 0 }]);
   });
 
   test('no step before the equality step spells out a time (Ruling W)', () => {

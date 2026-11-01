@@ -922,10 +922,11 @@ def fig_topn_three_ways() -> Fig:
 def fig_duality_tradeoff() -> Fig:
     """D5's measured result: where each model pays, after the dashboards were proven identical."""
     f = Fig(1120, 392, "Where each model pays, measured in D5 on the laptop after the three dashboards "
-                       "were proven identical, relative only. Counter write per order: embedded about "
-                       "2,600 bytes of redo, the lookup pipeline nothing extra, converged about 900 bytes. "
-                       "Dashboard read for one region: embedded about 0.4 ms, the lookup pipeline about "
-                       "236 ms, converged about 0.7 ms. A costlier read than one stored document, zero "
+                       "were proven identical, relative only, ranges over the measured runs. Counter write per "
+                       "order: embedded 2,600 to 3,500 bytes of redo, the lookup pipeline nothing extra, "
+                       "converged 870 to 950 bytes. Dashboard read for one region: embedded 0.3 to 0.8 ms, "
+                       "the lookup pipeline 236 to 262 ms, converged 0.7 to 0.9 ms. A costlier read than "
+                       "one stored document, zero "
                        "write amplification, and the optimizer plans the join")
     cols = [(320, "(a) Embedded", "hot"), (580, "(b) $lookup", "hot"), (840, "(c) Converged", "cool")]
     cw = 250  # 10 px gaps between cells
@@ -933,10 +934,10 @@ def fig_duality_tradeoff() -> Fig:
         f.text(x + cw / 2, 40, t, size=19, weight=800, font=HEAD, fill=TONE[tone][0], anchor="middle")
     rows = [
         ("Counter write", "redo per order, on top", "of the order itself",
-         [("~2,600 B", "every order", "hot"), ("0 B", "nothing extra", "ink"), ("~900 B", "one row, +1", "cool")]),
-        ("Dashboard read", "one region,", "median of 7",
-         [("~0.4 ms", "fastest: one document", "cool"), ("~236 ms", "counts every order", "hot"),
-          ("~0.7 ms", "index scan and a join", "cool")]),
+         [("2.6 to 3.5 KB", "every order", "hot"), ("0 B", "nothing extra", "ink"), ("870 to 950 B", "one row, +1", "cool")]),
+        ("Dashboard read", "one region, median", "of 7, across runs",
+         [("0.3 to 0.8 ms", "usually fastest: one document", "cool"), ("236 to 262 ms", "counts every order", "hot"),
+          ("0.7 to 0.9 ms", "index scan and a join", "cool")]),
     ]
     top, rh = 60, 104
     for i, (label, s1, s2, cells) in enumerate(rows):

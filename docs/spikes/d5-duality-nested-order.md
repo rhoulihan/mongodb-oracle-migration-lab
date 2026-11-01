@@ -198,22 +198,39 @@ dashboards were asserted identical before any number was shown.
 | redo per order, run 2 (bytes) | 5252 | 2588 | 3494 |
 | dashboard read, run 1 (ms) | 0.3 | 235.9 | 0.7 |
 | dashboard read, run 2 (ms) | 0.4 | 236.3 | 0.7 |
+| redo per order, full run 2 (bytes) | 5483 | 2600 | 3489 |
+| redo per order, full run 3 (bytes) | 5484 | 2605 | 3485 |
+| redo per order, console recording (bytes) | 6098 | 2614 | 3487 |
+| redo per order, full run 4, after Ruling Z (bytes) | 5467 | 2588 | 3495 |
+| dashboard read, full run 2 (ms) | 0.4 | 239.4 | 0.7 |
+| dashboard read, full run 3 (ms) | 0.8 | 240 | 0.7 |
+| dashboard read, console recording (ms) | 0.6 | 261.2 | 0.9 |
+| dashboard read, full run 4 (ms) | 0.5 | 236.2 | 0.7 |
 | what each order writes | the order, plus two updates of the 801-byte R03 Top-N document | the order only | the order, plus one MERGE of a counter row, 24 bytes on average (`user_tables.avg_row_len` after the setup stats), and its index entry |
 | what each read does | one document by primary key | groups every order line in the region | 10 index entries per region, joined to device |
 
 How to read it:
 
-- The order insert alone costs about 2,600 bytes of redo either way (MongoDB
-  API: the lookup column; SQL: 2,603 bytes median, measured separately with the
-  same orders). So the counter itself costs about **2,600 bytes per order
-  embedded** and about **900 to 1,000 bytes per order converged**: about 2.5
-  to 3 times less write work for the same dashboard.
-- The lookup pipeline writes the least, and pays on every read. From the two
-  runs above: about 340x the converged read (236 / 0.7 ms) and about 600 to
-  800x the embedded read (236 / 0.3 to 0.4 ms), and it grows with the
+- The rows "full run 2/3" are the Task 18 full-run smoke test
+  (`./lab.sh demo d5` in session order, after D4), and "console recording"
+  is the baked `fallback/recorded/d5.json` (the console, during the clip
+  recording). The ranges the deck states cover every row in this table.
+- The order insert alone costs about 2,600 to 2,700 bytes of redo either way
+  (MongoDB API: the lookup column; SQL: 2,603 bytes median, measured
+  separately with the same orders). So the counter itself costs about
+  **2,600 to 3,500 bytes per order embedded** (the later runs sit higher: the
+  Top-N document's size moves as devices enter and leave it) and about
+  **870 to 950 bytes per order converged**: about 3 to 4 times less write
+  work for the same dashboard (the first two runs gave about 2.9; the
+  console recording about 4).
+- The lookup pipeline writes the least, and pays on every read. Across the
+  runs above (236 to 262 ms): about 290 to 340x the converged read (0.7 to
+  0.9 ms) and about 300 to 800x the embedded read (0.3 to 0.8 ms), and it grows with the
   region's order count. The sub-millisecond reads are close to timer noise, so
   the ratios are only an order of magnitude.
-- Converged and embedded read in about the same time on this laptop. The
+- Converged and embedded read in about the same time on this laptop; the
+  embedded read is usually the faster (full run 3 had it at 0.8 ms against
+  0.7). The
   converged read is a join, not free: it is cheap because the index hands it
   the 10 rows in order.
 - Across 8 development runs the medians stayed within 5243 to 5263 (embedded),
