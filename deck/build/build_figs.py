@@ -928,7 +928,7 @@ def fig_duality_tradeoff() -> Fig:
                        "236 ms, converged about 0.7 ms. A costlier read than one stored document, zero "
                        "write amplification, and the optimizer plans the join")
     cols = [(320, "(a) Embedded", "hot"), (580, "(b) $lookup", "hot"), (840, "(c) Converged", "cool")]
-    cw = 262
+    cw = 250  # 10 px gaps between cells
     for x, t, tone in cols:
         f.text(x + cw / 2, 40, t, size=19, weight=800, font=HEAD, fill=TONE[tone][0], anchor="middle")
     rows = [
@@ -973,8 +973,12 @@ def fig_api_tax_by_shape() -> Fig:
     fl.node("api", 790, 50, 312, 100, ["Keep them on the API", "nothing to change"], tone="cool", size=18, sub=15)
     fl.node("sql", 790, 220, 312, 100, ["Rewrite the hot ones", "as $sql: the optimizer", "sees the whole question"],
             tone="cool", size=18, sub=15)
-    fl.edge("app", "finds", 314, tone="cool")
-    fl.edge("app", "pipes", 314, tone="hot")
+    # one slate trunk out of the app, then the two coloured branches from the junction
+    f.path("M268,185 H314", [(268, 185), (314, 185)], stroke="var(--slate)", sw=1.7, name="trunk")
+    f.path("M314,185 V100 H359", [(314, 185), (314, 100), (359, 100)], stroke="var(--cool)", sw=1.7,
+           arrow=True, name="to-finds")
+    f.path("M314,185 V270 H359", [(314, 185), (314, 270), (359, 270)], stroke="var(--hot)", sw=1.7,
+           arrow=True, name="to-pipes")
     fl.edge("finds", "api", 745, tone="cool")
     fl.edge("pipes", "sql", 745, tone="cool")
     return f
@@ -1007,7 +1011,7 @@ def fig_sql_stage_forms() -> Fig:
         for k, s in enumerate(code):
             ind = len(s) - len(s.lstrip(" "))   # SVG collapses spaces: indent by position
             f.text(x + 28 + ind * 14 * 0.61, y + 166 + k * 28, s.strip(), size=14, font=MONO)
-    f.text(560, 324, "Inside $sql: no 100 MB stage memory cap, no 16 MiB document cap.", size=17,
+    f.text(560, 324, "Inside $sql: no 100 MB stage memory cap, no 16 MiB cap on intermediate documents.", size=17,
            weight=600, fill="var(--ink)", anchor="middle")
     return f
 
