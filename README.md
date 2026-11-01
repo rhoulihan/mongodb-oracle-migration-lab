@@ -181,3 +181,24 @@ npm test                 # everything (integration tests need the stack up)
 npm run test:unit
 npm run lint:copy        # copy rules: no em dashes, say 26ai, no private references
 ```
+
+## Demo 3: dump and restore
+
+`./lab.sh demo d3` runs it headless; `./lab.sh reset d3` puts back the
+starting state (order service on MongoDB, the eight MIG collections empty, no
+dump). The presenter's terminal commands:
+
+```sh
+./lab.sh exec mongo mongodump --archive=/dumps/telco.archive --gzip --db telco
+./lab.sh exec mongo mongorestore --archive=/dumps/telco.archive --gzip --nsFrom 'telco.*' --nsTo 'MIG.*' \
+  --numParallelCollections=4 --uri 'mongodb://MIG:MigUser2026@oracle:27017/?authMechanism=PLAIN&authSource=$external&tls=false&retryWrites=false&loadBalanced=true'
+./lab.sh app-uri oracle
+./lab.sh mongosh ora --eval 'db.orders.find({region:"R03",status:"provisioned"}).explain()'
+```
+
+The restore runs as `MIG` into the pre-created collections ("restoring to
+existing collection ... without dropping"). Keep the database out of the URI
+path: with `.../MIG?...` mongorestore treats it as `--db MIG` and restores 0
+documents while still exiting 0. Counts are compared at the dump snapshot
+(the archive itself): carts and orderEvents keep expiring on both sides,
+because the TTL indexes come across and Oracle runs them too.
