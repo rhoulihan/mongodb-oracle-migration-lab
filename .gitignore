@@ -1,0 +1,4 @@
+node_modules/
+.lab/
+clips/*.mp4
+deck/build/__pycache__/

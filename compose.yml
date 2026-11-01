@@ -1,0 +1,66 @@
+name: lab
+
+# MongoDB to Oracle migration lab stack. Every host port binds to 127.0.0.1.
+#   mongo       MongoDB 8.2 replica set rs0 (the migration source)
+#   oracle      Oracle AI Database 26ai Free + ORDS + Oracle API for MongoDB (the target)
+#   console     web console (placeholder until the console task lands)
+#   replicator  D4 stand-in replicator, profile d4 (placeholder until its task lands)
+services:
+  mongo:
+    build: ./docker/mongo
+    image: mongodb-oracle-migration-lab-mongo:latest
+    container_name: lab-mongo
+    ports:
+      - '127.0.0.1:27117:27017'
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'quit(db.hello().isWritablePrimary ? 0 : 1)']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    volumes:
+      - mongo-data:/data/db
+
+  oracle:
+    build: ./docker/oracle
+    image: mongodb-oracle-migration-lab-oracle:latest
+    container_name: lab-oracle
+    ports:
+      - '127.0.0.1:1523:1521'    # SQL*Net
+      - '127.0.0.1:8183:8181'    # ORDS / Database Actions
+      - '127.0.0.1:27119:27017'  # Oracle API for MongoDB
+    environment:
+      ORACLE_PASSWORD: '${ORACLE_PASSWORD:-Sandbox2026}'   # SYS / SYSTEM
+      APP_USER: 'MIG'
+      APP_USER_PASSWORD: '${MIG_PASSWORD:-MigUser2026}'
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh']
+      interval: 10s
+      timeout: 10s
+      retries: 60
+      start_period: 180s
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+
+  # Placeholder: answers on 3200 so `up` works. The real console replaces this.
+  console:
+    image: docker.io/library/node:22-alpine
+    container_name: lab-console
+    command: ['node', '-e', "require('http').createServer((q, s) => s.end('lab console placeholder\\n')).listen(3200)"]
+    ports:
+      - '127.0.0.1:3200:3200'
+    environment:
+      LAB_IN_CONTAINER: '1'
+
+  # Placeholder: only starts with `--profile d4`. The real replicator replaces this.
+  replicator:
+    image: docker.io/library/node:22-alpine
+    container_name: lab-replicator
+    profiles: ['d4']
+    command: ['node', '-e', "console.log('Stand-in for Oracle GoldenGate: placeholder, not implemented yet')"]
+    environment:
+      LAB_IN_CONTAINER: '1'
+
+volumes:
+  mongo-data:
+  oracle-data:
