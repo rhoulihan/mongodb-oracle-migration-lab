@@ -40,7 +40,13 @@ header.top {
   display: flex; align-items: center; gap: 20px; padding: 8px 20px;
   border-top: 5px solid var(--red); background: var(--panel); border-bottom: 1px solid var(--hairline);
 }
-.brand { display: flex; align-items: baseline; gap: 14px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+/* Oracle wordmark: the official file, red on light only, never recoloured. In dark mode it
+   sits on a white chip. Oracle red stays brand chrome; in demo content red means risk. */
+.logo-chip { display: inline-flex; align-items: center; flex: none; }
+.oracle-logo { display: block; height: 18px; width: auto; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-chip { background: #fff; padding: 4px 8px; border-radius: 4px; } }
+:root[data-theme="dark"] .logo-chip { background: #fff; padding: 4px 8px; border-radius: 4px; }
 .lab-name { font: 800 22px var(--head); white-space: nowrap; }
 .product { color: var(--muted); font-size: 17px; white-space: nowrap; }
 .ready { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }

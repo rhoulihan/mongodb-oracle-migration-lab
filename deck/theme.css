@@ -264,5 +264,11 @@ html, body { background: var(--paper); }
   font-size: 14px;
   right: 16px; bottom: 12px;
 }
+/* Oracle wordmark, bottom left on every slide: the official file, never recoloured;
+   on a white chip in dark mode. */
+.oracle-chip { position: fixed; left: 16px; bottom: 12px; z-index: 30; display: inline-flex; align-items: center; pointer-events: none; }
+.oracle-mark { display: block; height: 14px; width: auto; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .oracle-chip { background: #fff; padding: 3px 6px; border-radius: 3px; } }
+:root[data-theme="dark"] .oracle-chip { background: #fff; padding: 3px 6px; border-radius: 3px; }
 .reveal .slide-number a { color: inherit; text-decoration: none; }
 .reveal .slides section aside.notes { display: none; }

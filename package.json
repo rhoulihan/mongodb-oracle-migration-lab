@@ -2,6 +2,7 @@
   "name": "mongodb-oracle-migration-lab",
   "version": "0.1.0",
   "private": true,
+  "license": "UPL-1.0",
   "type": "module",
   "engines": {
     "node": ">=22"

@@ -1,4 +1,8 @@
+<img src="docs/assets/oracle-logo.svg" alt="Oracle" height="24">
+
 # MongoDB to Oracle Migration Lab
+
+Built on **Oracle AI Database 26ai**.
 
 Lab stack and demos for the MongoDB to Oracle migration deep dive session. One
 compose stack runs the migration source (MongoDB) and the target (Oracle AI
@@ -473,3 +477,8 @@ Each agent keeps the document and ETag it last read in
 `LAB_HOST_NODE=1`). The agents use the MongoDB API, which enforces the ETag; a
 write that leaves `_metadata` out is last writer wins. Details and the exact
 errors: `docs/spikes/d7-etag-mongo-api.md`.
+
+## License
+
+Universal Permissive License (UPL) 1.0, see [LICENSE](LICENSE). Copyright (c) 2026
+Oracle and/or its affiliates.
