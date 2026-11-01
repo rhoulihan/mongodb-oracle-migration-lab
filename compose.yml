@@ -4,6 +4,8 @@ name: lab
 #   mongo       MongoDB 8.2 replica set rs0 (the migration source)
 #   oracle      Oracle AI Database 26ai Free + ORDS + Oracle API for MongoDB (the target)
 #   console     web console (placeholder until the console task lands)
+#   app         order service the demos drive (127.0.0.1:3300); its backend is
+#               APP_MONGO_URI in .lab/app.env, set by `./lab.sh app-uri mongo|oracle`
 #   replicator  D4 stand-in replicator, profile d4 (placeholder until its task lands)
 services:
   mongo:
@@ -53,6 +55,25 @@ services:
       - '127.0.0.1:3200:3200'
     environment:
       LAB_IN_CONTAINER: '1'
+
+  # Order service. Runs the repo's own code (mounted read-only, with the host
+  # node_modules; every dependency is plain JavaScript). lab.sh writes
+  # .lab/app.env before any compose command, so the file always exists.
+  app:
+    image: docker.io/library/node:22-alpine
+    container_name: lab-app
+    working_dir: /lab
+    command: ['node', 'app/server.mjs']
+    volumes:
+      - .:/lab:ro
+    env_file: .lab/app.env
+    environment:
+      LAB_IN_CONTAINER: '1'
+    ports:
+      - '127.0.0.1:3300:3300'
+    depends_on:
+      mongo:
+        condition: service_healthy
 
   # Placeholder: only starts with `--profile d4`. The real replicator replaces this.
   replicator:

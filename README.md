@@ -12,6 +12,7 @@ After a one-time setup it runs fully offline.
 | `mongo` | `lab-mongo` | MongoDB 8.2, single-node replica set `rs0` (the source) |
 | `oracle` | `lab-oracle` | Oracle AI Database 26ai Free + ORDS + Oracle API for MongoDB (the target) |
 | `console` | `lab-console` | Web console for the demos |
+| `app` | `lab-app` | Order service the demos drive (its backend is switchable) |
 | `replicator` | `lab-replicator` | Stand-in for Oracle GoldenGate, used in demo 4 only (profile `d4`) |
 
 The Oracle app schema is `MIG` (password from `MIG_PASSWORD`, default
@@ -31,7 +32,7 @@ Every port binds to `127.0.0.1` only. Nothing is published to the network.
 | 8183 | ORDS and Database Actions (`http://localhost:8183/ords/`) |
 | 27119 | Oracle API for MongoDB |
 | 3200 | Lab console |
-| 3300 | Order service app (added with the demos) |
+| 3300 | Order service app |
 
 ## One-time setup on the Mac (Apple silicon)
 
@@ -71,6 +72,7 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh reset dN` | Reset one demo to its starting state |
 | `./lab.sh demo dN [--step S]` | Run a demo from the terminal |
 | `./lab.sh exec <service> <cmd...>` | Run a command inside a lab container, for example `./lab.sh exec mongo mongosh` |
+| `./lab.sh app-uri <mongo\|oracle>` | Point the order service at MongoDB or at the Oracle API for MongoDB, then restart it |
 
 The first Oracle boot can take a few minutes. Run `./lab.sh check` after
 `./lab.sh up` and wait for four `OK` lines.
@@ -104,6 +106,26 @@ it, so they expire steadily over the first hour. Each order event gets a
 `createdAt` Date between 7 days before the load and the load itself, so the event
 log ages out steadily over the next week. The TTL index sits on `createdAt`
 because a TTL index only expires Date values; `ts` stays a BSON Timestamp.
+
+## Order service app
+
+`app/server.mjs` is a small order service written the way a typical MongoDB
+app is written (`find`, `insertOne`, `updateOne` with `$set`, `$inc`, `$push`,
+`$sort`, `$slice`). Its only setting is `APP_MONGO_URI`, which is what demos 3
+and 4 flip. In compose it reads `.lab/app.env`; `./lab.sh app-uri oracle`
+rewrites that file and recreates the container.
+
+| Route | What it does |
+|---|---|
+| `GET /orders/:id` | One order, as canonical Extended JSON (Decimal128 totals, Int64 versions) |
+| `POST /orders` | Body `{subscriberId, lines: [{sku, qty}]}`. Writes the order, its `orderEvents` entry, and keeps the region's Top 10 in `regionTopDevices` exact. Returns `{_id}` |
+| `PATCH /orders/:id` | Body `{status}` and/or `{deviceSwap: {from, to}}` |
+| `GET /dashboard/top-devices/:region` | The region's Top 10 devices |
+| `GET /health` | `{backend: 'mongodb' or 'oracle', ok}` |
+
+`/health` tells the backends apart through `buildInfo`: MongoDB includes a
+`gitVersion`, the Oracle API for MongoDB reports only a MongoDB-compatible
+version (7.0.22 on 26ai Free) and names itself through `serverStatus.ordsVersion`.
 
 ## Tests
 

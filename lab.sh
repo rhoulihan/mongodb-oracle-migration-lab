@@ -4,6 +4,7 @@
 #   ./lab.sh reset [dN]            no arg: wipe lab volumes and restart; dN: reset one demo
 #   ./lab.sh demo dN [--step S]    run a demo headless
 #   ./lab.sh exec <service> <cmd...>
+#   ./lab.sh app-uri <mongo|oracle>  point the order service at a backend and restart it
 set -uo pipefail
 cd "$(dirname "$0")"
 
@@ -13,10 +14,30 @@ if [ "${PODMAN:-}" = "1" ] || command -v podman >/dev/null 2>&1; then
 else
   ENGINE=docker
 fi
-compose() { "$ENGINE" compose -f compose.yml "$@"; }
+compose() { ensure_app_env; "$ENGINE" compose -f compose.yml "$@"; }
+
+# The order service's backend URI, as seen from inside compose. %24 is "$":
+# encoded so no env-file or compose interpolation can eat "$external".
+app_uri() {
+  case "$1" in
+    mongo)  echo 'mongodb://mongo:27017/telco?replicaSet=rs0&directConnection=true' ;;
+    oracle) echo "mongodb://MIG:${MIG_PASSWORD}@oracle:27017/MIG?authMechanism=PLAIN&authSource=%24external&tls=false&retryWrites=false&loadBalanced=true" ;;
+    *)      return 1 ;;
+  esac
+}
+write_app_env() { mkdir -p .lab && printf 'APP_MONGO_URI=%s\n' "$(app_uri "$1")" > .lab/app.env; }
+# compose needs .lab/app.env to exist; default the app to the MongoDB source.
+ensure_app_env() { [ -f .lab/app.env ] || write_app_env mongo; }
+
+cmd_app_uri() {
+  app_uri "$1" >/dev/null || usage
+  write_app_env "$1"
+  # A restart keeps the old env; recreating the container reads the new file.
+  compose up -d --no-deps --force-recreate app && echo "order service now uses $1 (127.0.0.1:3300)"
+}
 
 MIG_PASSWORD="${MIG_PASSWORD:-MigUser2026}"
-PORTS="27117 1523 8183 27119 3200"
+PORTS="27117 1523 8183 27119 3200 3300"
 BASE_IMAGES="docker.io/library/mongo:8.2 docker.io/gvenzl/oracle-free:23.26.3-faststart docker.io/library/node:22-alpine"
 LAB_IMAGES="mongodb-oracle-migration-lab-mongo:latest mongodb-oracle-migration-lab-oracle:latest docker.io/library/node:22-alpine"
 CHECK_TIMEOUT="${CHECK_TIMEOUT:-300}"
@@ -109,7 +130,7 @@ run_demo_cli() {
 }
 
 usage() {
-  sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -129,5 +150,6 @@ case "$cmd" in
     fi ;;
   demo)      [ $# -ge 1 ] || usage; run_demo_cli "$@" ;;
   exec)      [ $# -ge 2 ] || usage; lab_exec "$@" ;;
+  app-uri)   [ $# -eq 1 ] || usage; cmd_app_uri "$1" ;;
   *)         usage ;;
 esac
