@@ -120,7 +120,7 @@ html, body { background: var(--paper); }
   gap: 12px;
 }
 .eyebrow .clock { margin-left: auto; color: var(--faint); letter-spacing: 0.06em; text-transform: none; }
-.lede { color: var(--muted); font-size: 24px; max-width: 52ch; }
+.lede { color: var(--muted); font-size: 24px; max-width: 52ch; text-wrap: pretty; }
 .lede strong { color: var(--ink); }
 .body { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; gap: 14px; }
 .takeaway {
@@ -180,6 +180,70 @@ html, body { background: var(--paper); }
   content: ""; position: absolute; left: 2px; top: 0.5em;
   width: 10px; height: 10px; border-radius: 2px; background: var(--flow);
 }
+
+/* ---------- Concept slide parts: cards, chips, operator columns, demo steps ---------- */
+.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-left: 6px solid var(--flow);
+  border-radius: 10px;
+  padding: 14px 20px;
+}
+.card h3 { font-size: 25px; margin-bottom: 4px; }
+.card p { color: var(--muted); font-size: 22px; }
+.card.hot { border-left-color: var(--hot); }
+.card.cool { border-left-color: var(--cool); }
+.chips { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; align-items: center; }
+.chip {
+  font-family: "Bricolage Grotesque", "Public Sans", sans-serif;
+  font-size: 28px; font-weight: 700;
+  padding: 12px 26px; border-radius: 40px;
+  background: var(--flow-soft); color: var(--flow);
+}
+.chip.hot { background: var(--hot-soft); color: var(--hot); }
+.chip.cool { background: var(--cool-soft); color: var(--cool); }
+.chips .to { font-size: 30px; color: var(--faint); }
+.opcols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.opcol {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-top: 6px solid var(--cool);
+  border-radius: 10px;
+  padding: 16px 20px 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.opcol.hot { border-top-color: var(--hot); }
+.opcol.flow { border-top-color: var(--flow); }
+.opcol h3 { font-size: 24px; }
+.opcol .ops { display: flex; flex-wrap: wrap; gap: 10px; }
+.opcol .ops code { font-size: 22px; padding: 4px 10px; }
+.opcol .note { color: var(--muted); font-size: 19px; }
+.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; font-size: 26px; counter-reset: step; }
+.steps li { display: flex; align-items: center; gap: 12px; counter-increment: step; }
+.steps li::before {
+  content: counter(step);
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 700; font-size: 18px;
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: var(--chip); color: var(--ink);
+}
+.steps .pill { flex: none; min-width: 96px; text-align: center; }
+.watch-for { color: var(--ink); font-size: 28px; max-width: none; }
+.watch-for strong { color: var(--flow); }
+
+/* Figures with moving parts (build_figs.overlay): the SVG draws the static parts and the text;
+   HTML boxes laid over it (percent of the viewBox) are what Reveal auto-animate moves, since it
+   measures with offsetLeft/offsetWidth and SVG shapes have none. The SVG twins of those boxes
+   are for the standalone file only. */
+.fig-stack { position: relative; width: 100%; }
+.body > figure > .fig-stack { flex: 0 1 auto; min-height: 0; }
+.fig-stack > svg.fig { position: relative; z-index: 1; width: 100%; height: auto; }
+.fig-stack .overlay-twin { display: none; }
+.fig-stack .ov { position: absolute; box-sizing: border-box; border-radius: 8px; z-index: 0; }
+.fig-stack .ov.cool { background: var(--cool-soft); border: 2px solid var(--cool); }
+.fig-stack .ov.flow { background: var(--flow-soft); border: 2px solid var(--flow); }
+.fig-stack .ov.gone { border-width: 0; }
+.fig-stack .ov.ring { border-radius: 50%; border: 2.4px solid var(--hot); z-index: 2; }
 
 /* ---------- Reveal chrome ---------- */
 .reveal .controls { color: var(--hot); }

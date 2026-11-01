@@ -231,8 +231,13 @@ server and no network: Reveal.js 5.1.0 and the fonts are in the repo.
   `deck/figures/<name>.svg` and splices the figure into the deck between
   `<!-- FIG:<name> -->` markers. It refuses anything out of frame, colliding
   or with a line through text, and renders light and dark PNGs to check by eye.
+- **Animations:** Reveal fragments work on SVG groups (`group(f, "fragment")`,
+  the three-doors figure). Reveal auto-animate cannot resize a shape inside an
+  SVG (it measures with offsetLeft/offsetWidth), so a shape that must morph
+  across slides is drawn with `overlay()`: an HTML box laid over the SVG,
+  matched by `data-id` (the age-out router's three states).
 - **QA:** `deck/build/qa_deck.py` renders every slide at 1280x720 and fails on
-  overflow, overlapping slide rows, an SVG drawn below 0.80 scale, missing or empty notes, an em dash,
+  overflow, overlapping slide rows (`data-qa-allow-overlap` on a layer inside a row opts it out and is counted per slide), an SVG drawn below 0.80 scale, missing or empty notes, an em dash,
   the old version name, more than 45 visible words on a non-demo slide
   (`--word-budget N`), and with `--offline` any request that is not file://.
 
