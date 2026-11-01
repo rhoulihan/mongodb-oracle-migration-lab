@@ -75,6 +75,34 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 The first Oracle boot can take a few minutes. Run `./lab.sh check` after
 `./lab.sh up` and wait for four `OK` lines.
 
+## Dataset
+
+`node gen/generate.mjs --seed 20261114 --scale demo` drops the MongoDB
+database `telco` and loads a deterministic telecom dataset: the same seed always
+gives the same documents (only cart timestamps follow the load clock). On the
+Linux lab it builds and loads in about 7 s.
+
+| Collection | `demo` | `tiny` (unit tests) |
+|---|---|---|
+| `regions` | 8 | 8 |
+| `catalog` (120 devices, 60 plans, 120 add-ons) | 300 | 300 |
+| `accounts` (family plans up to 3 levels) | 20,000 | 200 |
+| `subscribers` | 30,000 | 300 |
+| `orders` | 200,000 | 2,000 |
+| `carts` (TTL 120 s on `updatedAt`) | 5,000 | 50 |
+| `orderEvents` (TTL 7 days on `ts`) | 300,000 | 3,000 |
+| `regionTopDevices` (Top 10 devices per region) | 8 | 8 |
+
+Planted BSON types a migration has to carry: `catalog.skuPattern` is a regular
+expression, `orders.version` is a 64-bit integer (one order holds
+9007199254740993, more than 2^53), `orderEvents.ts` is a BSON Timestamp, and
+prices and totals are Decimal128.
+
+Carts get `updatedAt` spread from 2 minutes before the load to 58 minutes after
+it, so they expire steadily over the first hour. A TTL index only expires Date
+values, so the `orderEvents.ts` TTL index never removes anything while `ts` is a
+Timestamp.
+
 ## Tests
 
 ```sh
