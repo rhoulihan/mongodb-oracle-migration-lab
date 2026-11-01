@@ -3,7 +3,7 @@ name: lab
 # MongoDB to Oracle migration lab stack. Every host port binds to 127.0.0.1.
 #   mongo       MongoDB 8.2 replica set rs0 (the migration source)
 #   oracle      Oracle AI Database 26ai Free + ORDS + Oracle API for MongoDB (the target)
-#   console     web console (placeholder until the console task lands)
+#   console     instructor web console (127.0.0.1:3200), on the app image
 #   app         order service the demos drive (127.0.0.1:3300); its backend is
 #               APP_MONGO_URI in .lab/app.env at start, switched live through
 #               POST /admin/backend by `./lab.sh app-uri mongo|oracle`
@@ -54,15 +54,24 @@ services:
     volumes:
       - oracle-data:/opt/oracle/oradata
 
-  # Placeholder: answers on 3200 so `up` works. The real console replaces this.
+  # Instructor console (console/server.mjs) on the app image: one long-lived
+  # process, so demos keep their state between steps. It never runs shell
+  # commands; terminal steps are typed by the presenter and only checked here.
+  # dumps: D3's archive (D5 and D6 setup restore it); state: D4 status files,
+  # D7 agent state and the recorded rehearsal results (/state/recorded).
   console:
-    image: docker.io/library/node:22-alpine
+    image: mongodb-oracle-migration-lab-app:latest
     container_name: lab-console
-    command: ['node', '-e', "require('http').createServer((q, s) => s.end('lab console placeholder\\n')).listen(3200)"]
+    command: ['node', 'console/server.mjs']
+    stop_grace_period: 20s
     ports:
       - '127.0.0.1:3200:3200'
     environment:
       LAB_IN_CONTAINER: '1'
+      MIG_PASSWORD: '${MIG_PASSWORD:-MigUser2026}'
+    volumes:
+      - dumps:/dumps
+      - state:/state
 
   # Order service, built into its own image (npm ci runs inside it, so the
   # host needs no Node). lab.sh writes .lab/app.env before any compose

@@ -207,6 +207,8 @@ const guarded = (fn) => async (ctx) => {
 export default {
   id: 'd6',
   title: 'Pipeline vs $sql: hand the hard query to the optimizer',
+  // Ruling T: the console keeps these times off screen until `equal` passes.
+  revealAfter: { step: 'equal', steps: ['pipeline-oracle', 'sql-stage'], metrics: ['medianMs', 'runsMs'] },
   setup: startingState,
   reset: (ctx) => startingState(ctx, { force: true }),
   steps: [
@@ -317,6 +319,7 @@ export default {
             (ok ? '' : '; the $sql plan does not show a join and a pushed rank'),
           metrics: { sqlPlanSource: source },
           plan: { left, right },
+          labels: { left: '(2) pipeline through the MongoDB API', right: '(3) $sql' },
           detail: sideBySide('(2) pipeline through the MongoDB API', left, '(3) $sql', right),
         };
       }),

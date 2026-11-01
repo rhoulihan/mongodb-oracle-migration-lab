@@ -200,6 +200,7 @@ export default {
               `the subscriber and products it used came over with the entities`
             : `order ${hex(id)}: on Oracle ${Boolean(onOra)}, on MongoDB ${onSrc}, GET ${back.status}, dashboard ${dash.status}: ${RESET}`,
           panes: { left: { mongodb: onSrc ? 'found' : 'not found' }, right: onOra ? row(onOra, 'Oracle') : null },
+          labels: { left: 'MongoDB', right: 'Oracle' },
           metrics: { orderId: hex(id), subscriberId: sub, onOracle: Boolean(onOra), onMongo: onSrc },
         };
       },
@@ -239,6 +240,7 @@ export default {
             : `merged read is wrong for ${sub}: ${merged.length} rows, union ${union.length}, sorted ${sorted}, ` +
               `old order by id ${old.status}: ${RESET}`,
           panes: { left: legacy, right: current },
+          labels: { left: 'MongoDB (before the cutoff)', right: 'Oracle (from the cutoff)' },
           metrics: { subscriberId: sub, cutoff: cutoff.toISOString(), mongodb: legacy.length, oracle: current.length, merged: merged.length },
           detail: mergedTable(merged, cutoff),
         };

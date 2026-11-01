@@ -145,6 +145,7 @@ async function writeThrough(ctx, { dir, want, plan, label }) {
 export default {
   id: 'd4',
   title: 'Blue/green with a fallback path',
+  banner: STAND_IN,
   setup: startingState,
   async reset(ctx) {
     await stopLocal();

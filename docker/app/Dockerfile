@@ -1,7 +1,7 @@
 # Node image for the lab's own services: the order service (app), the demo
-# runner (Ruling O: `compose run runner`), the D4 replicator and, later, the
-# web console (same image, different command). Dependencies are installed inside the image, so
-# the laptop needs only Podman, not Node.
+# runner (Ruling O: `compose run runner`), the D4 replicator and the
+# instructor console (same image, different command). Dependencies are
+# installed inside the image, so the laptop needs only Podman, not Node.
 #
 # Debian slim, not Alpine: the image also carries the MongoDB Database Tools
 # (mongodump, mongorestore) and mongosh, so the runner can dump, restore and
@@ -52,6 +52,7 @@ COPY oracle/ oracle/
 COPY app/ app/
 COPY demos/ demos/
 COPY replicator/ replicator/
+COPY console/ console/
 
 ENV LAB_IN_CONTAINER=1 NODE_ENV=production
 USER node

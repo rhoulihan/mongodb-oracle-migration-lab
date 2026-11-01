@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { config } from '../lib/config.mjs';
 
-/** @typedef {{ok:boolean, summary:string, panes?:{left?:any,right?:any}, metrics?:object, plan?:{left?:string,right?:string}, detail?:string, verified?:string}} StepResult */
+/** @typedef {{ok:boolean, summary:string, panes?:{left?:any,right?:any}, labels?:{left?:string,right?:string}, metrics?:object, plan?:{left?:string,right?:string}, detail?:string, verified?:string}} StepResult */
 /** @typedef {{id:string,title:string,lane:'console'|'terminal',command?:string,run:(ctx)=>Promise<StepResult>,verify?:(ctx)=>Promise<StepResult>}} Step */
 // Terminal steps (Ruling O) carry three things:
 //   command  what the presenter types on the host
@@ -15,8 +15,16 @@ import { config } from '../lib/config.mjs';
 //   verify   checks the effect only; the console calls it after "Mark done",
 //            and runDemo calls it after every successful terminal run
 // `detail` is optional monospace text (a table, a plan) that the CLI prints
-// under the summary line.
-/** @typedef {{id:'d1'|'d2'|'d3'|'d4'|'d5'|'d6'|'d7', title:string, steps:Step[], setup:(ctx)=>Promise<void>, reset:(ctx)=>Promise<void>}} Demo */
+// under the summary line. `labels` optionally names the left and right panes
+// and plans for the console (for example MongoDB and Oracle).
+//
+// Two optional Demo fields are for the console only:
+//   banner       a label pinned in the demo's header (D4: the stand-in label)
+//   revealAfter  {step, steps, metrics}: the console hides these metrics of
+//                these steps until `step` (which comes after them) has passed
+//                in this console process (Ruling T: no timing before equal)
+/** @typedef {{step:string, steps:string[], metrics:string[]}} RevealAfter */
+/** @typedef {{id:'d1'|'d2'|'d3'|'d4'|'d5'|'d6'|'d7', title:string, banner?:string, revealAfter?:RevealAfter, steps:Step[], setup:(ctx)=>Promise<void>, reset:(ctx)=>Promise<void>}} Demo */
 
 export const DEMOS_DIR = fileURLToPath(new URL('.', import.meta.url));
 const LANES = ['console', 'terminal'];
@@ -42,6 +50,21 @@ export function validateDemo(demo) {
     if (typeof s.run !== 'function') p.push(`step ${s.id}: run is not a function`);
     if (s.verify !== undefined && typeof s.verify !== 'function') p.push(`step ${s.id}: verify is not a function`);
     else if (s.lane === 'terminal' && s.verify === undefined) p.push(`step ${s.id}: a terminal step needs verify`);
+  }
+  if (demo.banner !== undefined && !(typeof demo.banner === 'string' && demo.banner.trim())) p.push('banner is not a string');
+  if (demo.revealAfter !== undefined) p.push(...revealProblems(demo));
+  return p;
+}
+
+function revealProblems({ revealAfter: r, steps }) {
+  const at = (id) => steps.findIndex((s) => s.id === id);
+  const gate = at(r?.step);
+  if (gate < 0) return [`revealAfter.step ${r?.step} is not a step`];
+  const p = [];
+  if (!Array.isArray(r.steps) || r.steps.length === 0) p.push('revealAfter.steps is empty');
+  else for (const id of r.steps) if (at(id) < 0 || at(id) >= gate) p.push(`revealAfter: step ${id} is not a step before ${r.step}`);
+  if (!Array.isArray(r.metrics) || r.metrics.length === 0 || !r.metrics.every((m) => typeof m === 'string')) {
+    p.push('revealAfter.metrics must name at least one metric');
   }
   return p;
 }

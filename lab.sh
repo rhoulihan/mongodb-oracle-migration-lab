@@ -124,10 +124,9 @@ sync_app_env() {
 
 MIG_PASSWORD="${MIG_PASSWORD:-MigUser2026}"
 PORTS="27117 1523 8183 27119 3200 3300"
-# node:22-bookworm-slim is the app/runner/replicator base; node:22-alpine runs
-# the console placeholder until its task lands.
-BASE_IMAGES="docker.io/library/mongo:8.2 docker.io/gvenzl/oracle-free:23.26.3-faststart docker.io/library/node:22-bookworm-slim docker.io/library/node:22-alpine"
-LAB_IMAGES="mongodb-oracle-migration-lab-mongo:latest mongodb-oracle-migration-lab-oracle:latest mongodb-oracle-migration-lab-app:latest docker.io/library/node:22-alpine"
+# node:22-bookworm-slim is the base of the app image (app, runner, replicator, console).
+BASE_IMAGES="docker.io/library/mongo:8.2 docker.io/gvenzl/oracle-free:23.26.3-faststart docker.io/library/node:22-bookworm-slim"
+LAB_IMAGES="mongodb-oracle-migration-lab-mongo:latest mongodb-oracle-migration-lab-oracle:latest mongodb-oracle-migration-lab-app:latest"
 CHECK_TIMEOUT="${CHECK_TIMEOUT:-300}"
 
 ok()   { printf 'OK    %s\n' "$*"; }

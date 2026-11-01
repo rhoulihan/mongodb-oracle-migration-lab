@@ -11,7 +11,7 @@ After a one-time setup it runs fully offline.
 |---|---|---|
 | `mongo` | `lab-mongo` | MongoDB 8.2, single-node replica set `rs0` (the source) |
 | `oracle` | `lab-oracle` | Oracle AI Database 26ai Free + ORDS + Oracle API for MongoDB (the target) |
-| `console` | `lab-console` | Web console for the demos |
+| `console` | `lab-console` | Instructor console for the demos (app image) |
 | `app` | `lab-app` | Order service the demos drive (its backend is switchable) |
 | `replicator` | `lab-replicator` | Stand-in for Oracle GoldenGate, used in demo 4 only (profile `d4`) |
 
@@ -179,6 +179,37 @@ file to the live backend afterwards.
 `/health` tells the backends apart through `buildInfo`: MongoDB includes a
 `gitVersion`, the Oracle API for MongoDB reports only a MongoDB-compatible
 version (7.0.22 on 26ai Free) and names itself through `serverStatus.ordsVersion`.
+
+## Instructor console
+
+Open http://127.0.0.1:3200 (the `console` service starts with `./lab.sh up`).
+Pick a demo at the top, then work down its steps on the left.
+
+- **Console steps:** press **Run step**. A running step shows a live timer.
+- **Terminal steps:** the console shows the command. Press **Copy**, type or
+  paste it in a terminal, then press **Mark done**. The console never runs
+  commands itself; Mark done only checks that the command worked.
+- **Results:** a summary, a strip of numbers, the left and right result panes,
+  and plans side by side when a step has them. **Text output** is the same
+  text `./lab.sh demo` prints.
+- **Timings wait for equal results:** in demo 6 the pipeline and `$sql` times
+  stay hidden until the "Equal results" step passes in this console (Ruling T).
+  The console also never shows how long a step took, only a timer while it runs.
+- **Not ready:** while Oracle is still starting, steps answer "Oracle is still
+  starting (ORDS not ready)". The dots in the header show which service is up.
+- **Recorded fallback:** every step that passes is saved as the rehearsal
+  result in `/state/recorded/<demo>.json` (the `state` volume). **Skip to
+  result** shows it, labeled "Recorded at rehearsal" with its time. A full
+  `./lab.sh reset` deletes the volumes, so rehearse after the last full reset.
+- **Reset demo** runs the demo's reset. For demo 4, run `./lab.sh reset d4`
+  in the terminal instead: it stops the replicator container first.
+- **Theme:** the button at the top right switches light and dark;
+  `?theme=dark` in the URL does the same.
+
+The console runs as one long process, so demos keep their state from step to
+step. It is baked into the app image: run `./lab.sh build` after changing it.
+`node scripts/shots.mjs --run d5` (developers, needs Chrome) clicks through a
+demo and saves 1280x720 screenshots in both themes to `docs/shots/`.
 
 ## Tests
 

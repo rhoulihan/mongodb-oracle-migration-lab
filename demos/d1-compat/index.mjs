@@ -100,6 +100,7 @@ export default {
             ? `order service: ${n} operators (${counts(app)}); demo pipelines: ${rowsOf(demo).length} operators (${counts(demo)})`
             : `no operators found in ${APP_GLOBS.join(', ')}`,
           panes: { left: rowsOf(app), right: rowsOf(demo) },
+          labels: { left: 'Order service', right: 'Demo pipelines (D5, D6)' },
           metrics: {
             app: { unsupported: app.unsupported.length, caveat: app.caveat.length, supported: app.supported.length },
             demo: { unsupported: demo.unsupported.length, caveat: demo.caveat.length, supported: demo.supported.length },

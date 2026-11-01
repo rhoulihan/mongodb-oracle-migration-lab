@@ -315,6 +315,7 @@ export default {
           ok: /SELECT STATEMENT/.test(right),
           summary: `Oracle plans the find with ${/INDEX/.test(right) ? 'an index from the dump' : 'no index'}`,
           plan: { left, right },
+          labels: { left: 'MongoDB', right: 'Oracle' },
           detail: `MongoDB:\n${left}\n\nOracle:\n${right}`,
         };
       },

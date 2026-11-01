@@ -1,6 +1,6 @@
-# Build context for docker/app and docker/oracle (the repo root). app copies only
-# package*.json, lib/, gen/, oracle/, app/ and demos/; oracle copies only
-# docker/oracle/ and the D6 mongosh scripts. Keep everything heavy or private out.
+# Build context for docker/app and docker/oracle (the repo root). app copies
+# only package*.json, lib/, gen/, oracle/, app/, demos/, replicator/ and
+# console/; oracle copies only docker/oracle/ and the D6 mongosh scripts. Keep everything heavy or private out.
 node_modules
 .git
 .lab
