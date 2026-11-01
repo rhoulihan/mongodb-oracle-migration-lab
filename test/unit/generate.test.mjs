@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { BSONRegExp } from 'mongodb';
 import { buildDataset, SCALES } from '../../gen/model.mjs';
 import { hashDocs } from '../../lib/compare.mjs';
-import { INDEXES } from '../../gen/generate.mjs';
+import { INDEXES } from '../../gen/indexes.mjs';
 
 const SEED = 20261114;
 const tiny = buildDataset({ seed: SEED, scale: 'tiny' });

@@ -40,4 +40,27 @@ describe('compare', () => {
     expect(hashDocs(a)).toMatch(/^[0-9a-f]{64}$/);
     expect(hashDocs(a)).not.toBe(hashDocs([{ _id: 'A', n: 1 }, { _id: 'B', n: 3 }]));
   });
+
+  test('sameDocs treats _id-less results as an unordered multiset', () => {
+    expect(sameDocs([{ a: 1 }, { a: 2 }], [{ a: 2 }, { a: 1 }])).toEqual({ equal: true });
+    expect(sameDocs([{ a: 1 }, { a: 1 }, { a: 2 }], [{ a: 2 }, { a: 1 }, { a: 1 }]).equal).toBe(true);
+    expect(sameDocs([{ a: 1 }, { a: 1 }], [{ a: 1 }]).equal).toBe(false);
+  });
+
+  test('sameDocs names the differing _id-less document by its content', () => {
+    const r = sameDocs([{ region: 'R01', n: 1 }, { region: 'R02', n: 2 }],
+      [{ region: 'R02', n: 2 }, { region: 'R01', n: 9 }]);
+    expect(r.equal).toBe(false);
+    expect(r.diff).not.toContain('_id null');
+    expect(r.diff).toContain('"region":"R01"');
+    expect(r.diff).toMatch(/only in (a|b)/);
+    const long = sameDocs([{ s: 'x'.repeat(1000) }], []);
+    expect(long.diff.length).toBeLessThan(300);
+  });
+
+  test('hashDocs is order-independent for _id-less docs', () => {
+    const a = [{ a: 1 }, { a: 2 }, { a: 3 }];
+    expect(hashDocs(a)).toBe(hashDocs([a[2], a[0], a[1]]));
+    expect(hashDocs(a)).not.toBe(hashDocs([{ a: 1 }, { a: 2 }, { a: 4 }]));
+  });
 });
