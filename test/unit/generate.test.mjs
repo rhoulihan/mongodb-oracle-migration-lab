@@ -129,6 +129,11 @@ describe('buildDataset', () => {
     expect(Math.max(...ages) - Math.min(...ages)).toBeGreaterThan(6 * 86_400_000); // spread, not one instant
   });
 
+  test('orders has a {region, lines.sku} index for the app Top-N counts', () => {
+    expect(INDEXES.some(([c, k]) => c === 'orders'
+      && JSON.stringify(k) === JSON.stringify({ region: 1, 'lines.sku': 1 }))).toBe(true);
+  });
+
   test('TTL indexes: carts.updatedAt 120 s, orderEvents.createdAt 7 days, none on ts', () => {
     const ttl = INDEXES.filter(([, , o]) => o.expireAfterSeconds !== undefined)
       .map(([c, k, o]) => [c, Object.keys(k), o.expireAfterSeconds]);

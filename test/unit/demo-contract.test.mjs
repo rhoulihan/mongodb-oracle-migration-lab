@@ -2,7 +2,7 @@
 // the fixtures. The run-twice check (Review Focus 1: re-running a demo without
 // a reset) runs on the fixtures always and on the real demos when LAB_UP is set.
 import { describe, expect, test } from 'vitest';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { listDemos, runDemo, validateDemo, createContext } from '../../demos/contract.mjs';
 
@@ -144,9 +144,18 @@ describe('demos/run.mjs CLI', () => {
     expect(r.stderr).toMatch(/no demo d7/);
   });
 
-  test('lab.sh demo and lab.sh reset dN pass through to run.mjs', () => {
-    const sh = execFileSync('bash', ['-c', 'grep -n "run_demo_cli" lab.sh'], { cwd: root, encoding: 'utf8' });
-    expect(sh).toMatch(/run_demo_cli "\$1" --reset/);
-    expect(sh).toMatch(/run_demo_cli "\$@"/);
+  test('lab.sh demo and lab.sh reset dN run the runner on the host', () => {
+    const sh = (...args) => spawnSync('./lab.sh', args, {
+      cwd: root, encoding: 'utf8', env: { ...process.env, LAB_DEMOS_DIR: FIXTURES },
+    });
+    const ok = sh('demo', 'd1');
+    expect(ok.status).toBe(0);
+    expect(ok.stdout).toMatch(/ok\s+type\s+count is 2/);
+    const step = sh('demo', 'd2', '--step', 'bad');
+    expect(step.status).toBe(1);
+    expect(step.stdout).toMatch(/FAIL\s+bad\s+results differ/);
+    const reset = sh('reset', 'd1');
+    expect(reset.status).toBe(0);
+    expect(reset.stdout).toMatch(/d1 reset/);
   });
 });

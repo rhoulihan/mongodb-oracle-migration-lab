@@ -127,6 +127,18 @@ describe('orders', () => {
   });
 });
 
+describe('Top-N counts are index-backed', () => {
+  test("the outsider count (orders by region and lines.sku) uses orders {region, 'lines.sku'}", async () => {
+    const plan = await db.collection('orders')
+      .find({ region: 'R01', 'lines.sku': 'SKU-DEV-0001' }, { projection: { lines: 1 } })
+      .explain('executionStats');
+    const stages = JSON.stringify(plan.queryPlanner.winningPlan);
+    expect(stages).toMatch(/IXSCAN/);
+    expect(stages).toMatch(/"indexName":"region_1_lines\.sku_1"/);
+    expect(plan.executionStats.totalDocsExamined).toBe(plan.executionStats.nReturned);
+  });
+});
+
 describe('dashboard stays exact over many orders', () => {
   test('sequential, concurrent and swap writes match topDevices() recomputed from orders', async () => {
     const rand = mulberry32(7);

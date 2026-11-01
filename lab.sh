@@ -39,7 +39,7 @@ cmd_app_uri() {
 MIG_PASSWORD="${MIG_PASSWORD:-MigUser2026}"
 PORTS="27117 1523 8183 27119 3200 3300"
 BASE_IMAGES="docker.io/library/mongo:8.2 docker.io/gvenzl/oracle-free:23.26.3-faststart docker.io/library/node:22-alpine"
-LAB_IMAGES="mongodb-oracle-migration-lab-mongo:latest mongodb-oracle-migration-lab-oracle:latest docker.io/library/node:22-alpine"
+LAB_IMAGES="mongodb-oracle-migration-lab-mongo:latest mongodb-oracle-migration-lab-oracle:latest mongodb-oracle-migration-lab-app:latest docker.io/library/node:22-alpine"
 CHECK_TIMEOUT="${CHECK_TIMEOUT:-300}"
 
 ok()   { printf 'OK    %s\n' "$*"; }

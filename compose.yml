@@ -56,16 +56,15 @@ services:
     environment:
       LAB_IN_CONTAINER: '1'
 
-  # Order service. Runs the repo's own code (mounted read-only, with the host
-  # node_modules; every dependency is plain JavaScript). lab.sh writes
-  # .lab/app.env before any compose command, so the file always exists.
+  # Order service, built into its own image (npm ci runs inside it, so the
+  # host needs no Node). lab.sh writes .lab/app.env before any compose
+  # command, so the file always exists.
   app:
-    image: docker.io/library/node:22-alpine
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    image: mongodb-oracle-migration-lab-app:latest
     container_name: lab-app
-    working_dir: /lab
-    command: ['node', 'app/server.mjs']
-    volumes:
-      - .:/lab:ro
     env_file: .lab/app.env
     environment:
       LAB_IN_CONTAINER: '1'

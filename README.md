@@ -112,7 +112,10 @@ because a TTL index only expires Date values; `ts` stays a BSON Timestamp.
 `app/server.mjs` is a small order service written the way a typical MongoDB
 app is written (`find`, `insertOne`, `updateOne` with `$set`, `$inc`, `$push`,
 `$sort`, `$slice`). Its only setting is `APP_MONGO_URI`, which is what demos 3
-and 4 flip. In compose it reads `.lab/app.env`; `./lab.sh app-uri oracle`
+and 4 flip. It is built into its own image (`docker/app/Dockerfile`, which runs
+`npm ci` inside the image), so the laptop needs only Podman: `./lab.sh build`
+builds it and `./lab.sh preflight` checks it is present. Rebuild after changing
+the app code. In compose it reads `.lab/app.env`; `./lab.sh app-uri oracle`
 rewrites that file and recreates the container.
 
 | Route | What it does |

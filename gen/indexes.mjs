@@ -9,6 +9,8 @@ export const INDEXES = [
   ['orderEvents', { ts: 1 }, {}],
   ['orderEvents', { orderId: 1 }, {}],
   ['orders', { region: 1, placedAt: -1 }, {}],
+  // The order service counts one device's units per region when it may enter the Top 10.
+  ['orders', { region: 1, 'lines.sku': 1 }, {}],
   ['orders', { 'subscriber.id': 1 }, {}],
   ['subscribers', { accountId: 1 }, {}],
   ['accounts', { householdId: 1 }, {}],

@@ -90,7 +90,10 @@ export async function findDemo(id, dir = DEMOS_DIR) {
 
 /** The ctx handed to setup, reset and every step: config plus lazy lab connections. */
 export function createContext() {
+  // Imported eagerly, awaited lazily: the no-op catch keeps a failed import
+  // from becoming an unhandled rejection; the error surfaces on first use.
   const db = import('../lib/db.mjs');
+  db.catch(() => {});
   const lazy = (name) => async () => (await db)[name]();
   return {
     mongoSrc: lazy('mongoSrc'),
