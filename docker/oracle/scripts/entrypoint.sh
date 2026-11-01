@@ -32,6 +32,12 @@ echo "=== Oracle is ready ==="
 
 ADMIN_PWD="${ORACLE_PASSWORD:-Sandbox2026}"
 
+# The base image runs initdb scripts only when the database is first created.
+# Re-run the (idempotent) grants every boot so grants added since then, such as
+# the measurement views, also reach an existing data volume.
+echo "=== Applying MIG grants ==="
+sqlplus -s / as sysdba < /container-entrypoint-initdb.d/01-grants.sql
+
 if [ ! -f "$ORDS_POOL_CONFIG" ]; then
   echo "=== No ORDS pool config: installing/validating ORDS ==="
 
