@@ -16,3 +16,12 @@ repo copy lint, which bans that character in every tracked file, passes.
 
 The deck loads the UMD builds (reveal.js, notes.js) with classic script tags:
 ES module scripts do not load from file:// in Chrome.
+
+Second edit (speaker view layout), in notes.js, notes.esm.js and
+speaker-view.html, each marked "deck edit":
+- After a layout is picked, the hidden layout dropdown gives up keyboard
+  focus. Before, it kept focus, so a clicker's arrow or PageDown key could
+  change the layout while it changed the slide.
+- Every slide change re-applies the chosen layout. The choice is still saved
+  in localStorage (reveal-speaker-layout), so reopening the notes window (S)
+  restores it.

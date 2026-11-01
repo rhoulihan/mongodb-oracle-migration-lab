@@ -479,6 +479,9 @@
 					// applying the same state
 					currentState = JSON.stringify( data.state );
 
+					// deck edit: keep the chosen layout on every slide
+					if( layoutDropdown ) document.body.setAttribute( 'data-speaker-layout', layoutDropdown.value );
+
 					// No need for updating the notes in case of fragment changes
 					if ( data.notes ) {
 						notes.classList.remove( 'hidden' );
@@ -792,6 +795,8 @@
 					layoutDropdown.addEventListener( 'change', function( event ) {
 
 						setLayout( layoutDropdown.value );
+						// deck edit: release focus so clicker and arrow keys never change the layout
+						layoutDropdown.blur();
 
 					}, false );
 

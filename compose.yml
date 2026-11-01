@@ -19,7 +19,8 @@ services:
     ports:
       - '127.0.0.1:27117:27017'
     healthcheck:
-      test: ['CMD', 'mongosh', '--quiet', '--eval', 'quit(db.hello().isWritablePrimary ? 0 : 1)']
+      # No spaces in the script: Podman's Docker-compatible API re-splits CMD healthchecks on whitespace.
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'quit(db.hello().isWritablePrimary?0:1)']
       interval: 5s
       timeout: 5s
       retries: 30
