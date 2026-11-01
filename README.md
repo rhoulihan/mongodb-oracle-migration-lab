@@ -202,3 +202,26 @@ path: with `.../MIG?...` mongorestore treats it as `--db MIG` and restores 0
 documents while still exiting 0. Counts are compared at the dump snapshot
 (the archive itself): carts and orderEvents keep expiring on both sides,
 because the TTL indexes come across and Oracle runs them too.
+
+## Demo 5: Top-N real-time counter
+
+`./lab.sh demo d5` runs it headless; `./lab.sh reset d5` puts back the
+starting state. D5 runs on Oracle after D3: if `MIG.orders` is empty, setup
+runs D3's dump and restore first. Setup then builds the converged tables
+(`oracle/sql/d5-converged.sql`: `region`, `device`, `device_sales`, the
+`device_sales_topn` index, the duality view `region_top_devices_dv` and the
+read-only JSON view `region_top_devices_v`) from the restored orders, and
+resets `regionTopDevices` to the same Top 10, so all three variants start
+from the same truth. Each write step removes the previous D5 orders, places
+the same 200 seeded orders through its variant and measures redo per order
+(instance-wide `v$sysstat`, median of batches; laptop numbers are relative).
+The presenter's terminal command:
+
+```sh
+./lab.sh mongosh ora --eval 'db.region_top_devices_v.findOne({_id:"R03"})'
+```
+
+26ai Free cannot order or limit a nested array inside a duality view, so the
+Top 10 document comes from `region_top_devices_v`, and the duality view
+carries the full device list and the write path. Details, errors and the
+measured numbers: `docs/spikes/d5-duality-nested-order.md`.

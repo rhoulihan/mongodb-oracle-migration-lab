@@ -15,9 +15,11 @@ BEGIN
     SODA_APP TO mig';
 END;
 /
--- Measurement helpers (lib/measure.mjs): redo size from v$mystat (D5), and
--- DBMS_XPLAN.DISPLAY_CURSOR plans of the last execution (D3, D6).
+-- Measurement helpers (lib/measure.mjs): redo size from v$mystat (one session)
+-- and v$sysstat (system-wide, D5: Mongo API writes run in ORDS sessions), and
+-- DBMS_XPLAN.DISPLAY_CURSOR plans of the last execution (D3, D5, D6).
 GRANT SELECT ON sys.v_$mystat TO mig;
+GRANT SELECT ON sys.v_$sysstat TO mig;
 GRANT SELECT ON sys.v_$statname TO mig;
 GRANT SELECT ON sys.v_$session TO mig;
 GRANT SELECT ON sys.v_$sql TO mig;

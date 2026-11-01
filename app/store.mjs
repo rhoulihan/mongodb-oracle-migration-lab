@@ -31,12 +31,66 @@ const money = (c) => Decimal128.fromString((c / 100).toFixed(2));
 const totalOf = (lines) => money(lines.reduce((s, l) => s + Number(l.qty) * cents(l.price), 0));
 const ranksAbove = (a, b) => a.units > b.units || (a.units === b.units && a.sku < b.sku);
 
+// The embedded Top-N maintenance on its own, so D5(a) measures exactly what
+// the order service does on every order (demos/d5-topn/variants.mjs).
+// Callers serialize writes per region (createStore's withRegion does).
+export function createTopN(db) {
+  const orders = db.collection('orders');
+  const catalog = db.collection('catalog');
+  const top = db.collection('regionTopDevices');
+
+  // Exact units of one device in one region, summed from the order lines.
+  async function unitsOf(region, sku) {
+    let units = 0;
+    const cur = orders.find({ region, 'lines.sku': sku }, { projection: { lines: 1 } });
+    for await (const o of cur) {
+      for (const l of o.lines) if (l.sku === sku && l.kind === 'device') units += Number(l.qty);
+    }
+    return units;
+  }
+
+  async function bump(region, sku, name, qty) {
+    const doc = await top.findOne({ _id: region });
+    if (!doc) return recompute(region);
+    if (doc.top.some((t) => t.sku === sku)) {
+      await top.updateOne({ _id: region, 'top.sku': sku }, { $inc: { 'top.$.units': new Int32(qty) } });
+      await top.updateOne({ _id: region }, { $push: { top: { $each: [], $sort: TOP_SORT, $slice: TOP_N } } });
+      return;
+    }
+    const entry = { sku, units: await unitsOf(region, sku) };
+    const last = doc.top[doc.top.length - 1];
+    if (doc.top.length < TOP_N || ranksAbove(entry, { sku: last.sku, units: Number(last.units) })) {
+      await top.updateOne({ _id: region, 'top.sku': { $ne: sku } }, {
+        $push: { top: { $each: [{ sku, name, units: new Int32(entry.units) }], $sort: TOP_SORT, $slice: TOP_N } },
+      });
+    }
+  }
+
+  async function recompute(region) {
+    const units = new Map();
+    for await (const o of orders.find({ region }, { projection: { lines: 1 } })) {
+      for (const l of o.lines) if (l.kind === 'device') units.set(l.sku, (units.get(l.sku) ?? 0) + Number(l.qty));
+    }
+    const best = [...units].map(([sku, u]) => ({ sku, units: u }))
+      .sort((a, b) => (ranksAbove(a, b) ? -1 : ranksAbove(b, a) ? 1 : 0))
+      .slice(0, TOP_N);
+    const names = new Map((await catalog.find({ _id: { $in: best.map((b) => b.sku) } })
+      .project({ name: 1 }).toArray()).map((c) => [c._id, c.name]));
+    await top.updateOne({ _id: region }, {
+      $set: { top: best.map((b) => ({ sku: b.sku, name: names.get(b.sku), units: new Int32(b.units) })) },
+    }, { upsert: true });
+  }
+
+  return { bump, recompute };
+}
+
 export function createStore(db) {
   const orders = db.collection('orders');
   const events = db.collection('orderEvents');
   const catalog = db.collection('catalog');
   const subscribers = db.collection('subscribers');
   const top = db.collection('regionTopDevices');
+  const { bump: bumpTop, recompute: recomputeTop } = createTopN(db);
 
   const locks = new Map();
   function withRegion(region, fn) {
@@ -54,48 +108,6 @@ export function createStore(db) {
       orderId, type, ts: new Timestamp({ t: Math.floor(now.getTime() / 1000), i: 1 }), createdAt: now,
     });
   };
-
-  // Exact units of one device in one region, summed from the order lines.
-  async function unitsOf(region, sku) {
-    let units = 0;
-    const cur = orders.find({ region, 'lines.sku': sku }, { projection: { lines: 1 } });
-    for await (const o of cur) {
-      for (const l of o.lines) if (l.sku === sku && l.kind === 'device') units += Number(l.qty);
-    }
-    return units;
-  }
-
-  async function bumpTop(region, sku, name, qty) {
-    const doc = await top.findOne({ _id: region });
-    if (!doc) return recomputeTop(region);
-    if (doc.top.some((t) => t.sku === sku)) {
-      await top.updateOne({ _id: region, 'top.sku': sku }, { $inc: { 'top.$.units': new Int32(qty) } });
-      await top.updateOne({ _id: region }, { $push: { top: { $each: [], $sort: TOP_SORT, $slice: TOP_N } } });
-      return;
-    }
-    const entry = { sku, units: await unitsOf(region, sku) };
-    const last = doc.top[doc.top.length - 1];
-    if (doc.top.length < TOP_N || ranksAbove(entry, { sku: last.sku, units: Number(last.units) })) {
-      await top.updateOne({ _id: region, 'top.sku': { $ne: sku } }, {
-        $push: { top: { $each: [{ sku, name, units: new Int32(entry.units) }], $sort: TOP_SORT, $slice: TOP_N } },
-      });
-    }
-  }
-
-  async function recomputeTop(region) {
-    const units = new Map();
-    for await (const o of orders.find({ region }, { projection: { lines: 1 } })) {
-      for (const l of o.lines) if (l.kind === 'device') units.set(l.sku, (units.get(l.sku) ?? 0) + Number(l.qty));
-    }
-    const best = [...units].map(([sku, u]) => ({ sku, units: u }))
-      .sort((a, b) => (ranksAbove(a, b) ? -1 : ranksAbove(b, a) ? 1 : 0))
-      .slice(0, TOP_N);
-    const names = new Map((await catalog.find({ _id: { $in: best.map((b) => b.sku) } })
-      .project({ name: 1 }).toArray()).map((c) => [c._id, c.name]));
-    await top.updateOne({ _id: region }, {
-      $set: { top: best.map((b) => ({ sku: b.sku, name: names.get(b.sku), units: new Int32(b.units) })) },
-    }, { upsert: true });
-  }
 
   function parseId(id) {
     if (!ObjectId.isValid(id) || String(id).length !== 24) throw new InputError(`bad order id ${id}`);

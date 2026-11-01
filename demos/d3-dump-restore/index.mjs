@@ -185,7 +185,10 @@ export default {
       },
       async verify(ctx) {
         const ora = await ctx.oraMongo();
-        const names = (await ora.listCollections({}, { nameOnly: true }).toArray()).map((c) => c.name).sort();
+        // Only collections count: views (D5's region_top_devices_v and _dv)
+        // are listed too, with type 'view', and are not restore targets.
+        const names = (await ora.listCollections({}).toArray())
+          .filter((c) => c.type !== 'view').map((c) => c.name).sort();
         const extra = names.filter((n) => !COLLECTIONS.includes(n));
         if (extra.length) return { ok: false, summary: `unexpected collections on Oracle: ${extra.join(', ')}` };
         const orders = (await ora.collection('orders').countDocuments()) - (await smokeWrites(ora)).orders;
