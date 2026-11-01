@@ -1,0 +1,189 @@
+{
+  "id": "d2",
+  "steps": {
+    "migrate-entities": {
+      "at": "2026-11-01T11:01:55.397Z",
+      "result": {
+        "ok": true,
+        "summary": "Oracle has regions 8, catalog 300, accounts 20000, subscribers 30000, as on the source, and no old orders, carts or events"
+      }
+    },
+    "set-cutoff": {
+      "at": "2026-11-01T11:01:59.900Z",
+      "result": {
+        "ok": true,
+        "summary": "age-out mode: before 2026-09-30T23:58:48.725Z from MongoDB (archive), from then on Oracle"
+      }
+    },
+    "new-order": {
+      "at": "2026-11-01T11:02:04.720Z",
+      "result": {
+        "ok": true,
+        "summary": "order 6ae71c2c6b5ee528391c1a2d for S000001 is on Oracle and not on MongoDB; placed 2026-11-01T11:02:04.454Z, after the cutoff; the subscriber and products it used came over with the entities",
+        "panes": {
+          "left": {
+            "mongodb": "not found"
+          },
+          "right": {
+            "_id": "6ae71c2c6b5ee528391c1a2d",
+            "placedAt": "2026-11-01T11:02:04.454Z",
+            "status": "placed",
+            "total": "546.99",
+            "from": "Oracle"
+          }
+        },
+        "labels": {
+          "left": "MongoDB",
+          "right": "Oracle"
+        },
+        "metrics": {
+          "orderId": "6ae71c2c6b5ee528391c1a2d",
+          "subscriberId": "S000001",
+          "onOracle": true,
+          "onMongo": 0
+        }
+      }
+    },
+    "cross-cutoff-read": {
+      "at": "2026-11-01T11:02:09.106Z",
+      "result": {
+        "ok": true,
+        "summary": "S000001: 10 orders from MongoDB (before the cutoff) + 1 from Oracle = 11 in one merged read, newest first, same set as both sides by _id",
+        "panes": {
+          "left": [
+            {
+              "_id": "6abbb1e15a3838b600009bc9",
+              "placedAt": "2026-09-29T12:41:05.824Z",
+              "status": "placed",
+              "total": "48.97",
+              "from": "MongoDB"
+            },
+            {
+              "_id": "6ab0fb331bcee05800021980",
+              "placedAt": "2026-09-21T09:38:59.070Z",
+              "status": "placed",
+              "total": "1071.99",
+              "from": "MongoDB"
+            },
+            {
+              "_id": "6aa9f3e9c1cf8851000139d7",
+              "placedAt": "2026-09-16T01:42:01.257Z",
+              "status": "placed",
+              "total": "1079.98",
+              "from": "MongoDB"
+            },
+            {
+              "_id": "6aa5bd9117557fb300019edb",
+              "placedAt": "2026-09-12T21:01:05.745Z",
+              "status": "placed",
+              "total": "1511.97",
+              "from": "MongoDB"
+            },
+            {
+              "_id": "6a820f8fbc870d72000031c5",
+              "placedAt": "2026-08-16T19:29:19.677Z",
+              "status": "placed",
+              "total": "33.97",
+              "from": "MongoDB"
+            },
+            {
+              "_id": "6a66f7b6685b913f0002a2bc",
+              "placedAt": "2026-07-27T06:16:22.761Z",
+              "status": "placed",
+              "total": "4286.97",
+              "from": "MongoDB"
+            },
+            {
+              "_id": "6a640d5556f20ba7000243a7",
+              "placedAt": "2026-07-25T01:11:49.724Z",
+              "status": "placed",
+              "total": "1618.96",
+              "from": "MongoDB"
+            },
+            {
+              "_id": "6a0f22382cc4a39d00022fee",
+              "placedAt": "2026-05-21T15:18:16.695Z",
+              "status": "provisioned",
+              "total": "23.98",
+              "from": "MongoDB"
+            },
+            {
+              "_id": "69f2fbeeb9930801000238e7",
+              "placedAt": "2026-04-30T06:51:26.936Z",
+              "status": "provisioned",
+              "total": "1372.96",
+              "from": "MongoDB"
+            },
+            {
+              "_id": "69deb675ad92af1900006fb4",
+              "placedAt": "2026-04-14T21:49:41.058Z",
+              "status": "provisioned",
+              "total": "1515.97",
+              "from": "MongoDB"
+            }
+          ],
+          "right": [
+            {
+              "_id": "6ae71c2c6b5ee528391c1a2d",
+              "placedAt": "2026-11-01T11:02:04.454Z",
+              "status": "placed",
+              "total": "546.99",
+              "from": "Oracle"
+            }
+          ]
+        },
+        "labels": {
+          "left": "MongoDB (before the cutoff)",
+          "right": "Oracle (from the cutoff)"
+        },
+        "metrics": {
+          "subscriberId": "S000001",
+          "cutoff": "2026-09-30T23:58:48.725Z",
+          "mongodb": 10,
+          "oracle": 1,
+          "merged": 11
+        },
+        "detail": "placedAt (UTC)       read from  status       total    _id\n2026-11-01 11:02:04  Oracle     placed        546.99  6ae71c2c6b5ee528391c1a2d\n---- cutoff 2026-09-30 23:58:48 ----\n2026-09-29 12:41:05  MongoDB    placed         48.97  6abbb1e15a3838b600009bc9\n2026-09-21 09:38:59  MongoDB    placed       1071.99  6ab0fb331bcee05800021980\n2026-09-16 01:42:01  MongoDB    placed       1079.98  6aa9f3e9c1cf8851000139d7\n2026-09-12 21:01:05  MongoDB    placed       1511.97  6aa5bd9117557fb300019edb\n2026-08-16 19:29:19  MongoDB    placed         33.97  6a820f8fbc870d72000031c5\n2026-07-27 06:16:22  MongoDB    placed       4286.97  6a66f7b6685b913f0002a2bc\n2026-07-25 01:11:49  MongoDB    placed       1618.96  6a640d5556f20ba7000243a7\n2026-05-21 15:18:16  MongoDB    provisioned    23.98  6a0f22382cc4a39d00022fee\n2026-04-30 06:51:26  MongoDB    provisioned  1372.96  69f2fbeeb9930801000238e7\n2026-04-14 21:49:41  MongoDB    provisioned  1515.97  69deb675ad92af1900006fb4"
+      }
+    },
+    "ttl-expiry": {
+      "at": "2026-11-01T11:02:17.631Z",
+      "result": {
+        "ok": true,
+        "summary": "MongoDB carts 4991 -> 4988 in 4 s, deleted by the TTL index (120 s after updatedAt), including a cart abandoned 125 s ago; the last one expires in 3 h 59 min; Oracle has 0 carts: nothing short-lived was moved",
+        "panes": {
+          "left": [
+            {
+              "t": 0,
+              "carts": 4991
+            },
+            {
+              "t": 1004,
+              "carts": 4991
+            },
+            {
+              "t": 2007,
+              "carts": 4991
+            },
+            {
+              "t": 3009,
+              "carts": 4991
+            },
+            {
+              "t": 4013,
+              "carts": 4988
+            }
+          ]
+        },
+        "metrics": {
+          "before": 4991,
+          "after": 4988,
+          "oracleCarts": 0,
+          "expired": 3,
+          "lastExpiresInMs": 14347949
+        },
+        "detail": "carts on MongoDB: 0s 4991, 1s 4991, 2s 4991, 3s 4991, 4s 4988"
+      }
+    }
+  }
+}

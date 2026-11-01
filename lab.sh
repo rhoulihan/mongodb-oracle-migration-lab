@@ -237,9 +237,15 @@ run_node() {
 # compose network. The URI is built here from MIG_PASSWORD so no typed command,
 # slide or console step shows the password. No database in the URI path: with
 # /MIG mongorestore restores 0 documents and still exits 0 (Ruling Q).
+# Its last line is the wall time on this laptop, so the presenter reads the
+# restore time off the screen live (D3) instead of quoting a fixed number.
 cmd_mongorestore_ora() {
+  local start=$SECONDS rc=0
   lab_exec mongo mongorestore "$@" \
-    --uri "mongodb://MIG:${MIG_PASSWORD}@oracle:27017/?authMechanism=PLAIN&authSource=\$external&tls=false&retryWrites=false&loadBalanced=true"
+    --uri "mongodb://MIG:${MIG_PASSWORD}@oracle:27017/?authMechanism=PLAIN&authSource=\$external&tls=false&retryWrites=false&loadBalanced=true" \
+    || rc=$?
+  echo "INFO  restore took $((SECONDS - start)) s on this laptop (wall clock, exit $rc)"
+  return "$rc"
 }
 
 run_demo_cli() { local rc=0; run_node demos/run.mjs "$@" || rc=$?; sync_app_env; return "$rc"; }

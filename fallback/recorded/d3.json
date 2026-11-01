@@ -1,0 +1,324 @@
+{
+  "id": "d3",
+  "steps": {
+    "dump": {
+      "at": "2026-11-01T11:02:27.700Z",
+      "result": {
+        "ok": true,
+        "summary": "/dumps/telco.archive holds 8 collections, 555278 documents"
+      }
+    },
+    "restore": {
+      "at": "2026-11-01T11:03:13.821Z",
+      "result": {
+        "ok": true,
+        "summary": "MIG holds the 8 pre-created collections; orders has 200000 documents, as dumped"
+      }
+    },
+    "counts": {
+      "at": "2026-11-01T11:03:19.236Z",
+      "result": {
+        "ok": true,
+        "summary": "all 8 collections match the dump",
+        "panes": {
+          "left": [
+            {
+              "coll": "regions",
+              "archive": 8,
+              "restored": null,
+              "oracle": 8,
+              "smokeExcluded": 0,
+              "ok": true
+            },
+            {
+              "coll": "catalog",
+              "archive": 300,
+              "restored": null,
+              "oracle": 300,
+              "smokeExcluded": 0,
+              "ok": true
+            },
+            {
+              "coll": "accounts",
+              "archive": 20000,
+              "restored": null,
+              "oracle": 20000,
+              "smokeExcluded": 0,
+              "ok": true
+            },
+            {
+              "coll": "subscribers",
+              "archive": 30000,
+              "restored": null,
+              "oracle": 30000,
+              "smokeExcluded": 0,
+              "ok": true
+            },
+            {
+              "coll": "orders",
+              "archive": 200000,
+              "restored": null,
+              "oracle": 200000,
+              "smokeExcluded": 0,
+              "ok": true
+            },
+            {
+              "coll": "carts",
+              "archive": 4985,
+              "restored": null,
+              "oracle": 4973,
+              "smokeExcluded": 0,
+              "ttl": "updatedAt + 120s",
+              "unexpired": 4972,
+              "ok": true
+            },
+            {
+              "coll": "orderEvents",
+              "archive": 299977,
+              "restored": null,
+              "oracle": 299954,
+              "smokeExcluded": 0,
+              "ttl": "createdAt + 604800s",
+              "unexpired": 299946,
+              "ok": true
+            },
+            {
+              "coll": "regionTopDevices",
+              "archive": 8,
+              "restored": null,
+              "oracle": 8,
+              "smokeExcluded": 0,
+              "ok": true
+            }
+          ]
+        },
+        "detail": "collection        in the dump  restored  on Oracle now  note\n----------------  -----------  --------  -------------  ---------------------------------------------------------------------------\nregions           8            -         8\ncatalog           300          -         300\naccounts          20000        -         20000\nsubscribers       30000        -         30000\norders            200000       -         200000\ncarts             4985         -         4973           TTL updatedAt + 120s: 12 expired since the dump (4972 still unexpired)\norderEvents       299977       -         299954         TTL createdAt + 604800s: 23 expired since the dump (299946 still unexpired)\nregionTopDevices  8            -         8"
+      }
+    },
+    "typediff": {
+      "at": "2026-11-01T11:03:30.988Z",
+      "result": {
+        "ok": true,
+        "summary": "5 fields with a type or $type difference, 3 value checks that changed",
+        "panes": {
+          "left": [
+            {
+              "kind": "value",
+              "coll": "catalog",
+              "path": "price",
+              "check": "decimal scale",
+              "ok": false,
+              "changed": 60,
+              "of": 300,
+              "example": {
+                "src": "93.00",
+                "dst": "93"
+              }
+            },
+            {
+              "kind": "type",
+              "coll": "catalog",
+              "path": "skuPattern",
+              "srcTypes": [
+                "regex"
+              ],
+              "dstTypes": [
+                "object"
+              ],
+              "queryCheck": {
+                "filter": {
+                  "skuPattern": {
+                    "$type": "regex"
+                  }
+                },
+                "srcCount": 300,
+                "dstCount": "rejected"
+              }
+            },
+            {
+              "kind": "type",
+              "coll": "orders",
+              "path": "lines",
+              "srcTypes": [
+                "array",
+                "object"
+              ],
+              "dstTypes": [
+                "array",
+                "object"
+              ],
+              "queryCheck": {
+                "filter": {
+                  "lines": {
+                    "$type": "object"
+                  }
+                },
+                "srcCount": 2000,
+                "dstCount": 0
+              }
+            },
+            {
+              "kind": "value",
+              "coll": "orders",
+              "path": "lines.price",
+              "check": "decimal scale",
+              "ok": false,
+              "changed": 1280,
+              "of": 4722,
+              "example": {
+                "src": "19.00",
+                "dst": "19"
+              }
+            },
+            {
+              "kind": "value",
+              "coll": "orders",
+              "path": "total",
+              "check": "decimal scale",
+              "ok": false,
+              "changed": 176,
+              "of": 2000,
+              "example": {
+                "src": "19.00",
+                "dst": "19"
+              }
+            },
+            {
+              "kind": "value",
+              "coll": "orders",
+              "path": "version",
+              "check": "Int64 above 2^53",
+              "ok": true,
+              "src": "9007199254740993",
+              "dst": "9007199254740993",
+              "exact": true
+            },
+            {
+              "kind": "type",
+              "coll": "carts",
+              "path": "items",
+              "srcTypes": [
+                "array",
+                "object"
+              ],
+              "dstTypes": [
+                "array",
+                "object"
+              ],
+              "queryCheck": {
+                "filter": {
+                  "items": {
+                    "$type": "object"
+                  }
+                },
+                "srcCount": 2000,
+                "dstCount": 0
+              }
+            },
+            {
+              "kind": "type",
+              "coll": "orderEvents",
+              "path": "ts",
+              "srcTypes": [
+                "timestamp"
+              ],
+              "dstTypes": [
+                "object"
+              ],
+              "queryCheck": {
+                "filter": {
+                  "ts": {
+                    "$type": "timestamp"
+                  }
+                },
+                "srcCount": 2000,
+                "dstCount": "rejected"
+              }
+            },
+            {
+              "kind": "type",
+              "coll": "regionTopDevices",
+              "path": "top",
+              "srcTypes": [
+                "array",
+                "object"
+              ],
+              "dstTypes": [
+                "array",
+                "object"
+              ],
+              "queryCheck": {
+                "filter": {
+                  "top": {
+                    "$type": "object"
+                  }
+                },
+                "srcCount": 8,
+                "dstCount": 0
+              }
+            }
+          ]
+        },
+        "detail": "Type differences (sampled documents, same _ids on both sides)\ncollection        path        MongoDB       Oracle        $type query                   MongoDB  Oracle\n----------------  ----------  ------------  ------------  ----------------------------  -------  --------\ncatalog           skuPattern  regex         object        {skuPattern:{$type:\"regex\"}}  300      rejected\norders            lines       array,object  array,object  {lines:{$type:\"object\"}}      2000     0\ncarts             items       array,object  array,object  {items:{$type:\"object\"}}      2000     0\norderEvents       ts          timestamp     object        {ts:{$type:\"timestamp\"}}      2000     rejected\nregionTopDevices  top         array,object  array,object  {top:{$type:\"object\"}}        8        0\n\nValue checks\ncollection  path         check             result\n----------  -----------  ----------------  -------------------------------------------------------\ncatalog     price        decimal scale     60 of 300 values changed (93.00 reads back as 93)\norders      lines.price  decimal scale     1280 of 4722 values changed (19.00 reads back as 19)\norders      total        decimal scale     176 of 2000 values changed (19.00 reads back as 19)\norders      version      Int64 above 2^53  source 9007199254740993, Oracle 9007199254740993: exact"
+      }
+    },
+    "flip": {
+      "at": "2026-11-01T11:03:35.470Z",
+      "result": {
+        "ok": true,
+        "summary": "order service reports backend oracle (26.3.0.r2721811)"
+      }
+    },
+    "smoke": {
+      "at": "2026-11-01T11:03:40.314Z",
+      "result": {
+        "ok": true,
+        "summary": "6 app calls passed on Oracle, app code unchanged",
+        "panes": {
+          "left": [
+            {
+              "call": "GET /health",
+              "ok": true,
+              "note": "backend oracle"
+            },
+            {
+              "call": "GET /orders/:id",
+              "ok": true,
+              "note": "status 200"
+            },
+            {
+              "call": "POST /orders",
+              "ok": true,
+              "note": "status 201"
+            },
+            {
+              "call": "PATCH /orders/:id",
+              "ok": true,
+              "note": "status 200"
+            },
+            {
+              "call": "GET /orders/:id (after PATCH)",
+              "ok": true,
+              "note": "status provisioned, version 2"
+            },
+            {
+              "call": "GET /dashboard/top-devices/:region",
+              "ok": true,
+              "note": "10 devices"
+            }
+          ]
+        },
+        "metrics": {
+          "backend": "oracle"
+        }
+      }
+    },
+    "explain": {
+      "at": "2026-11-01T11:03:45.306Z",
+      "result": {
+        "ok": true,
+        "summary": "Oracle plan: SELECT STATEMENT > TABLE ACCESS BY INDEX ROWID BATCHED orders > HASH UNIQUE > INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1"
+      }
+    }
+  }
+}

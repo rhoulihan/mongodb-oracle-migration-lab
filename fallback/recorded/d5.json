@@ -1,0 +1,462 @@
+{
+  "id": "d5",
+  "steps": {
+    "setup": {
+      "at": "2026-11-01T11:05:52.112Z",
+      "result": {
+        "ok": true,
+        "summary": "8 regions; 960 counter rows built from the restored orders; their Top 10 matches a fresh count of the orders",
+        "metrics": {
+          "regions": 8,
+          "counterRows": 960
+        }
+      }
+    },
+    "embedded-write": {
+      "at": "2026-11-01T11:06:00.230Z",
+      "result": {
+        "ok": true,
+        "summary": "200 orders placed: 6098 bytes of redo per order; each order rewrites its region's Top-N document (R03: 801 bytes), usually twice ($inc, then a re-sort)",
+        "metrics": {
+          "redoPerOrder": 6098,
+          "batches": [
+            6618,
+            6023,
+            6098,
+            41402,
+            40806,
+            17162,
+            5277,
+            5505,
+            4887
+          ],
+          "docBytes": 801,
+          "readMs": 0.6
+        },
+        "panes": {
+          "left": {
+            "_id": "R03",
+            "top": [
+              {
+                "sku": "SKU-DEV-0015",
+                "name": "Google Pixel 10 Pro 256GB Black",
+                "units": 3496
+              },
+              {
+                "sku": "SKU-DEV-0016",
+                "name": "Motorola Razr 64GB Silver",
+                "units": 1884
+              },
+              {
+                "sku": "SKU-DEV-0017",
+                "name": "OnePlus Nord 128GB Blue",
+                "units": 1263
+              },
+              {
+                "sku": "SKU-DEV-0018",
+                "name": "Nokia XR21 64GB Blue",
+                "units": 1029
+              },
+              {
+                "sku": "SKU-DEV-0019",
+                "name": "Apple iPad Air 512GB Black",
+                "units": 820
+              },
+              {
+                "sku": "SKU-DEV-0020",
+                "name": "Samsung Galaxy Z Fold 64GB Blue",
+                "units": 704
+              },
+              {
+                "sku": "SKU-DEV-0021",
+                "name": "Google Pixel 10 128GB Blue",
+                "units": 655
+              },
+              {
+                "sku": "SKU-DEV-0022",
+                "name": "Motorola Moto G 64GB Green",
+                "units": 579
+              },
+              {
+                "sku": "SKU-DEV-0023",
+                "name": "OnePlus Nord 256GB Blue",
+                "units": 466
+              },
+              {
+                "sku": "SKU-DEV-0024",
+                "name": "Nokia XR21 128GB Green",
+                "units": 465
+              }
+            ]
+          }
+        },
+        "plan": {
+          "left": "SELECT STATEMENT\n  TABLE ACCESS BY INDEX ROWID regionTopDevices\n    INDEX UNIQUE SCAN SYS_C009070"
+        },
+        "detail": "redo per order, by batch of 20: 6618, 6023, 6098, 41402, 40806, 17162, 5277, 5505, 4887\nread plan:\nSELECT STATEMENT\n  TABLE ACCESS BY INDEX ROWID regionTopDevices\n    INDEX UNIQUE SCAN SYS_C009070"
+      }
+    },
+    "lookup-read": {
+      "at": "2026-11-01T11:06:10.868Z",
+      "result": {
+        "ok": true,
+        "summary": "2614 bytes of redo per order; every dashboard read groups each R03 order line again (the read time stays hidden until the three dashboards are proven equal)",
+        "metrics": {
+          "redoPerOrder": 2614,
+          "batches": [
+            2690,
+            2532,
+            2636,
+            2581,
+            2614,
+            2570,
+            2616,
+            2580,
+            2668
+          ],
+          "readMs": 261.2
+        },
+        "panes": {
+          "left": {
+            "_id": "R03",
+            "top": [
+              {
+                "sku": "SKU-DEV-0015",
+                "name": "Google Pixel 10 Pro 256GB Black",
+                "units": 3496
+              },
+              {
+                "sku": "SKU-DEV-0016",
+                "name": "Motorola Razr 64GB Silver",
+                "units": 1884
+              },
+              {
+                "sku": "SKU-DEV-0017",
+                "name": "OnePlus Nord 128GB Blue",
+                "units": 1263
+              },
+              {
+                "sku": "SKU-DEV-0018",
+                "name": "Nokia XR21 64GB Blue",
+                "units": 1029
+              },
+              {
+                "sku": "SKU-DEV-0019",
+                "name": "Apple iPad Air 512GB Black",
+                "units": 820
+              },
+              {
+                "sku": "SKU-DEV-0020",
+                "name": "Samsung Galaxy Z Fold 64GB Blue",
+                "units": 704
+              },
+              {
+                "sku": "SKU-DEV-0021",
+                "name": "Google Pixel 10 128GB Blue",
+                "units": 655
+              },
+              {
+                "sku": "SKU-DEV-0022",
+                "name": "Motorola Moto G 64GB Green",
+                "units": 579
+              },
+              {
+                "sku": "SKU-DEV-0023",
+                "name": "OnePlus Nord 256GB Blue",
+                "units": 466
+              },
+              {
+                "sku": "SKU-DEV-0024",
+                "name": "Nokia XR21 128GB Green",
+                "units": 465
+              }
+            ]
+          }
+        },
+        "plan": {
+          "left": "SELECT STATEMENT\n  SORT GROUP BY\n    TABLE ACCESS BY INDEX ROWID catalog\n      INDEX UNIQUE SCAN SYS_C009064\n  VIEW\n    COUNT STOPKEY\n      VIEW\n        SORT ORDER BY STOPKEY\n          VIEW\n            SORT GROUP BY\n              NESTED LOOPS\n                TABLE ACCESS BY INDEX ROWID BATCHED orders\n                  HASH UNIQUE\n                    INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_lines.sku_1\n                JSON EXPAND ARRAY EVALUATION"
+        },
+        "detail": "read plan:\nSELECT STATEMENT\n  SORT GROUP BY\n    TABLE ACCESS BY INDEX ROWID catalog\n      INDEX UNIQUE SCAN SYS_C009064\n  VIEW\n    COUNT STOPKEY\n      VIEW\n        SORT ORDER BY STOPKEY\n          VIEW\n            SORT GROUP BY\n              NESTED LOOPS\n                TABLE ACCESS BY INDEX ROWID BATCHED orders\n                  HASH UNIQUE\n                    INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_lines.sku_1\n                JSON EXPAND ARRAY EVALUATION"
+      }
+    },
+    "converged": {
+      "at": "2026-11-01T11:06:16.911Z",
+      "result": {
+        "ok": true,
+        "summary": "3487 bytes of redo per order; the dashboard read is an index range scan that stops after 10 rows per region (the view builds all 8 regions, then keeps R03 by _id; the read time stays hidden until the three dashboards are proven equal)",
+        "metrics": {
+          "redoPerOrder": 3487,
+          "batches": [
+            3585,
+            3421,
+            3529,
+            3483,
+            3516,
+            3473,
+            3487,
+            3496,
+            3481
+          ],
+          "readMs": 0.9
+        },
+        "panes": {
+          "left": {
+            "_id": "R03",
+            "top": [
+              {
+                "sku": "SKU-DEV-0015",
+                "name": "Google Pixel 10 Pro 256GB Black",
+                "units": 3496
+              },
+              {
+                "sku": "SKU-DEV-0016",
+                "name": "Motorola Razr 64GB Silver",
+                "units": 1884
+              },
+              {
+                "sku": "SKU-DEV-0017",
+                "name": "OnePlus Nord 128GB Blue",
+                "units": 1263
+              },
+              {
+                "sku": "SKU-DEV-0018",
+                "name": "Nokia XR21 64GB Blue",
+                "units": 1029
+              },
+              {
+                "sku": "SKU-DEV-0019",
+                "name": "Apple iPad Air 512GB Black",
+                "units": 820
+              },
+              {
+                "sku": "SKU-DEV-0020",
+                "name": "Samsung Galaxy Z Fold 64GB Blue",
+                "units": 704
+              },
+              {
+                "sku": "SKU-DEV-0021",
+                "name": "Google Pixel 10 128GB Blue",
+                "units": 655
+              },
+              {
+                "sku": "SKU-DEV-0022",
+                "name": "Motorola Moto G 64GB Green",
+                "units": 579
+              },
+              {
+                "sku": "SKU-DEV-0023",
+                "name": "OnePlus Nord 256GB Blue",
+                "units": 466
+              },
+              {
+                "sku": "SKU-DEV-0024",
+                "name": "Nokia XR21 128GB Green",
+                "units": 465
+              }
+            ]
+          }
+        },
+        "plan": {
+          "left": "EXPLAINED SQL STATEMENT:\n------------------------\n/* measure:a834e17e9fb5 */ SELECT JSON_SERIALIZE(v.data) FROM \nregion_top_devices_v v WHERE v.data.\"_id\".string() = :region\n \nPlan hash value: 36573191\n \n--------------------------------------------------------------\n| Id  | Operation             | Name                 | Rows  |\n--------------------------------------------------------------\n|   0 | SELECT STATEMENT      |                      |       |\n|   1 |  SORT GROUP BY        |                      |     1 |\n|*  2 |   HASH JOIN           |                      |    10 |\n|   3 |    VIEW               |                      |    10 |\n|*  4 |     COUNT STOPKEY     |                      |       |\n|   5 |      VIEW             |                      |   120 |\n|*  6 |       INDEX RANGE SCAN| DEVICE_SALES_TOPN    |   120 |\n|   7 |    TABLE ACCESS FULL  | DEVICE               |   120 |\n|*  8 |  VIEW                 | REGION_TOP_DEVICES_V |     8 |\n|   9 |   INDEX FULL SCAN     | SYS_C009123          |     8 |\n--------------------------------------------------------------\n \nPredicate Information (identified by operation id):\n---------------------------------------------------\n \n   2 - access(\"D\".\"SKU\"=\"T\".\"SKU\")\n   4 - filter(ROWNUM<=10)\n   6 - access(\"DS\".\"REGION_ID\"=:B1)\n   8 - filter(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"V\".\"DATA\" FORMAT OSON , '$.\"_id\".string()' \n              RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) )=:REGION)"
+        },
+        "detail": "read plan:\nEXPLAINED SQL STATEMENT:\n------------------------\n/* measure:a834e17e9fb5 */ SELECT JSON_SERIALIZE(v.data) FROM \nregion_top_devices_v v WHERE v.data.\"_id\".string() = :region\n \nPlan hash value: 36573191\n \n--------------------------------------------------------------\n| Id  | Operation             | Name                 | Rows  |\n--------------------------------------------------------------\n|   0 | SELECT STATEMENT      |                      |       |\n|   1 |  SORT GROUP BY        |                      |     1 |\n|*  2 |   HASH JOIN           |                      |    10 |\n|   3 |    VIEW               |                      |    10 |\n|*  4 |     COUNT STOPKEY     |                      |       |\n|   5 |      VIEW             |                      |   120 |\n|*  6 |       INDEX RANGE SCAN| DEVICE_SALES_TOPN    |   120 |\n|   7 |    TABLE ACCESS FULL  | DEVICE               |   120 |\n|*  8 |  VIEW                 | REGION_TOP_DEVICES_V |     8 |\n|   9 |   INDEX FULL SCAN     | SYS_C009123          |     8 |\n--------------------------------------------------------------\n \nPredicate Information (identified by operation id):\n---------------------------------------------------\n \n   2 - access(\"D\".\"SKU\"=\"T\".\"SKU\")\n   4 - filter(ROWNUM<=10)\n   6 - access(\"DS\".\"REGION_ID\"=:B1)\n   8 - filter(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"V\".\"DATA\" FORMAT OSON , '$.\"_id\".string()' \n              RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) )=:REGION)\n\ndashboard document:\n{\n  \"_id\": \"R03\",\n  \"top\": [\n    {\n      \"sku\": \"SKU-DEV-0015\",\n      \"name\": \"Google Pixel 10 Pro 256GB Black\",\n      \"units\": 3496\n    },\n    {\n      \"sku\": \"SKU-DEV-0016\",\n      \"name\": \"Motorola Razr 64GB Silver\",\n      \"units\": 1884\n    },\n    {\n      \"sku\": \"SKU-DEV-0017\",\n      \"name\": \"OnePlus Nord 128GB Blue\",\n      \"units\": 1263\n    },\n    {\n      \"sku\": \"SKU-DEV-0018\",\n      \"name\": \"Nokia XR21 64GB Blue\",\n      \"units\": 1029\n    },\n    {\n      \"sku\": \"SKU-DEV-0019\",\n      \"name\": \"Apple iPad Air 512GB Black\",\n      \"units\": 820\n    },\n    {\n      \"sku\": \"SKU-DEV-0020\",\n      \"name\": \"Samsung Galaxy Z Fold 64GB Blue\",\n      \"units\": 704\n    },\n    {\n      \"sku\": \"SKU-DEV-0021\",\n      \"name\": \"Google Pixel 10 128GB Blue\",\n      \"units\": 655\n    },\n    {\n      \"sku\": \"SKU-DEV-0022\",\n      \"name\": \"Motorola Moto G 64GB Green\",\n      \"units\": 579\n    },\n    {\n      \"sku\": \"SKU-DEV-0023\",\n      \"name\": \"OnePlus Nord 256GB Blue\",\n      \"units\": 466\n    },\n    {\n      \"sku\": \"SKU-DEV-0024\",\n      \"name\": \"Nokia XR21 128GB Green\",\n      \"units\": 465\n    }\n  ]\n}"
+      }
+    },
+    "same-shape": {
+      "at": "2026-11-01T11:06:21.162Z",
+      "result": {
+        "ok": true,
+        "summary": "all 8 region dashboards are identical in the three variants; redo per order 6098 / 2614 / 3487 bytes, read 0.6 / 261.2 / 0.9 ms (embedded / lookup / converged)",
+        "metrics": {
+          "redoPerOrder": {
+            "embedded": 6098,
+            "lookup": 2614,
+            "converged": 3487
+          },
+          "readMs": {
+            "embedded": 0.6,
+            "lookup": 261.2,
+            "converged": 0.9
+          }
+        },
+        "panes": {
+          "left": {
+            "embedded": {
+              "_id": "R03",
+              "top": [
+                {
+                  "sku": "SKU-DEV-0015",
+                  "name": "Google Pixel 10 Pro 256GB Black",
+                  "units": 3496
+                },
+                {
+                  "sku": "SKU-DEV-0016",
+                  "name": "Motorola Razr 64GB Silver",
+                  "units": 1884
+                },
+                {
+                  "sku": "SKU-DEV-0017",
+                  "name": "OnePlus Nord 128GB Blue",
+                  "units": 1263
+                },
+                {
+                  "sku": "SKU-DEV-0018",
+                  "name": "Nokia XR21 64GB Blue",
+                  "units": 1029
+                },
+                {
+                  "sku": "SKU-DEV-0019",
+                  "name": "Apple iPad Air 512GB Black",
+                  "units": 820
+                },
+                {
+                  "sku": "SKU-DEV-0020",
+                  "name": "Samsung Galaxy Z Fold 64GB Blue",
+                  "units": 704
+                },
+                {
+                  "sku": "SKU-DEV-0021",
+                  "name": "Google Pixel 10 128GB Blue",
+                  "units": 655
+                },
+                {
+                  "sku": "SKU-DEV-0022",
+                  "name": "Motorola Moto G 64GB Green",
+                  "units": 579
+                },
+                {
+                  "sku": "SKU-DEV-0023",
+                  "name": "OnePlus Nord 256GB Blue",
+                  "units": 466
+                },
+                {
+                  "sku": "SKU-DEV-0024",
+                  "name": "Nokia XR21 128GB Green",
+                  "units": 465
+                }
+              ]
+            },
+            "lookup": {
+              "_id": "R03",
+              "top": [
+                {
+                  "sku": "SKU-DEV-0015",
+                  "name": "Google Pixel 10 Pro 256GB Black",
+                  "units": 3496
+                },
+                {
+                  "sku": "SKU-DEV-0016",
+                  "name": "Motorola Razr 64GB Silver",
+                  "units": 1884
+                },
+                {
+                  "sku": "SKU-DEV-0017",
+                  "name": "OnePlus Nord 128GB Blue",
+                  "units": 1263
+                },
+                {
+                  "sku": "SKU-DEV-0018",
+                  "name": "Nokia XR21 64GB Blue",
+                  "units": 1029
+                },
+                {
+                  "sku": "SKU-DEV-0019",
+                  "name": "Apple iPad Air 512GB Black",
+                  "units": 820
+                },
+                {
+                  "sku": "SKU-DEV-0020",
+                  "name": "Samsung Galaxy Z Fold 64GB Blue",
+                  "units": 704
+                },
+                {
+                  "sku": "SKU-DEV-0021",
+                  "name": "Google Pixel 10 128GB Blue",
+                  "units": 655
+                },
+                {
+                  "sku": "SKU-DEV-0022",
+                  "name": "Motorola Moto G 64GB Green",
+                  "units": 579
+                },
+                {
+                  "sku": "SKU-DEV-0023",
+                  "name": "OnePlus Nord 256GB Blue",
+                  "units": 466
+                },
+                {
+                  "sku": "SKU-DEV-0024",
+                  "name": "Nokia XR21 128GB Green",
+                  "units": 465
+                }
+              ]
+            },
+            "converged": {
+              "_id": "R03",
+              "top": [
+                {
+                  "sku": "SKU-DEV-0015",
+                  "name": "Google Pixel 10 Pro 256GB Black",
+                  "units": 3496
+                },
+                {
+                  "sku": "SKU-DEV-0016",
+                  "name": "Motorola Razr 64GB Silver",
+                  "units": 1884
+                },
+                {
+                  "sku": "SKU-DEV-0017",
+                  "name": "OnePlus Nord 128GB Blue",
+                  "units": 1263
+                },
+                {
+                  "sku": "SKU-DEV-0018",
+                  "name": "Nokia XR21 64GB Blue",
+                  "units": 1029
+                },
+                {
+                  "sku": "SKU-DEV-0019",
+                  "name": "Apple iPad Air 512GB Black",
+                  "units": 820
+                },
+                {
+                  "sku": "SKU-DEV-0020",
+                  "name": "Samsung Galaxy Z Fold 64GB Blue",
+                  "units": 704
+                },
+                {
+                  "sku": "SKU-DEV-0021",
+                  "name": "Google Pixel 10 128GB Blue",
+                  "units": 655
+                },
+                {
+                  "sku": "SKU-DEV-0022",
+                  "name": "Motorola Moto G 64GB Green",
+                  "units": 579
+                },
+                {
+                  "sku": "SKU-DEV-0023",
+                  "name": "OnePlus Nord 256GB Blue",
+                  "units": 466
+                },
+                {
+                  "sku": "SKU-DEV-0024",
+                  "name": "Nokia XR21 128GB Green",
+                  "units": 465
+                }
+              ]
+            }
+          }
+        },
+        "detail": "variant     redo/order  read ms  plan\nembedded          6098      0.6  TABLE ACCESS BY INDEX ROWID regionTopDevices > INDEX UNIQUE SCAN SYS_C009070\nlookup            2614    261.2  SORT GROUP BY > TABLE ACCESS BY INDEX ROWID catalog > INDEX UNIQUE SCAN SYS_C009064 > COUNT STOPKEY > SORT ORDER BY STOPKEY > SORT GROUP BY > TABLE ACCESS BY INDEX ROWID BATCHED orders > INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_lines.sku_1 > JSON EXPAND ARRAY EVALUATION\nconverged         3487      0.9  SORT GROUP BY > HASH JOIN > COUNT STOPKEY > INDEX RANGE SCAN DEVICE_SALES_TOPN > TABLE ACCESS FULL DEVICE > INDEX FULL SCAN SYS_C009123\n\nR03 top 3: SKU-DEV-0015 3496, SKU-DEV-0016 1884, SKU-DEV-0017 1263"
+      }
+    },
+    "mongosh-read": {
+      "at": "2026-11-01T11:06:26.077Z",
+      "result": {
+        "ok": true,
+        "summary": "region_top_devices_v is readable through the MongoDB API: R03 has 10 devices, sorted"
+      }
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "id": "d6",
+  "steps": {
+    "setup": {
+      "at": "2026-11-01T11:06:32.957Z",
+      "result": {
+        "ok": true,
+        "summary": "100079 orders in the 90-day window (2026-07-03 to 2026-10-01) on both MongoDB and Oracle; optimizer statistics gathered on orders, subscribers, accounts, catalog",
+        "metrics": {
+          "windowOrders": 100079
+        }
+      }
+    },
+    "pipeline-mongo-explain": {
+      "at": "2026-11-01T11:06:44.396Z",
+      "result": {
+        "ok": true,
+        "summary": "MongoDB runs it as 13 stages, 3 of them lookups (joins); 160 rows. Shown for its shape only: this demo times nothing on MongoDB",
+        "metrics": {
+          "rows": 160,
+          "stages": 13
+        },
+        "plan": {
+          "left": "$cursor\n  PROJECTION_DEFAULT\n    COLLSCAN\n$lookup\n$lookup\n$unwind\n$lookup\n$set\n$group\n$group\n$unwind\n$project\n$sort"
+        },
+        "detail": "pipeline stages:\n$match > $lookup > $unwind > $lookup > $unwind > $unwind > $lookup > $unwind > $set > $group > $group > $unwind > $project > $sort\n\nMongoDB explain:\n$cursor\n  PROJECTION_DEFAULT\n    COLLSCAN\n$lookup\n$lookup\n$unwind\n$lookup\n$set\n$group\n$group\n$unwind\n$project\n$sort"
+      }
+    },
+    "pipeline-oracle": {
+      "at": "2026-11-01T11:09:02.546Z",
+      "result": {
+        "ok": true,
+        "summary": "the unchanged pipeline returns 160 rows on Oracle (timed over 1 run; the times stay hidden until the results are proven equal)",
+        "metrics": {
+          "rows": 160,
+          "medianMs": 133892.089644,
+          "runsMs": [
+            133892.089644
+          ]
+        },
+        "detail": "region  tier      rank  subscriber  name              plan              spend\nR01     basic        1  S020845     Yara Young        Unlimited 43        9933.84\nR01     basic        2  S000455     Noah Okafor       Business 41         9783.81\nR01     basic        3  S017464     Kira Reyes        Business 22          9718.8\nR01     basic        4  S022597     Grace Okafor      Prepaid 27          8998.86\nR01     basic        5  S014508     Olu Diaz          Senior 19           8995.78"
+      }
+    },
+    "sql-stage": {
+      "at": "2026-11-01T11:09:08.762Z",
+      "result": {
+        "ok": true,
+        "summary": "$sql through the MongoDB API returns 160 rows: ranks 1 to 5 for each of the 32 region and tier pairs"
+      }
+    },
+    "equal": {
+      "at": "2026-11-01T11:09:18.446Z",
+      "result": {
+        "ok": true,
+        "summary": "160 rows are identical in all three runs: same subscribers, ranks, names, plans and spend. Only the decimal scale needed lining up: Oracle keeps the value but drops trailing zeros (9718.80 reads back as 9718.8), on 18 rows of (2) and 18 of (3); spend is compared at 2 decimals",
+        "metrics": {
+          "rows": 160,
+          "rescaled": {
+            "source": 0,
+            "pipeline": 18,
+            "sql": 18
+          }
+        },
+        "detail": "region  tier      rank  subscriber  name              plan              spend\nR01     basic        1  S020845     Yara Young        Unlimited 43        9933.84\nR01     basic        2  S000455     Noah Okafor       Business 41         9783.81\nR01     basic        3  S017464     Kira Reyes        Business 22          9718.8\nR01     basic        4  S022597     Grace Okafor      Prepaid 27          8998.86\nR01     basic        5  S014508     Olu Diaz          Senior 19           8995.78"
+      }
+    },
+    "plans": {
+      "at": "2026-11-01T11:09:23.641Z",
+      "result": {
+        "ok": true,
+        "summary": "(2) the pipeline becomes 5 nested loops that look up and rebuild each document one at a time; (3) the optimizer plans hash joins over whole tables and a rank that stops at 5 per group (WINDOW SORT PUSHED RANK) (plan of the cursor the MongoDB API ran)",
+        "metrics": {
+          "sqlPlanSource": "the cursor the MongoDB API ran"
+        },
+        "plan": {
+          "left": "SELECT STATEMENT\n  SORT ORDER BY\n    NESTED LOOPS\n      VIEW\n        SORT GROUP BY\n          VIEW\n            WINDOW SORT\n              VIEW\n                SORT GROUP BY\n                  NESTED LOOPS\n                    SORT GROUP BY\n                      TABLE ACCESS BY INDEX ROWID catalog\n                        INDEX UNIQUE SCAN SYS_C009064\n                    VIEW\n                      NESTED LOOPS\n                        NESTED LOOPS\n                          SORT GROUP BY\n                            TABLE ACCESS BY INDEX ROWID accounts\n                              INDEX UNIQUE SCAN SYS_C009065\n                          VIEW\n                            NESTED LOOPS\n                              SORT GROUP BY\n                                TABLE ACCESS BY INDEX ROWID subscribers\n                                  INDEX UNIQUE SCAN SYS_C009066\n                              VIEW\n                                TABLE ACCESS FULL orders\n                              JSON EXPAND ARRAY EVALUATION\n                          JSON EXPAND ARRAY EVALUATION\n                        JSON EXPAND ARRAY EVALUATION\n                    JSON EXPAND ARRAY EVALUATION\n      JSON EXPAND ARRAY EVALUATION",
+          "right": "EXPLAINED SQL STATEMENT:\n------------------------\nwith lines as (   select json_value(o.data, '$.subscriber.id' returning \nvarchar2(10) error on error) subscriber_id,          json_value(o.data, \n'$._id' returning varchar2(24) error on error) order_id,          \no.data.placedAt.timestamp()                                    \nplaced_at,          l.sku, l.qty, l.price     from \"orders\" o,          \njson_table(o.data, '$.lines[*]' columns (            sku   varchar2(20) \npath '$.sku',            qty   number       path '$.qty',            \nprice number       path '$.price')) l    where \no.data.placedAt.timestamp() >= :fromTs      and \no.data.placedAt.timestamp() <  :toTs ), spend as (   select \nl.subscriber_id,          sum(l.qty * l.price) spend,          max(case \nwhen c.data.kind.string() = 'plan'                   then \njson_value(c.data, '$.name' returning varchar2(60) error on error) end) \n           keep (dense_rank last order by case when \nc.data.kind.string() = 'plan' then 1 else 0 end,                        \n                   l.placed_at, l\n \nPlan hash value: 1446594884\n \n---------------------------------------------------------------\n| Id  | Operation                       | Name        | Rows  |\n---------------------------------------------------------------\n|   0 | SELECT STATEMENT                |             |       |\n|   1 |  SORT ORDER BY                  |             | 60000 |\n|*  2 |   VIEW                          |             | 60000 |\n|*  3 |    WINDOW SORT PUSHED RANK      |             | 60000 |\n|*  4 |     HASH JOIN                   |             | 60000 |\n|*  5 |      HASH JOIN                  |             |   300 |\n|   6 |       VIEW                      |             |     1 |\n|   7 |        SORT GROUP BY            |             |     1 |\n|*  8 |         FILTER                  |             |       |\n|*  9 |          HASH JOIN              |             |   302M|\n|  10 |           TABLE ACCESS FULL     | catalog     |   300 |\n|  11 |           NESTED LOOPS          |             |   100M|\n|* 12 |            TABLE ACCESS FULL    | orders      |   502 |\n|  13 |            JSONTABLE EVALUATION |             |   200K|\n|  14 |       TABLE ACCESS FULL         | subscribers | 30000 |\n|  15 |      TABLE ACCESS FULL          | accounts    | 20000 |\n---------------------------------------------------------------\n \nPredicate Information (identified by operation id):\n---------------------------------------------------\n \n   2 - filter(\"RNK\"<=5)\n   3 - filter(RANK() OVER ( PARTITION BY JSON_VALUE( /*+ \n              QJSNMD_CUR_PER_HP */  /*+ QJSNMD_USE_SHR_XCTX */ \"A\".\"DATA\" /*+ \n              LOB_BY_VALUE */  FORMAT OSON , '$.region.string()' RETURNING \n              VARCHAR2(4000) NULL ON ERROR TYPE(LAX) ),JSON_VALUE( /*+ \n              QJSNMD_CUR_PER_HP */  /*+ QJSNMD_USE_SHR_XCTX */ \"A\".\"DATA\" /*+ \n              LOB_BY_VALUE */  FORMAT OSON , '$.tier.string()' RETURNING \n              VARCHAR2(4000) NULL ON ERROR TYPE(LAX) ) ORDER BY \"SP\".\"SPEND\" DESC \n              ,\"SP\".\"SUBSCRIBER_ID\")<=5)\n   4 - access(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"A\".\"DATA\" /*+ LOB_BY_VALUE */  FORMAT OSON , \n              '$.\"_id\".string()' RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) \n              )=JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ QJSNMD_USE_SHR_XCTX */ \n              \"S\".\"DATA\" /*+ LOB_BY_VALUE */  FORMAT OSON , '$.accountId.string()' \n              RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) ))\n   5 - access(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"S\".\"DATA\" /*+ LOB_BY_VALUE */  FORMAT OSON , \n              '$.\"_id\".string()' RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) \n              )=\"SP\".\"SUBSCRIBER_ID\")\n   8 - filter(SYS_EXTRACT_UTC(:TOTS)>SYS_EXTRACT_UTC(:FROMTS))\n   9 - access(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"C\".\"DATA\" /*+ LOB_BY_VALUE */  FORMAT OSON , \n              '$.\"_id\".string()' RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) \n              )=\"L\".\"SKU\")\n  12 - filter((SYS_EXTRACT_UTC(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  \n              /*+ QJSNMD_USE_SHR_XCTX */ \"O\".\"DATA\" /*+ LOB_BY_VALUE */  FORMAT OSON \n              , '$.placedAt.timestamp()' RETURNING TIMESTAMP NULL ON ERROR TYPE(LAX) \n              ))>=SYS_EXTRACT_UTC(:FROMTS) AND SYS_EXTRACT_UTC(JSON_VALUE( /*+ \n              QJSNMD_CUR_PER_HP */  /*+ QJSNMD_USE_SHR_XCTX */ \"O\".\"DATA\" /*+ \n              LOB_BY_VALUE */  FORMAT OSON , '$.placedAt.timestamp()' RETURNING \n              TIMESTAMP NULL ON ERROR TYPE(LAX) ))<SYS_EXTRACT_UTC(:TOTS)))"
+        },
+        "labels": {
+          "left": "(2) pipeline through the MongoDB API",
+          "right": "(3) $sql"
+        },
+        "detail": "(2) pipeline through the MongoDB API                                     |  (3) $sql\nSELECT STATEMENT                                                         |  SELECT STATEMENT\n  SORT ORDER BY                                                          |   SORT ORDER BY\n    NESTED LOOPS                                                         |    VIEW\n      VIEW                                                               |     WINDOW SORT PUSHED RANK\n        SORT GROUP BY                                                    |      HASH JOIN\n          VIEW                                                           |       HASH JOIN\n            WINDOW SORT                                                  |        VIEW\n              VIEW                                                       |         SORT GROUP BY\n                SORT GROUP BY                                            |          FILTER\n                  NESTED LOOPS                                           |           HASH JOIN\n                    SORT GROUP BY                                        |            TABLE ACCESS FULL catalog\n                      TABLE ACCESS BY INDEX ROWID catalog                |            NESTED LOOPS\n                        INDEX UNIQUE SCAN SYS_C009064                    |             TABLE ACCESS FULL orders\n                    VIEW                                                 |             JSONTABLE EVALUATION\n                      NESTED LOOPS                                       |        TABLE ACCESS FULL subscribers\n                        NESTED LOOPS                                     |       TABLE ACCESS FULL accounts\n                          SORT GROUP BY                                  |\n                            TABLE ACCESS BY INDEX ROWID accounts         |\n                              INDEX UNIQUE SCAN SYS_C009065              |\n                          VIEW                                           |\n                            NESTED LOOPS                                 |\n                              SORT GROUP BY                              |\n                                TABLE ACCESS BY INDEX ROWID subscribers  |\n                                  INDEX UNIQUE SCAN SYS_C009066          |\n                              VIEW                                       |\n                                TABLE ACCESS FULL orders                 |\n                              JSON EXPAND ARRAY EVALUATION               |\n                          JSON EXPAND ARRAY EVALUATION                   |\n                        JSON EXPAND ARRAY EVALUATION                     |\n                    JSON EXPAND ARRAY EVALUATION                         |\n      JSON EXPAND ARRAY EVALUATION                                       |"
+      }
+    },
+    "timing": {
+      "at": "2026-11-01T11:09:27.957Z",
+      "result": {
+        "ok": true,
+        "summary": "same engine, same data, same answer: the pipeline takes 133.9 s (1 run), $sql 0.74 s (median of 7 runs): 181.7x. Laptop numbers, relative only",
+        "metrics": {
+          "pipelineMs": 133892,
+          "sqlMs": 737,
+          "ratio": 181.7
+        },
+        "detail": "run                                   median ms   runs ms\n(2) pipeline through the MongoDB API     133892   133892\n(3) $sql through the MongoDB API            737   732, 732, 719, 737, 737, 741, 742\nratio 181.7x (laptop, relative only; no MongoDB timing is taken)"
+      }
+    }
+  }
+}

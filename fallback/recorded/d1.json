@@ -1,0 +1,882 @@
+{
+  "id": "d1",
+  "steps": {
+    "scan": {
+      "at": "2026-11-01T11:01:39.191Z",
+      "result": {
+        "ok": true,
+        "summary": "order service: 8 operators (0 unsupported, 1 caveat, 7 supported); demo pipelines: 24 operators (1 unsupported, 2 caveat, 21 supported)",
+        "panes": {
+          "left": [
+            {
+              "op": "$inc",
+              "files": [
+                "app/store.mjs"
+              ],
+              "status": "caveat",
+              "note": "On an Int64 above 2^53, $inc loses exactness: 9007199254740993 + 1 is stored as 9007199254740992.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$each",
+              "files": [
+                "app/store.mjs"
+              ],
+              "status": "supported",
+              "note": "Inside $push.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$in",
+              "files": [
+                "app/store.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$ne",
+              "files": [
+                "app/store.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$push",
+              "files": [
+                "app/store.mjs"
+              ],
+              "status": "supported",
+              "note": "With $each, $sort and $slice (the Top-N array).",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$set",
+              "files": [
+                "app/store.mjs"
+              ],
+              "status": "supported",
+              "note": "The order service's update and the D6 pipeline stage both run.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$slice",
+              "files": [
+                "app/store.mjs"
+              ],
+              "status": "supported",
+              "note": "Inside $push: keeps the Top 10.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$sort",
+              "files": [
+                "app/store.mjs"
+              ],
+              "status": "supported",
+              "note": "As a $push modifier and as a pipeline stage.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            }
+          ],
+          "right": [
+            {
+              "op": "$setWindowFields",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "unsupported",
+              "note": "\"Aggregate stage $setWindowFields not supported\". D6 ranks with $group + $topN instead.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$lookup",
+              "files": [
+                "demos/d5-topn/variants.mjs",
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "caveat",
+              "note": "The let field raises an error; a localField that is missing from an input document or holds an array raises an error.",
+              "source": "compat-matrix.md"
+            },
+            {
+              "op": "$rank",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "caveat",
+              "note": "Only runs inside $setWindowFields, which is not supported. MongoDB's $rank also takes one sort key only.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$add",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$arrayElemAt",
+              "files": [
+                "demos/d5-topn/variants.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$cond",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$eq",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$first",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$group",
+              "files": [
+                "demos/d5-topn/variants.mjs",
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$gte",
+              "files": [
+                "demos/d5-topn/variants.mjs",
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$in",
+              "files": [
+                "demos/d5-topn/variants.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$limit",
+              "files": [
+                "demos/d5-topn/variants.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$lt",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$lte",
+              "files": [
+                "demos/d5-topn/variants.mjs",
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$match",
+              "files": [
+                "demos/d5-topn/variants.mjs",
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$multiply",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$project",
+              "files": [
+                "demos/d5-topn/variants.mjs",
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$set",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "The order service's update and the D6 pipeline stage both run.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$sort",
+              "files": [
+                "demos/d5-topn/variants.mjs",
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "As a $push modifier and as a pipeline stage.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$sql",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "Oracle-only stage: SQL inside the pipeline (MongoDB itself has no such stage).",
+              "source": "compat-matrix.md"
+            },
+            {
+              "op": "$sum",
+              "files": [
+                "demos/d5-topn/variants.mjs",
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$top",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$topN",
+              "files": [
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "The portable rank in D6.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$unwind",
+              "files": [
+                "demos/d5-topn/variants.mjs",
+                "demos/d6-sql/queries.mjs"
+              ],
+              "status": "supported",
+              "note": "Including includeArrayIndex.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            }
+          ]
+        },
+        "labels": {
+          "left": "Order service",
+          "right": "Demo pipelines (D5, D6)"
+        },
+        "metrics": {
+          "app": {
+            "unsupported": 0,
+            "caveat": 1,
+            "supported": 7
+          },
+          "demo": {
+            "unsupported": 1,
+            "caveat": 2,
+            "supported": 21
+          }
+        },
+        "detail": "Scripted operator scan (built for this lab): the order service (app/**/*.mjs)\nMatrix: oracle-ai-dev-marketplace/skills/mongodb-api-dev/references/compat-matrix.md, copied 2026-11-01, plus findings measured in this lab\noperator  on Oracle  basis                 used in        note\n--------  ---------  --------------------  -------------  ----\n$inc      caveat     measured in this lab  app/store.mjs  On an Int64 above 2^53, $inc loses exactness: 9007199254740993 + 1 is stored as 9007199254740992.\n$each     supported  measured in this lab  app/store.mjs  Inside $push.\n$in       supported  measured in this lab  app/store.mjs\n$ne       supported  measured in this lab  app/store.mjs\n$push     supported  measured in this lab  app/store.mjs  With $each, $sort and $slice (the Top-N array).\n$set      supported  measured in this lab  app/store.mjs  The order service's update and the D6 pipeline stage both run.\n$slice    supported  measured in this lab  app/store.mjs  Inside $push: keeps the Top 10.\n$sort     supported  measured in this lab  app/store.mjs  As a $push modifier and as a pipeline stage.\n\nThe demo pipelines you will see in D5 and D6 (demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs)\noperator          on Oracle    basis                 used in                                               note\n----------------  -----------  --------------------  ----------------------------------------------------  ----\n$setWindowFields  unsupported  measured in this lab  demos/d6-sql/queries.mjs                              \"Aggregate stage $setWindowFields not supported\". D6 ranks with $group + $topN instead.\n$lookup           caveat       compat-matrix.md      demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  The let field raises an error; a localField that is missing from an input document or holds an array raises an error.\n$rank             caveat       measured in this lab  demos/d6-sql/queries.mjs                              Only runs inside $setWindowFields, which is not supported. MongoDB's $rank also takes one sort key only.\n$add              supported    measured in this lab  demos/d6-sql/queries.mjs\n$arrayElemAt      supported    measured in this lab  demos/d5-topn/variants.mjs\n$cond             supported    measured in this lab  demos/d6-sql/queries.mjs\n$eq               supported    measured in this lab  demos/d6-sql/queries.mjs\n$first            supported    measured in this lab  demos/d6-sql/queries.mjs\n$group            supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$gte              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$in               supported    measured in this lab  demos/d5-topn/variants.mjs\n$limit            supported    measured in this lab  demos/d5-topn/variants.mjs\n$lt               supported    measured in this lab  demos/d6-sql/queries.mjs\n$lte              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$match            supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$multiply         supported    measured in this lab  demos/d6-sql/queries.mjs\n$project          supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$set              supported    measured in this lab  demos/d6-sql/queries.mjs                              The order service's update and the D6 pipeline stage both run.\n$sort             supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  As a $push modifier and as a pipeline stage.\n$sql              supported    compat-matrix.md      demos/d6-sql/queries.mjs                              Oracle-only stage: SQL inside the pipeline (MongoDB itself has no such stage).\n$sum              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$top              supported    measured in this lab  demos/d6-sql/queries.mjs\n$topN             supported    measured in this lab  demos/d6-sql/queries.mjs                              The portable rank in D6.\n$unwind           supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  Including includeArrayIndex."
+      }
+    },
+    "census": {
+      "at": "2026-11-01T11:01:43.953Z",
+      "result": {
+        "ok": true,
+        "summary": "60 fields in 8 collections, 9 landmines: catalog.price, catalog.skuPattern, orders.lines, orders.lines.price, orders.total, orders.version, carts.items, orderEvents.ts, regionTopDevices.top",
+        "panes": {
+          "left": [
+            {
+              "coll": "regions",
+              "path": "_id",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "regions",
+              "path": "name",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "catalog",
+              "path": "_id",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "catalog",
+              "path": "brand",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "catalog",
+              "path": "kind",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "catalog",
+              "path": "model",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "catalog",
+              "path": "name",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "catalog",
+              "path": "price",
+              "types": [
+                "decimal"
+              ],
+              "landmines": [
+                "Decimal128: the value is kept, trailing zeros are not (1.10 reads back as 1.1)"
+              ]
+            },
+            {
+              "coll": "catalog",
+              "path": "skuPattern",
+              "types": [
+                "regex"
+              ],
+              "landmines": [
+                "regex: reads back from Oracle as an embedded document ({$regularExpression: ...}), and {$type:'regex'} is rejected"
+              ]
+            },
+            {
+              "coll": "accounts",
+              "path": "_id",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "accounts",
+              "path": "householdId",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "accounts",
+              "path": "parentAccountId",
+              "types": [
+                "null",
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "accounts",
+              "path": "region",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "accounts",
+              "path": "tier",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "subscribers",
+              "path": "_id",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "subscribers",
+              "path": "accountId",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "subscribers",
+              "path": "address",
+              "types": [
+                "object"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "subscribers",
+              "path": "address.city",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "subscribers",
+              "path": "address.state",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "subscribers",
+              "path": "address.street",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "subscribers",
+              "path": "address.zip",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "subscribers",
+              "path": "name",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "subscribers",
+              "path": "region",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "subscribers",
+              "path": "tier",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "_id",
+              "types": [
+                "objectId"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "lines",
+              "types": [
+                "array",
+                "object"
+              ],
+              "landmines": [
+                "array: on Oracle, $type does not match the array's elements"
+              ]
+            },
+            {
+              "coll": "orders",
+              "path": "lines.kind",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "lines.price",
+              "types": [
+                "decimal"
+              ],
+              "landmines": [
+                "Decimal128: the value is kept, trailing zeros are not (1.10 reads back as 1.1)"
+              ]
+            },
+            {
+              "coll": "orders",
+              "path": "lines.qty",
+              "types": [
+                "int"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "lines.sku",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "placedAt",
+              "types": [
+                "date"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "region",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "status",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "subscriber",
+              "types": [
+                "object"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "subscriber.address",
+              "types": [
+                "object"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "subscriber.address.city",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "subscriber.address.state",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "subscriber.address.street",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "subscriber.address.zip",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "subscriber.id",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "subscriber.name",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "subscriber.tier",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orders",
+              "path": "total",
+              "types": [
+                "decimal"
+              ],
+              "landmines": [
+                "Decimal128: the value is kept, trailing zeros are not (1.10 reads back as 1.1)"
+              ]
+            },
+            {
+              "coll": "orders",
+              "path": "version",
+              "types": [
+                "long"
+              ],
+              "above2p53": 1,
+              "landmines": [
+                "Int64 above 2^53: a restore keeps it exact, but $inc on it does not (1 value here)"
+              ]
+            },
+            {
+              "coll": "carts",
+              "path": "_id",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "carts",
+              "path": "items",
+              "types": [
+                "array",
+                "object"
+              ],
+              "landmines": [
+                "array: on Oracle, $type does not match the array's elements"
+              ]
+            },
+            {
+              "coll": "carts",
+              "path": "items.qty",
+              "types": [
+                "int"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "carts",
+              "path": "items.sku",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "carts",
+              "path": "subscriberId",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "carts",
+              "path": "updatedAt",
+              "types": [
+                "date"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orderEvents",
+              "path": "_id",
+              "types": [
+                "objectId"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orderEvents",
+              "path": "createdAt",
+              "types": [
+                "date"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orderEvents",
+              "path": "orderId",
+              "types": [
+                "objectId"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "orderEvents",
+              "path": "ts",
+              "types": [
+                "timestamp"
+              ],
+              "landmines": [
+                "BSON Timestamp: reads back from Oracle as an embedded document ({$timestamp: ...}), and {$type:'timestamp'} is rejected"
+              ]
+            },
+            {
+              "coll": "orderEvents",
+              "path": "type",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "regionTopDevices",
+              "path": "_id",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "regionTopDevices",
+              "path": "top",
+              "types": [
+                "array",
+                "object"
+              ],
+              "landmines": [
+                "array: on Oracle, $type does not match the array's elements"
+              ]
+            },
+            {
+              "coll": "regionTopDevices",
+              "path": "top.name",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "regionTopDevices",
+              "path": "top.sku",
+              "types": [
+                "string"
+              ],
+              "landmines": []
+            },
+            {
+              "coll": "regionTopDevices",
+              "path": "top.units",
+              "types": [
+                "int"
+              ],
+              "landmines": []
+            }
+          ]
+        },
+        "metrics": {
+          "fields": 60,
+          "landmines": 9,
+          "empty": []
+        },
+        "detail": "BSON types per field (first 2000 documents by _id per collection; !! marks a landmine)\n    collection        path                       BSON types    landmine on Oracle\n--  ----------------  -------------------------  ------------  ----\n    regions           _id                        string\n    regions           name                       string\n    catalog           _id                        string\n    catalog           brand                      string\n    catalog           kind                       string\n    catalog           model                      string\n    catalog           name                       string\n!!  catalog           price                      decimal       Decimal128: the value is kept, trailing zeros are not (1.10 reads back as 1.1)\n!!  catalog           skuPattern                 regex         regex: reads back from Oracle as an embedded document ({$regularExpression: ...}), and {$type:'regex'} is rejected\n    accounts          _id                        string\n    accounts          householdId                string\n    accounts          parentAccountId            null,string\n    accounts          region                     string\n    accounts          tier                       string\n    subscribers       _id                        string\n    subscribers       accountId                  string\n    subscribers       address                    object\n    subscribers       address.city               string\n    subscribers       address.state              string\n    subscribers       address.street             string\n    subscribers       address.zip                string\n    subscribers       name                       string\n    subscribers       region                     string\n    subscribers       tier                       string\n    orders            _id                        objectId\n!!  orders            lines                      array,object  array: on Oracle, $type does not match the array's elements\n    orders            lines.kind                 string\n!!  orders            lines.price                decimal       Decimal128: the value is kept, trailing zeros are not (1.10 reads back as 1.1)\n    orders            lines.qty                  int\n    orders            lines.sku                  string\n    orders            placedAt                   date\n    orders            region                     string\n    orders            status                     string\n    orders            subscriber                 object\n    orders            subscriber.address         object\n    orders            subscriber.address.city    string\n    orders            subscriber.address.state   string\n    orders            subscriber.address.street  string\n    orders            subscriber.address.zip     string\n    orders            subscriber.id              string\n    orders            subscriber.name            string\n    orders            subscriber.tier            string\n!!  orders            total                      decimal       Decimal128: the value is kept, trailing zeros are not (1.10 reads back as 1.1)\n!!  orders            version                    long          Int64 above 2^53: a restore keeps it exact, but $inc on it does not (1 value here)\n    carts             _id                        string\n!!  carts             items                      array,object  array: on Oracle, $type does not match the array's elements\n    carts             items.qty                  int\n    carts             items.sku                  string\n    carts             subscriberId               string\n    carts             updatedAt                  date\n    orderEvents       _id                        objectId\n    orderEvents       createdAt                  date\n    orderEvents       orderId                    objectId\n!!  orderEvents       ts                         timestamp     BSON Timestamp: reads back from Oracle as an embedded document ({$timestamp: ...}), and {$type:'timestamp'} is rejected\n    orderEvents       type                       string\n    regionTopDevices  _id                        string\n!!  regionTopDevices  top                        array,object  array: on Oracle, $type does not match the array's elements\n    regionTopDevices  top.name                   string\n    regionTopDevices  top.sku                    string\n    regionTopDevices  top.units                  int"
+      }
+    }
+  }
+}

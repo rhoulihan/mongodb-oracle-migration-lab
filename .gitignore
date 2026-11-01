@@ -1,5 +1,5 @@
 node_modules/
 .lab/
-clips/*.mp4
+clips/
 deck/build/__pycache__/
 deck/.qa-*.html

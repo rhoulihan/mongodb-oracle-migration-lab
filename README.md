@@ -39,7 +39,9 @@ Every port binds to `127.0.0.1` only. Nothing is published to the network.
 
 ## One-time setup on the Mac (Apple silicon)
 
-1. Install Podman and create a machine big enough for Oracle:
+1. Install Podman (the installer from podman.io, or `brew install podman`)
+   and a compose provider for `podman compose` (`brew install docker-compose`),
+   then create a machine big enough for Oracle:
 
    ```sh
    podman machine init --cpus 6 --memory 16384 --disk-size 60
@@ -56,6 +58,10 @@ Every port binds to `127.0.0.1` only. Nothing is published to the network.
 3. Confirm the laptop is ready: `./lab.sh preflight`. It checks the CPU is
    arm64, the Podman machine has at least 12 GB of memory, every image is
    present, and nothing else is listening on the lab ports.
+
+The full presenter walk-through, from a new Mac to the session (the run sheet
+for every demo, the resets between demos, the offline check and what to
+report back), is `docs/REHEARSAL.md`.
 
 That is all a presenter needs: Podman. Node is not required on the laptop.
 Demos, resets, the data generator and every terminal command run inside the
@@ -209,6 +215,12 @@ Pick a demo at the top, then work down its steps on the left.
   `./lab.sh bake-recordings` and commit `fallback/recorded/`: with no
   recording in the volume, the console serves that copy (labeled "saved in
   the repo"; rebuild the image after baking). Re-bake after a demo changes.
+  `node scripts/record-clips.mjs` (developers, needs Chrome) makes those
+  recordings from one clean run: it resets the lab, generates the data, then
+  clicks through D1 to D7 in the console in run-sheet order (running each
+  terminal step's command itself) and saves a 1280x720 video of each demo
+  to `clips/dN.webm` (not committed: the presenter's local fallback). It
+  exits 1 if any step failed; bake only a clean run.
 - **Reset demo** runs the demo's reset. For demo 4, run `./lab.sh reset d4`
   in the terminal instead: it stops the replicator container first.
 - **Theme:** the button at the top right switches light and dark;
@@ -268,7 +280,13 @@ tests run Node on the host (`LAB_HOST_NODE=1` where they call `lab.sh`).
 npm test                 # everything (integration tests need the stack up)
 npm run test:unit
 npm run lint:copy        # copy rules: no em dashes, say 26ai, no private references
+LAB_UP=1 npx vitest run test/integration/full-run.test.mjs   # the whole session, about 9 min
 ```
+
+The full-run smoke test wipes the lab (`./lab.sh reset`), generates the data,
+then runs D1 to D7 headless in session order with the run sheet's resets
+between them (`scripts/run-sheet.mjs`, the same list `docs/REHEARSAL.md`
+gives the presenter). Every step must pass, twice in a row.
 
 ## Demo 1: compatibility check and type census
 
@@ -336,7 +354,8 @@ dump). The presenter's terminal commands:
 ```
 
 The restore runs as `MIG` into the pre-created collections ("restoring to
-existing collection ... without dropping"). Keep the database out of the URI
+existing collection ... without dropping"). The wrapper's last line is the wall time of the
+restore on this laptop, so the presenter reads it off the screen live. Keep the database out of the URI
 path: with `.../MIG?...` mongorestore treats it as `--db MIG` and restores 0
 documents while still exiting 0. Counts are compared at the dump snapshot
 (the archive itself): carts and orderEvents keep expiring on both sides,
@@ -403,7 +422,8 @@ measured numbers: `docs/spikes/d5-duality-nested-order.md`.
 ## Demo 6: Pipeline vs `$sql`
 
 `./lab.sh demo d6` runs it headless; `./lab.sh reset d6` puts back the
-starting state. The question: top 5 subscribers by spend per region and plan
+starting state, and always re-runs D3's dump and restore to do it (about a
+minute). The question: top 5 subscribers by spend per region and plan
 tier, over the last 90 days of the data (`2026-07-03` to `2026-10-01`, fixed
 by the generator, never the wall clock), with plan name. D6 runs on Oracle
 after D3: if `MIG` does not hold the source's orders for that window, setup

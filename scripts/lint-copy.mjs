@@ -10,8 +10,8 @@ const RULES = [
   { name: '23' + 'ai (say 26ai)', token: '23' + 'ai', allow: (f) => f.startsWith('docs/') },
   { name: 'job' + 'App reference', token: 'job' + 'App', allow: () => false },
   // The lab's default MIG password: commands build the URI from MIG_PASSWORD, so
-  // the deck and the README never need it (lab.sh and lib/config.mjs hold it).
-  { name: 'default MIG password (use a lab.sh wrapper)', token: 'MigUser' + '2026', allow: (f) => !(f.startsWith('deck/') || f === 'README.md') },
+  // the deck, the docs, the README and the baked recordings never need it (lab.sh and lib/config.mjs hold it).
+  { name: 'default MIG password (use a lab.sh wrapper)', token: 'MigUser' + '2026', allow: (f) => !(f.startsWith('deck/') || f.startsWith('docs/') || f.startsWith('fallback/') || f === 'README.md') },
 ];
 
 const files = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })

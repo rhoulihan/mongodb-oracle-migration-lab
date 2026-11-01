@@ -1,0 +1,145 @@
+{
+  "id": "d7",
+  "steps": {
+    "setup": {
+      "at": "2026-11-01T11:09:38.917Z",
+      "result": {
+        "ok": true,
+        "summary": "orders_dv holds 25629 R03 orders (61046 lines in order_line); the agents will work on order 69d0558abbd818e800004c01: status placed, device SKU-DEV-0025",
+        "metrics": {
+          "orders": 25629,
+          "lines": 61046
+        },
+        "panes": {
+          "left": {
+            "_id": "69d0558abbd818e800004c01",
+            "region": "R03",
+            "subscriber": "S020499",
+            "status": "placed",
+            "placedAt": "2026-04-04T00:04:26.359Z",
+            "lines": [
+              {
+                "lineId": 1,
+                "lineNo": 1,
+                "sku": "SKU-DEV-0025",
+                "kind": "device",
+                "qty": 1,
+                "price": 517.99
+              },
+              {
+                "lineId": 2,
+                "lineNo": 2,
+                "sku": "SKU-PLN-0035",
+                "kind": "plan",
+                "qty": 1,
+                "price": 19
+              }
+            ],
+            "_metadata": {
+              "etag": {
+                "$binary": {
+                  "base64": "M6ez2oAu7WWT1CbObHjBFA==",
+                  "subType": "00"
+                }
+              },
+              "asof": {
+                "$binary": {
+                  "base64": "AAAAAAAjItA=",
+                  "subType": "00"
+                }
+              }
+            }
+          }
+        },
+        "detail": "order document (MongoDB API, orders_dv):\n{\n  \"_id\": \"69d0558abbd818e800004c01\",\n  \"region\": \"R03\",\n  \"subscriber\": \"S020499\",\n  \"status\": \"placed\",\n  \"placedAt\": \"2026-04-04T00:04:26.359Z\",\n  \"lines\": [\n    {\n      \"lineId\": 1,\n      \"lineNo\": 1,\n      \"sku\": \"SKU-DEV-0025\",\n      \"kind\": \"device\",\n      \"qty\": 1,\n      \"price\": 517.99\n    },\n    {\n      \"lineId\": 2,\n      \"lineNo\": 2,\n      \"sku\": \"SKU-PLN-0035\",\n      \"kind\": \"plan\",\n      \"qty\": 1,\n      \"price\": 19\n    }\n  ],\n  \"_metadata\": {\n    \"etag\": \"33A7B3DA802EED6593D426CE6C78C114\"\n  }\n}"
+      }
+    },
+    "agent-a-read": {
+      "at": "2026-11-01T11:09:43.943Z",
+      "result": {
+        "ok": true,
+        "summary": "agent A holds order 69d0558abbd818e800004c01 with its current ETag 33A7B3DA802EED6593D426CE6C78C114"
+      }
+    },
+    "agent-b-read": {
+      "at": "2026-11-01T11:09:49.065Z",
+      "result": {
+        "ok": true,
+        "summary": "agent B holds order 69d0558abbd818e800004c01 with its current ETag 33A7B3DA802EED6593D426CE6C78C114; both agents hold the same ETag"
+      }
+    },
+    "agent-a-write": {
+      "at": "2026-11-01T11:09:54.214Z",
+      "result": {
+        "ok": true,
+        "summary": "order 69d0558abbd818e800004c01 is provisioned; 1 update applied (status placed -> provisioned)"
+      }
+    },
+    "agent-b-write-stale": {
+      "at": "2026-11-01T11:09:59.343Z",
+      "result": {
+        "ok": true,
+        "summary": "agent B's write was rejected (ORA-42699): order 69d0558abbd818e800004c01 still has A's status and device SKU-DEV-0025; still 1 update applied"
+      }
+    },
+    "agent-b-retry": {
+      "at": "2026-11-01T11:10:04.484Z",
+      "result": {
+        "ok": true,
+        "summary": "order 69d0558abbd818e800004c01 has both changes: provisioned, device SKU-DEV-0026; 2 updates applied"
+      }
+    },
+    "final": {
+      "at": "2026-11-01T11:10:08.925Z",
+      "result": {
+        "ok": true,
+        "summary": "order 69d0558abbd818e800004c01: status provisioned (agent A) and device SKU-DEV-0026 (agent B); exactly 2 updates applied, none lost, none from the rejected write",
+        "metrics": {
+          "updatesApplied": 2
+        },
+        "panes": {
+          "left": {
+            "_id": "69d0558abbd818e800004c01",
+            "region": "R03",
+            "subscriber": "S020499",
+            "status": "provisioned",
+            "placedAt": "2026-04-04T00:04:26.359Z",
+            "lines": [
+              {
+                "lineId": 1,
+                "lineNo": 1,
+                "sku": "SKU-DEV-0026",
+                "kind": "device",
+                "qty": 1,
+                "price": 1179.99
+              },
+              {
+                "lineId": 2,
+                "lineNo": 2,
+                "sku": "SKU-PLN-0035",
+                "kind": "plan",
+                "qty": 1,
+                "price": 19
+              }
+            ],
+            "_metadata": {
+              "etag": {
+                "$binary": {
+                  "base64": "MTSXMyumRwUzBYXw+0oljA==",
+                  "subType": "00"
+                }
+              },
+              "asof": {
+                "$binary": {
+                  "base64": "AAAAAAAjI60=",
+                  "subType": "00"
+                }
+              }
+            }
+          }
+        },
+        "detail": "updates applied (order_change_log, written by row triggers):\n  1  order_hdr   status placed -> provisioned\n  2  order_line  line 1  sku SKU-DEV-0025 -> SKU-DEV-0026, price 517.99 -> 1179.99\n\nfinal order document:\n{\n  \"_id\": \"69d0558abbd818e800004c01\",\n  \"region\": \"R03\",\n  \"subscriber\": \"S020499\",\n  \"status\": \"provisioned\",\n  \"placedAt\": \"2026-04-04T00:04:26.359Z\",\n  \"lines\": [\n    {\n      \"lineId\": 1,\n      \"lineNo\": 1,\n      \"sku\": \"SKU-DEV-0026\",\n      \"kind\": \"device\",\n      \"qty\": 1,\n      \"price\": 1179.99\n    },\n    {\n      \"lineId\": 2,\n      \"lineNo\": 2,\n      \"sku\": \"SKU-PLN-0035\",\n      \"kind\": \"plan\",\n      \"qty\": 1,\n      \"price\": 19\n    }\n  ],\n  \"_metadata\": {\n    \"etag\": \"313497332BA64705330585F0FB4A258C\"\n  }\n}"
+      }
+    }
+  }
+}
