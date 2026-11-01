@@ -2,8 +2,12 @@
 //
 // One seeded PRNG (mulberry32) is threaded through every builder in a fixed
 // order, so the same seed and scale always give byte-identical documents.
-// The only input that is not derived from the seed is `now`, which anchors the
-// cart timestamps (carts carry a 120 s TTL, so they must be fresh at load time).
+// The only input that is not derived from the seed is `now` (the load clock).
+// It anchors the two TTL fields, which must be fresh at load time:
+//   carts.updatedAt        TTL 120 s
+//   orderEvents.createdAt  TTL 7 days; now minus a seeded offset in [0, 7 days)
+// Seeded offsets do not depend on `now`, and orders never see it, so order
+// hashes are seed-only.
 //
 // Planted BSON landmines (the types a migration has to carry across):
 //   catalog.skuPattern   BSON regular expression
@@ -193,7 +197,8 @@ function buildOrders(t, n, subscribers, catalog) {
 // Each order gets one event per lifecycle stage it reached, so the event log
 // agrees with orders.status. Stages are drawn at random, then nudged until the
 // total hits the target count exactly.
-function buildOrderEvents(t, target, orders) {
+function buildOrderEvents(t, target, orders, now) {
+  const WEEK = 7 * 86_400_000;
   const max = ORDER_STATUSES.length - 1;
   if (target < orders.length || target > orders.length * (max + 1)) {
     throw new Error(`orderEvents ${target} not reachable for ${orders.length} orders`);
@@ -214,6 +219,7 @@ function buildOrderEvents(t, target, orders) {
       out.push({
         _id: new ObjectId(pad(at.toString(16), 8) + pad(out.length.toString(16), 16)),
         orderId: o._id, type: ORDER_STATUSES[s], ts: new Timestamp({ t: at, i: s + 1 }),
+        createdAt: new Date(now.getTime() - Math.floor(t.rand() * WEEK)),
       });
     }
   });
@@ -264,7 +270,7 @@ export function buildDataset({ seed, scale = 'demo', now = ANCHOR } = {}) {
   const accounts = buildAccounts(t, s.accounts, regions);
   const subscribers = buildSubscribers(t, s.subscribers, accounts);
   const orders = buildOrders(t, s.orders, subscribers, catalog);
-  const orderEvents = buildOrderEvents(t, s.orderEvents, orders);
+  const orderEvents = buildOrderEvents(t, s.orderEvents, orders, now);
   const carts = buildCarts(t, s.carts, subscribers, catalog, now);
   const regionTopDevices = topDevices(orders, catalog, regions);
   return { regions, catalog, accounts, subscribers, orders, carts, orderEvents, regionTopDevices };

@@ -79,7 +79,8 @@ The first Oracle boot can take a few minutes. Run `./lab.sh check` after
 
 `node gen/generate.mjs --seed 20261114 --scale demo` drops the MongoDB
 database `telco` and loads a deterministic telecom dataset: the same seed always
-gives the same documents (only cart timestamps follow the load clock). On the
+gives the same documents (only `carts.updatedAt` and `orderEvents.createdAt`
+follow the load clock). On the
 Linux lab it builds and loads in about 7 s.
 
 | Collection | `demo` | `tiny` (unit tests) |
@@ -90,7 +91,7 @@ Linux lab it builds and loads in about 7 s.
 | `subscribers` | 30,000 | 300 |
 | `orders` | 200,000 | 2,000 |
 | `carts` (TTL 120 s on `updatedAt`) | 5,000 | 50 |
-| `orderEvents` (TTL 7 days on `ts`) | 300,000 | 3,000 |
+| `orderEvents` (TTL 7 days on `createdAt`) | 300,000 | 3,000 |
 | `regionTopDevices` (Top 10 devices per region) | 8 | 8 |
 
 Planted BSON types a migration has to carry: `catalog.skuPattern` is a regular
@@ -99,9 +100,10 @@ expression, `orders.version` is a 64-bit integer (one order holds
 prices and totals are Decimal128.
 
 Carts get `updatedAt` spread from 2 minutes before the load to 58 minutes after
-it, so they expire steadily over the first hour. A TTL index only expires Date
-values, so the `orderEvents.ts` TTL index never removes anything while `ts` is a
-Timestamp.
+it, so they expire steadily over the first hour. Each order event gets a
+`createdAt` Date between 7 days before the load and the load itself, so the event
+log ages out steadily over the next week. The TTL index sits on `createdAt`
+because a TTL index only expires Date values; `ts` stays a BSON Timestamp.
 
 ## Tests
 

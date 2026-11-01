@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { BSONRegExp } from 'mongodb';
 import { buildDataset, SCALES } from '../../gen/model.mjs';
 import { hashDocs } from '../../lib/compare.mjs';
+import { INDEXES } from '../../gen/generate.mjs';
 
 const SEED = 20261114;
 const tiny = buildDataset({ seed: SEED, scale: 'tiny' });
@@ -108,10 +109,29 @@ describe('buildDataset', () => {
     expect(maxDepth).toBe(3); // the family-plan hierarchy really goes 3 levels deep
   });
 
-  test('carts are anchored on the `now` option', () => {
+  test('load-clock fields follow `now`; everything else is seed-only', () => {
     const now = new Date('2030-01-01T00:00:00Z');
     const d = buildDataset({ seed: SEED, scale: 'tiny', now });
     expect(hashDocs(d.orders)).toBe(hashDocs(tiny.orders));
+    const strip = (docs, f) => docs.map(({ [f]: _, ...rest }) => rest);
+    expect(hashDocs(strip(d.carts, 'updatedAt'))).toBe(hashDocs(strip(tiny.carts, 'updatedAt')));
+    expect(hashDocs(strip(d.orderEvents, 'createdAt'))).toBe(hashDocs(strip(tiny.orderEvents, 'createdAt')));
     expect(d.carts.every((c) => c.updatedAt >= new Date(now - 120_000))).toBe(true);
+  });
+
+  test('orderEvents.createdAt is a Date within the 7 days before `now`', () => {
+    const now = new Date('2030-01-01T00:00:00Z');
+    const d = buildDataset({ seed: SEED, scale: 'tiny', now });
+    const week = 7 * 86_400_000;
+    expect(d.orderEvents.every((e) => e.createdAt instanceof Date
+      && e.createdAt <= now && now - e.createdAt < week)).toBe(true);
+    const ages = d.orderEvents.map((e) => now - e.createdAt);
+    expect(Math.max(...ages) - Math.min(...ages)).toBeGreaterThan(6 * 86_400_000); // spread, not one instant
+  });
+
+  test('TTL indexes: carts.updatedAt 120 s, orderEvents.createdAt 7 days, none on ts', () => {
+    const ttl = INDEXES.filter(([, , o]) => o.expireAfterSeconds !== undefined)
+      .map(([c, k, o]) => [c, Object.keys(k), o.expireAfterSeconds]);
+    expect(ttl).toEqual([['carts', ['updatedAt'], 120], ['orderEvents', ['createdAt'], 604800]]);
   });
 });

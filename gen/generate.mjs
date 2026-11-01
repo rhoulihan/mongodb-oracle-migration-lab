@@ -17,7 +17,9 @@ const BATCH = 5_000;
 export const INDEXES = [
   ['carts', { updatedAt: 1 }, { name: 'carts_ttl', expireAfterSeconds: 120 }],
   ['carts', { subscriberId: 1 }, {}],
-  ['orderEvents', { ts: 1 }, { name: 'orderEvents_ttl', expireAfterSeconds: 604_800 }],
+  // TTL only expires Date values, so it sits on createdAt, not on the ts Timestamp.
+  ['orderEvents', { createdAt: 1 }, { name: 'orderEvents_ttl', expireAfterSeconds: 604_800 }],
+  ['orderEvents', { ts: 1 }, {}],
   ['orderEvents', { orderId: 1 }, {}],
   ['orders', { region: 1, placedAt: -1 }, {}],
   ['orders', { 'subscriber.id': 1 }, {}],
@@ -56,7 +58,7 @@ async function main() {
   if (!TARGETS[values.target]) throw new Error(`unknown --target ${values.target} (only: src)`);
 
   const t0 = performance.now();
-  // Carts carry a 120 s TTL, so their clock is the load time.
+  // carts.updatedAt and orderEvents.createdAt carry TTLs, so their clock is the load time.
   const data = buildDataset({ seed, scale: values.scale, now: new Date() });
   const t1 = performance.now();
   const db = await TARGETS[values.target]();
