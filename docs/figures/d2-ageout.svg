@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="446" viewBox="0 0 960 446" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="36.0" font-size="18" fill="#C74634" font-weight="700">Demo 2: age out</text>
+<text x="24" y="58.0" font-size="12.5" fill="#5b6570">Move what lives long. New orders go to Oracle; old ones stay readable on MongoDB until they age out.</text>
+<rect x="32" y="80" width="230" height="232" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="32" y="80" width="5" height="232" rx="2" fill="#16a34a"/>
+<text x="48" y="107.0" font-size="13.5" fill="#1a1a1a" font-weight="700">MongoDB (source)</text>
+<text x="48" y="130.0" font-size="11.5" fill="#5b6570">keeps orders, carts and</text>
+<text x="48" y="146.7" font-size="11.5" fill="#5b6570">orderEvents</text>
+<text x="48" y="163.4" font-size="11.5" fill="#5b6570"></text>
+<text x="48" y="180.0" font-size="11.5" fill="#5b6570">old orders: read-only</text>
+<text x="48" y="196.7" font-size="11.5" fill="#5b6570">from the cutoff on</text>
+<text x="48" y="213.4" font-size="11.5" fill="#5b6570"></text>
+<text x="48" y="230.1" font-size="11.5" fill="#5b6570">carts expire here by TTL;</text>
+<text x="48" y="246.7" font-size="11.5" fill="#5b6570">nothing short-lived moves</text>
+<rect x="698" y="80" width="230" height="232" rx="6" fill="#ffffff" stroke="#C74634" stroke-width="1.6"/>
+<rect x="698" y="80" width="5" height="232" rx="2" fill="#C74634"/>
+<text x="714" y="107.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Oracle (target, MIG)</text>
+<text x="714" y="130.0" font-size="11.5" fill="#5b6570">regions, catalog, accounts,</text>
+<text x="714" y="146.7" font-size="11.5" fill="#5b6570">subscribers: copied once</text>
+<text x="714" y="163.4" font-size="11.5" fill="#5b6570"></text>
+<text x="714" y="180.0" font-size="11.5" fill="#5b6570">new orders, their events</text>
+<text x="714" y="196.7" font-size="11.5" fill="#5b6570">and the Top-N update</text>
+<text x="714" y="213.4" font-size="11.5" fill="#5b6570"></text>
+<text x="714" y="230.1" font-size="11.5" fill="#5b6570">Oracle holds 0 carts</text>
+<path d="M262,136 L698,136" fill="none" stroke="#d97706" stroke-width="1.8" marker-end="url(#ar)"/>
+<text x="480" y="126.0" font-size="11.5" fill="#d97706" font-weight="700" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" text-anchor="middle">1   ./lab.sh migrate-entities</text>
+<text x="480" y="156.0" font-size="11" fill="#d97706" text-anchor="middle">the long-lived collections only</text>
+<rect x="365" y="186" width="230" height="112" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
+<rect x="365" y="186" width="5" height="112" rx="2" fill="#2563eb"/>
+<circle cx="391" cy="208" r="11" fill="#C74634"/>
+<text x="391" y="212.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+<text x="411" y="213.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Age-out router</text>
+<text x="381" y="236.0" font-size="11.5" fill="#5b6570">./lab.sh app-mode ageout</text>
+<text x="381" y="252.7" font-size="11.5" fill="#5b6570">cutoff: 1 ms after the newest</text>
+<text x="381" y="269.4" font-size="11.5" fill="#5b6570">order on MongoDB</text>
+<path d="M595,222 L698,222" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<text x="646" y="214.0" font-size="11" fill="#2563eb" text-anchor="middle">new orders</text>
+<path d="M262,262 L365,262" fill="none" stroke="#16a34a" stroke-width="1.8" marker-end="url(#ar)"/>
+<text x="314" y="254.0" font-size="11" fill="#16a34a" text-anchor="middle">old orders</text>
+<path d="M698,276 L595,276" fill="none" stroke="#C74634" stroke-width="1.8" marker-end="url(#ar)"/>
+<text x="646" y="268.0" font-size="11" fill="#C74634" text-anchor="middle">since cutoff</text>
+<path d="M480,298 L480,370" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<rect x="200" y="370" width="560" height="54" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
+<rect x="200" y="370" width="5" height="54" rx="2" fill="#2563eb"/>
+<text x="218" y="393.0" font-size="12.5" fill="#1a1a1a" font-weight="700">3   One read across the cutoff</text>
+<text x="218" y="412.0" font-size="11" fill="#5b6570">MongoDB rows + Oracle rows, merged newest first: equal to the union by _id</text>
+</svg>

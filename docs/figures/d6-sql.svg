@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="412" viewBox="0 0 960 412" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="36.0" font-size="18" fill="#C74634" font-weight="700">Demo 6: the same question, two ways, one engine</text>
+<text x="24" y="58.0" font-size="12.5" fill="#5b6570">Top 5 subscribers by spend, per region and plan tier, over the last 90 days, with the plan name.</text>
+<rect x="32" y="88" width="180" height="112" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.6"/>
+<rect x="32" y="88" width="5" height="112" rx="2" fill="#d97706"/>
+<text x="48" y="115.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Aggregation</text>
+<text x="48" y="138.0" font-size="11.5" fill="#5b6570">pipeline, through</text>
+<text x="48" y="154.7" font-size="11.5" fill="#5b6570">the MongoDB API</text>
+<rect x="242" y="88" width="300" height="112" rx="6" fill="#ffffff" stroke="#334155" stroke-width="1.6"/>
+<rect x="242" y="88" width="5" height="112" rx="2" fill="#334155"/>
+<text x="260" y="116.0" font-size="11" fill="#8a929b" font-weight="700">the stages</text>
+<text x="260" y="142.0" font-size="12" fill="#334155" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">$match, $lookup x3, $unwind,</text>
+<text x="260" y="162.0" font-size="12" fill="#334155" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">$group, $sort, $limit</text>
+<rect x="572" y="88" width="160" height="112" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.6"/>
+<rect x="572" y="88" width="5" height="112" rx="2" fill="#d97706"/>
+<text x="588" y="115.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Oracle plan</text>
+<text x="588" y="138.0" font-size="11.5" fill="#5b6570">nested loops for</text>
+<text x="588" y="154.7" font-size="11.5" fill="#5b6570">the three $lookups</text>
+<rect x="32" y="248" width="180" height="112" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="32" y="248" width="5" height="112" rx="2" fill="#16a34a"/>
+<text x="48" y="275.0" font-size="13.5" fill="#1a1a1a" font-weight="700">One $sql stage</text>
+<text x="48" y="298.0" font-size="11.5" fill="#5b6570">the same question</text>
+<text x="48" y="314.7" font-size="11.5" fill="#5b6570">as SQL</text>
+<rect x="242" y="248" width="300" height="112" rx="6" fill="#ffffff" stroke="#334155" stroke-width="1.6"/>
+<rect x="242" y="248" width="5" height="112" rx="2" fill="#334155"/>
+<text x="260" y="276.0" font-size="11" fill="#8a929b" font-weight="700">the statement</text>
+<text x="260" y="302.0" font-size="11.5" fill="#334155" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">SELECT ... JOIN ... JOIN ...</text>
+<text x="260" y="321.0" font-size="11.5" fill="#334155" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">RANK() OVER (PARTITION BY</text>
+<text x="260" y="340.0" font-size="11.5" fill="#334155" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">region, tier ORDER BY spend)</text>
+<rect x="572" y="248" width="160" height="112" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="572" y="248" width="5" height="112" rx="2" fill="#16a34a"/>
+<text x="588" y="275.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Oracle plan</text>
+<text x="588" y="298.0" font-size="11.5" fill="#5b6570">hash joins +</text>
+<text x="588" y="314.7" font-size="11.5" fill="#5b6570">WINDOW SORT</text>
+<text x="588" y="331.4" font-size="11.5" fill="#5b6570">PUSHED RANK</text>
+<path d="M212,144 L242,144" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M542,144 L572,144" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M732,144 L762,144" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M212,304 L242,304" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M542,304 L572,304" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M732,304 L762,304" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<rect x="762" y="88" width="166" height="272" rx="6" fill="#fdf6f5" stroke="#C74634" stroke-width="1.6"/>
+<rect x="762" y="88" width="5" height="272" rx="2" fill="#C74634"/>
+<text x="780" y="116.0" font-size="14" fill="#C74634" font-weight="700">Equal first</text>
+<text x="780" y="140.0" font-size="11.5" fill="#1a1a1a">160 rows, identical</text>
+<text x="780" y="157.0" font-size="11.5" fill="#1a1a1a">on all three</text>
+<text x="780" y="202.0" font-size="12" fill="#1a1a1a" font-weight="700">Then the timing</text>
+<text x="780" y="224.0" font-size="11.5" fill="#1a1a1a">about 125 to 150x</text>
+<text x="780" y="241.0" font-size="11.5" fill="#1a1a1a">on the Linux lab,</text>
+<text x="780" y="258.0" font-size="11.5" fill="#1a1a1a">warm against warm</text>
+<text x="780" y="300.0" font-size="11.5" fill="#5b6570">In the field:</text>
+<text x="780" y="317.0" font-size="11.5" fill="#5b6570">3 to 15x</text>
+<text x="32" y="388.0" font-size="11" fill="#5b6570">Same engine, same data, statistics gathered, both sides warmed once. Laptop times are relative.</text>
+</svg>

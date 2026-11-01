@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="392" viewBox="0 0 960 392" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="36.0" font-size="18" fill="#C74634" font-weight="700">Demo 5: a Top-N counter, three ways</text>
+<text x="24" y="58.0" font-size="12.5" fill="#5b6570">The same dashboard document from three designs. Watch what each order writes and what each read costs.</text>
+<rect x="28" y="80" width="284" height="214" rx="6" fill="#ffffff" stroke="#C74634" stroke-width="1.6"/>
+<rect x="28" y="80" width="5" height="214" rx="2" fill="#C74634"/>
+<text x="46" y="110.0" font-size="14" fill="#C74634" font-weight="700">(a) Embedded Top-N document</text>
+<text x="46" y="142.0" font-size="11" fill="#8a929b" font-weight="700">Each order</text>
+<text x="152" y="142.0" font-size="11.5" fill="#1a1a1a">rewrites the whole Top-N</text>
+<text x="152" y="166.0" font-size="11.5" fill="#1a1a1a">document (about 800 bytes)</text>
+<text x="46" y="190.0" font-size="11" fill="#8a929b" font-weight="700">Each read</text>
+<text x="152" y="190.0" font-size="11.5" fill="#1a1a1a">one document fetch</text>
+<text x="46" y="214.0" font-size="11" fill="#8a929b" font-weight="700">Redo per order</text>
+<text x="152" y="214.0" font-size="11.5" fill="#1a1a1a">2,600 to 3,500 bytes</text>
+<text x="46" y="238.0" font-size="11" fill="#8a929b" font-weight="700">Read</text>
+<text x="152" y="238.0" font-size="11.5" fill="#1a1a1a">0.3 to 0.8 ms</text>
+<rect x="338" y="80" width="284" height="214" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.6"/>
+<rect x="338" y="80" width="5" height="214" rx="2" fill="#d97706"/>
+<text x="356" y="110.0" font-size="14" fill="#d97706" font-weight="700">(b) $lookup pipeline</text>
+<text x="356" y="142.0" font-size="11" fill="#8a929b" font-weight="700">Each order</text>
+<text x="462" y="142.0" font-size="11.5" fill="#1a1a1a">nothing extra to write</text>
+<text x="356" y="166.0" font-size="11" fill="#8a929b" font-weight="700">Each read</text>
+<text x="462" y="166.0" font-size="11.5" fill="#1a1a1a">re-aggregates all the orders</text>
+<text x="356" y="190.0" font-size="11" fill="#8a929b" font-weight="700">Redo per order</text>
+<text x="462" y="190.0" font-size="11.5" fill="#1a1a1a">no counter</text>
+<text x="356" y="214.0" font-size="11" fill="#8a929b" font-weight="700">Read</text>
+<text x="462" y="214.0" font-size="11.5" fill="#1a1a1a">234 to 262 ms</text>
+<rect x="648" y="80" width="284" height="214" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="648" y="80" width="5" height="214" rx="2" fill="#16a34a"/>
+<text x="666" y="110.0" font-size="14" fill="#16a34a" font-weight="700">(c) Converged counter</text>
+<text x="666" y="142.0" font-size="11" fill="#8a929b" font-weight="700">Each order</text>
+<text x="772" y="142.0" font-size="11.5" fill="#1a1a1a">adds 1 to one counter row</text>
+<text x="666" y="166.0" font-size="11" fill="#8a929b" font-weight="700">Each read</text>
+<text x="772" y="166.0" font-size="11.5" fill="#1a1a1a">range scan on a pre-sorted</text>
+<text x="772" y="190.0" font-size="11.5" fill="#1a1a1a">index, stops at 10 rows</text>
+<text x="666" y="214.0" font-size="11" fill="#8a929b" font-weight="700">Redo per order</text>
+<text x="772" y="214.0" font-size="11.5" fill="#1a1a1a">870 to 950 bytes</text>
+<text x="666" y="238.0" font-size="11" fill="#8a929b" font-weight="700">Read</text>
+<text x="772" y="238.0" font-size="11.5" fill="#1a1a1a">0.6 to 0.9 ms</text>
+<rect x="28" y="316" width="904" height="58" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="28" y="316" width="5" height="58" rx="2" fill="#16a34a"/>
+<text x="46" y="339.0" font-size="12" fill="#1a1a1a" font-weight="700">Proof first: all 8 region dashboards are identical across the three, and only then do the times appear.</text>
+<text x="46" y="359.0" font-size="11" fill="#5b6570">Measured on the Linux lab host: relative numbers, not a benchmark.</text>
+</svg>

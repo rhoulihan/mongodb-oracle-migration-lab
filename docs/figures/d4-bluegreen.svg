@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="478" viewBox="0 0 960 478" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="36.0" font-size="18" fill="#C74634" font-weight="700">Demo 4: live sync, cutover, and a way back</text>
+<text x="24" y="58.0" font-size="12.5" fill="#5b6570">The replicator is a stand-in for Oracle GoldenGate. Both directions run in the lab; cutover is one command.</text>
+<text x="30" y="98.0" font-size="12" fill="#C74634" font-weight="700">Forward, before cutover</text>
+<rect x="30" y="110" width="156" height="86" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
+<rect x="30" y="110" width="5" height="86" rx="2" fill="#2563eb"/>
+<text x="46" y="137.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Order service</text>
+<text x="46" y="160.0" font-size="11.5" fill="#5b6570">writes to MongoDB</text>
+<rect x="216" y="110" width="156" height="86" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="216" y="110" width="5" height="86" rx="2" fill="#16a34a"/>
+<text x="232" y="137.0" font-size="13.5" fill="#1a1a1a" font-weight="700">MongoDB</text>
+<text x="232" y="160.0" font-size="11.5" fill="#5b6570">the source, live</text>
+<rect x="402" y="110" width="156" height="86" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.6" stroke-dasharray="5 4"/>
+<rect x="402" y="110" width="5" height="86" rx="2" fill="#d97706"/>
+<text x="418" y="137.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Replicator fwd</text>
+<text x="418" y="160.0" font-size="11.5" fill="#5b6570">stand-in for</text>
+<text x="418" y="176.7" font-size="11.5" fill="#5b6570">Oracle GoldenGate</text>
+<rect x="588" y="110" width="156" height="86" rx="6" fill="#ffffff" stroke="#C74634" stroke-width="1.6"/>
+<rect x="588" y="110" width="5" height="86" rx="2" fill="#C74634"/>
+<text x="604" y="137.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Oracle</text>
+<text x="604" y="160.0" font-size="11.5" fill="#5b6570">through the</text>
+<text x="604" y="176.7" font-size="11.5" fill="#5b6570">MongoDB API</text>
+<rect x="774" y="110" width="156" height="86" rx="6" fill="#f6f7f9" stroke="#334155" stroke-width="1.6"/>
+<rect x="774" y="110" width="5" height="86" rx="2" fill="#334155"/>
+<text x="790" y="137.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Kill it any time</text>
+<text x="790" y="160.0" font-size="10.5" fill="#5b6570">resumes from its token:</text>
+<text x="790" y="175.2" font-size="10.5" fill="#5b6570">no loss, no doubles</text>
+<path d="M186,153 L216,153" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M372,153 L402,153" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M558,153 L588,153" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<rect x="30" y="222" width="900" height="46" rx="6" fill="#fdf6f5" stroke="#C74634" stroke-width="1.6"/>
+<rect x="30" y="222" width="5" height="46" rx="2" fill="#C74634"/>
+<text x="48" y="250.0" font-size="12.5" fill="#1a1a1a" font-weight="700">Cutover:  ./lab.sh repl stop  (drains to lag 0)  then  ./lab.sh app-uri oracle</text>
+<text x="30" y="300.0" font-size="12" fill="#C74634" font-weight="700">Reverse, the fallback path</text>
+<rect x="30" y="312" width="156" height="86" rx="6" fill="#f6f7f9" stroke="#334155" stroke-width="1.6"/>
+<rect x="30" y="312" width="5" height="86" rx="2" fill="#334155"/>
+<text x="46" y="339.0" font-size="13.5" fill="#1a1a1a" font-weight="700">No ping-pong</text>
+<text x="46" y="362.0" font-size="10.5" fill="#5b6570">triggers skip the</text>
+<text x="46" y="377.2" font-size="10.5" fill="#5b6570">forward session</text>
+<rect x="216" y="312" width="156" height="86" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="216" y="312" width="5" height="86" rx="2" fill="#16a34a"/>
+<text x="232" y="339.0" font-size="13.5" fill="#1a1a1a" font-weight="700">MongoDB</text>
+<text x="232" y="362.0" font-size="11.5" fill="#5b6570">stays current:</text>
+<text x="232" y="378.7" font-size="11.5" fill="#5b6570">a way back</text>
+<rect x="402" y="312" width="156" height="86" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.6" stroke-dasharray="5 4"/>
+<rect x="402" y="312" width="5" height="86" rx="2" fill="#d97706"/>
+<text x="418" y="339.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Replicator rev</text>
+<text x="418" y="362.0" font-size="11.5" fill="#5b6570">polls mig_changelog</text>
+<text x="418" y="378.7" font-size="11.5" fill="#5b6570">every 250 ms</text>
+<rect x="588" y="312" width="156" height="86" rx="6" fill="#ffffff" stroke="#C74634" stroke-width="1.6"/>
+<rect x="588" y="312" width="5" height="86" rx="2" fill="#C74634"/>
+<text x="604" y="339.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Oracle</text>
+<text x="604" y="362.0" font-size="11.5" fill="#5b6570">row triggers write</text>
+<text x="604" y="378.7" font-size="11.5" fill="#5b6570">mig_changelog</text>
+<rect x="774" y="312" width="156" height="86" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
+<rect x="774" y="312" width="5" height="86" rx="2" fill="#2563eb"/>
+<text x="790" y="339.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Order service</text>
+<text x="790" y="362.0" font-size="11.5" fill="#5b6570">now writes to Oracle</text>
+<path d="M774,355 L744,355" fill="none" stroke="#C74634" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M588,355 L558,355" fill="none" stroke="#C74634" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M402,355 L372,355" fill="none" stroke="#C74634" stroke-width="1.8" marker-end="url(#ar)"/>
+<rect x="216" y="420" width="528" height="40" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="216" y="420" width="5" height="40" rx="2" fill="#16a34a"/>
+<text x="234" y="445.0" font-size="12" fill="#1a1a1a" font-weight="700">Proof: same count and sha-256 on both sides, no lost or doubled writes</text>
+</svg>

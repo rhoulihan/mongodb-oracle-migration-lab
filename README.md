@@ -11,6 +11,8 @@ After a one-time setup it runs fully offline.
 
 ## What runs
 
+<img src="docs/figures/lab-stack.svg" alt="The lab stack: console and order service talk to MongoDB and Oracle; the replicator links them in demo 4" width="100%">
+
 | Service | Container | What it is |
 |---|---|---|
 | `mongo` | `lab-mongo` | MongoDB 8.2, single-node replica set `rs0` (the source) |
@@ -76,6 +78,8 @@ On Linux the same commands work with Docker. `lab.sh` uses `podman compose`
 when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`.
 
 ## Everyday commands
+
+<img src="docs/figures/session-flow.svg" alt="The session order: D1 to D7, a reset after D2 and D4, D6 setup starting after D5" width="100%">
 
 | Command | What it does |
 |---|---|
@@ -236,6 +240,8 @@ Pick a demo at the top, then work down its steps on the left.
   `drive-demo` skill in `.claude/skills/` is the protocol. Setup and use:
   `docs/REHEARSAL.md` section 7.
 
+<img src="docs/figures/drive-workflow.svg" alt="Let Claude drive: Claude runs console steps through the page and terminal steps in the shared tmux session" width="100%">
+
 The console runs as one long process, so demos keep their state from step to
 step. It is baked into the app image: run `./lab.sh build` after changing it.
 `node scripts/shots.mjs --run d5` (developers, needs Chrome) clicks through a
@@ -301,6 +307,8 @@ gives the presenter). Every step must pass, twice in a row.
 
 ## Demo 1: compatibility check and type census
 
+<img src="docs/figures/d1-compat.svg" alt="Demo 1: the operator scan sorts operators into supported, caveat and unsupported; the type census flags landmines" width="100%">
+
 `./lab.sh demo d1` runs it headless in a few seconds. It reads only: it needs
 a generated MongoDB source (`./lab.sh generate`) and nothing else, so
 `./lab.sh reset d1` has nothing to undo. Two console steps:
@@ -320,6 +328,8 @@ offline in this stack (`docs/spikes/d1-advisor.md`, with the probes behind the
 measured entries).
 
 ## Demo 2: age out
+
+<img src="docs/figures/d2-ageout.svg" alt="Demo 2: entities copied to Oracle, the age-out router sends new orders to Oracle and reads old ones from MongoDB" width="100%">
 
 Strategy A: move only what lives long. `./lab.sh demo d2` runs it headless;
 `./lab.sh reset d2` puts back the starting state (order service on MongoDB in
@@ -352,6 +362,8 @@ carts at all).
 
 ## Demo 3: dump and restore
 
+<img src="docs/figures/d3-dump-restore.svg" alt="Demo 3: dump, restore as MIG, then prove counts, types, the unchanged app and the indexes" width="100%">
+
 `./lab.sh demo d3` runs it headless; `./lab.sh reset d3` puts back the
 starting state (order service on MongoDB, the eight MIG collections empty, no
 dump). The presenter's terminal commands:
@@ -373,6 +385,8 @@ documents while still exiting 0. Counts are compared at the dump snapshot
 because the TTL indexes come across and Oracle runs them too.
 
 ## Demo 4: blue/green with a fallback path
+
+<img src="docs/figures/d4-bluegreen.svg" alt="Demo 4: forward sync, cutover, then reverse sync as the way back" width="100%">
 
 `./lab.sh demo d4` runs it headless; `./lab.sh reset d4` stops the
 replicator, drops the capture objects, clears `/state/d4` and points the
@@ -409,6 +423,8 @@ terminal commands, in order, with console steps between them:
 
 ## Demo 5: Top-N real-time counter
 
+<img src="docs/figures/d5-topn.svg" alt="Demo 5: embedded document, lookup pipeline and converged counter compared" width="100%">
+
 `./lab.sh demo d5` runs it headless; `./lab.sh reset d5` puts back the
 starting state. D5 runs on Oracle after D3: if `MIG.orders` is empty, setup
 runs D3's dump and restore first. Setup then builds the converged tables
@@ -431,6 +447,8 @@ carries the full device list and the write path. Details, errors and the
 measured numbers: `docs/spikes/d5-duality-nested-order.md`.
 
 ## Demo 6: Pipeline vs `$sql`
+
+<img src="docs/figures/d6-sql.svg" alt="Demo 6: the same question as a pipeline and as one $sql stage, proven equal before timing" width="100%">
 
 `./lab.sh demo d6` runs it headless; `./lab.sh reset d6` puts back the
 starting state, and always re-runs D3's dump and restore to do it (about a
@@ -460,6 +478,8 @@ a quick rehearsal). `$sql` is timed over 7 runs. Setup (and `reset d6`) first ru
 Plans, medians and the ratio: `docs/spikes/d6-ratio.md`.
 
 ## Demo 7: ETags, two agents, no lost update
+
+<img src="docs/figures/d7-etag.svg" alt="Demo 7: two agents read the same ETag; the stale write is rejected and the retry succeeds" width="100%">
 
 `./lab.sh demo d7` runs it headless; `./lab.sh reset d7` puts back the
 starting state. D7 runs on Oracle after D3: if `MIG.orders` is empty, setup

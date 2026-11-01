@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="512" viewBox="0 0 960 512" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="36.0" font-size="18" fill="#C74634" font-weight="700">Demo 7: two agents, one order, no lost update</text>
+<text x="24" y="58.0" font-size="12.5" fill="#5b6570">Both agents read the same ETag. The second write with a stale ETag is rejected, not silently overwritten.</text>
+<rect x="90" y="78" width="200" height="52" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
+<rect x="90" y="78" width="5" height="52" rx="2" fill="#2563eb"/>
+<text x="106" y="105.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Agent A</text>
+<rect x="360" y="78" width="240" height="52" rx="6" fill="#ffffff" stroke="#C74634" stroke-width="1.6"/>
+<rect x="360" y="78" width="5" height="52" rx="2" fill="#C74634"/>
+<text x="376" y="105.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Duality view orders_dv</text>
+<rect x="670" y="78" width="200" height="52" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
+<rect x="670" y="78" width="5" height="52" rx="2" fill="#2563eb"/>
+<text x="686" y="105.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Agent B</text>
+<path d="M190,130 L190,430" fill="none" stroke="#8a929b" stroke-width="1.2" stroke-dasharray="4 4"/>
+<path d="M480,130 L480,430" fill="none" stroke="#8a929b" stroke-width="1.2" stroke-dasharray="4 4"/>
+<path d="M770,130 L770,430" fill="none" stroke="#8a929b" stroke-width="1.2" stroke-dasharray="4 4"/>
+<path d="M190,160 L474,160" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<text x="335.0" y="153.0" font-size="11" fill="#2563eb" text-anchor="middle">read</text>
+<circle cx="162" cy="160" r="10" fill="#C74634"/>
+<text x="162" y="164" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+<path d="M480,186 L196,186" fill="none" stroke="#2563eb" stroke-width="1.4" marker-end="url(#ar)" stroke-dasharray="5 3"/>
+<text x="335.0" y="179.0" font-size="11" fill="#5b6570" text-anchor="middle">order + ETag e1</text>
+<path d="M770,216 L486,216" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<text x="625.0" y="209.0" font-size="11" fill="#2563eb" text-anchor="middle">read</text>
+<circle cx="798" cy="216" r="10" fill="#C74634"/>
+<text x="798" y="220" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+<path d="M480,242 L764,242" fill="none" stroke="#2563eb" stroke-width="1.4" marker-end="url(#ar)" stroke-dasharray="5 3"/>
+<text x="625.0" y="235.0" font-size="11" fill="#5b6570" text-anchor="middle">same order, same ETag e1</text>
+<path d="M190,272 L474,272" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<text x="335.0" y="265.0" font-size="11" fill="#2563eb" text-anchor="middle">write status = provisioned, ETag e1</text>
+<circle cx="162" cy="272" r="10" fill="#C74634"/>
+<text x="162" y="276" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+<path d="M480,298 L196,298" fill="none" stroke="#16a34a" stroke-width="1.4" marker-end="url(#ar)" stroke-dasharray="5 3"/>
+<text x="335.0" y="291.0" font-size="11" fill="#16a34a" font-weight="700" text-anchor="middle">accepted: 1 update</text>
+<path d="M770,328 L486,328" fill="none" stroke="#d97706" stroke-width="1.8" marker-end="url(#ar)"/>
+<text x="625.0" y="321.0" font-size="11" fill="#d97706" text-anchor="middle">write device swap, ETag e1 (stale)</text>
+<circle cx="798" cy="328" r="10" fill="#C74634"/>
+<text x="798" y="332" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+<path d="M480,354 L764,354" fill="none" stroke="#C74634" stroke-width="1.4" marker-end="url(#ar)" stroke-dasharray="5 3"/>
+<text x="625.0" y="347.0" font-size="11" fill="#C74634" font-weight="700" text-anchor="middle">rejected: ORA-42699</text>
+<path d="M770,384 L486,384" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<text x="625.0" y="377.0" font-size="11" fill="#2563eb" text-anchor="middle">re-read (ETag e2), reapply, write</text>
+<circle cx="798" cy="384" r="10" fill="#C74634"/>
+<text x="798" y="388" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">5</text>
+<path d="M480,410 L764,410" fill="none" stroke="#16a34a" stroke-width="1.4" marker-end="url(#ar)" stroke-dasharray="5 3"/>
+<text x="625.0" y="403.0" font-size="11" fill="#16a34a" font-weight="700" text-anchor="middle">accepted: 2 updates</text>
+<rect x="250" y="444" width="460" height="44" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="250" y="444" width="5" height="44" rx="2" fill="#16a34a"/>
+<text x="268" y="471.0" font-size="12.5" fill="#1a1a1a" font-weight="700">Final order: both changes, exactly 2 updates applied</text>
+</svg>

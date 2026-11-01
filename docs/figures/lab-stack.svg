@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="444" viewBox="0 0 960 444" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="36.0" font-size="18" fill="#C74634" font-weight="700">What runs on the laptop</text>
+<text x="24" y="58.0" font-size="12.5" fill="#5b6570">One compose stack. Every port binds to 127.0.0.1, and after setup it runs with no network.</text>
+<rect x="20" y="76" width="920" height="344" rx="6" fill="#f6f7f9" stroke="#dfe3e7" stroke-width="1.6" stroke-dasharray="5 4"/>
+<text x="926" y="96.0" font-size="11" fill="#8a929b" text-anchor="end">127.0.0.1 only</text>
+<rect x="40" y="108" width="220" height="92" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
+<rect x="40" y="108" width="5" height="92" rx="2" fill="#2563eb"/>
+<text x="56" y="135.0" font-size="13.5" fill="#1a1a1a" font-weight="700">lab-console  :3200</text>
+<text x="56" y="158.0" font-size="11.5" fill="#5b6570">Instructor console:</text>
+<text x="56" y="174.7" font-size="11.5" fill="#5b6570">runs and checks each step</text>
+<rect x="40" y="300" width="220" height="92" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
+<rect x="40" y="300" width="5" height="92" rx="2" fill="#2563eb"/>
+<text x="56" y="327.0" font-size="13.5" fill="#1a1a1a" font-weight="700">lab-app  :3300</text>
+<text x="56" y="350.0" font-size="11.5" fill="#5b6570">Order service the demos drive;</text>
+<text x="56" y="366.7" font-size="11.5" fill="#5b6570">backend MongoDB or Oracle</text>
+<rect x="400" y="108" width="230" height="92" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="400" y="108" width="5" height="92" rx="2" fill="#16a34a"/>
+<text x="416" y="135.0" font-size="13.5" fill="#1a1a1a" font-weight="700">lab-mongo  :27117</text>
+<text x="416" y="158.0" font-size="11.5" fill="#5b6570">MongoDB 8.2, replica set rs0</text>
+<text x="416" y="174.7" font-size="11.5" fill="#5b6570">the migration source</text>
+<rect x="400" y="250" width="230" height="142" rx="6" fill="#ffffff" stroke="#C74634" stroke-width="1.6"/>
+<rect x="400" y="250" width="5" height="142" rx="2" fill="#C74634"/>
+<text x="416" y="277.0" font-size="13.5" fill="#1a1a1a" font-weight="700">lab-oracle</text>
+<text x="416" y="300.0" font-size="11.5" fill="#5b6570">Oracle AI Database 26ai Free</text>
+<text x="416" y="316.7" font-size="11.5" fill="#5b6570">SQL  :1523  (schema MIG)</text>
+<text x="416" y="333.4" font-size="11.5" fill="#5b6570">ORDS  :8183</text>
+<text x="416" y="350.0" font-size="11.5" fill="#5b6570">Oracle API for MongoDB  :27119</text>
+<rect x="700" y="182" width="220" height="92" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.6" stroke-dasharray="5 4"/>
+<rect x="700" y="182" width="5" height="92" rx="2" fill="#d97706"/>
+<text x="716" y="209.0" font-size="13.5" fill="#1a1a1a" font-weight="700">lab-replicator</text>
+<text x="716" y="232.0" font-size="11.5" fill="#5b6570">stand-in for Oracle GoldenGate</text>
+<text x="716" y="248.7" font-size="11.5" fill="#5b6570">demo 4 only (profile d4)</text>
+<path d="M260,154 L330,154" fill="none" stroke="#2563eb" stroke-width="1.8"/>
+<path d="M260,346 L330,346" fill="none" stroke="#2563eb" stroke-width="1.8"/>
+<path d="M330,154 L330,346" fill="none" stroke="#2563eb" stroke-width="1.8"/>
+<path d="M330,154 L400,154" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M330,320 L400,320" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M630,130 L810,130 L810,182" fill="none" stroke="#d97706" stroke-width="1.8" marker-end="url(#ar)" marker-start="url(#ar)"/>
+<path d="M810,274 L810,356 L630,356" fill="none" stroke="#d97706" stroke-width="1.8" marker-end="url(#ar)" marker-start="url(#ar)"/>
+<text x="720" y="122.0" font-size="11" fill="#d97706" text-anchor="middle">change stream</text>
+<text x="720" y="348.0" font-size="11" fill="#d97706" text-anchor="middle">MongoDB API</text>
+</svg>
