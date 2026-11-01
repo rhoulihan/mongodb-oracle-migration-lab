@@ -101,13 +101,14 @@ FROM region r WITH UPDATE
 CREATE JSON COLLECTION VIEW region_top_devices_v AS
 SELECT JSON {
   '_id' : r.region_id,
-  'top' : (SELECT JSON_ARRAYAGG(JSON {'sku' : t.sku, 'name' : d.name, 'units' : t.units}
+  -- COALESCE: a region with no sales yet gets "top": [] instead of null.
+  'top' : COALESCE((SELECT JSON_ARRAYAGG(JSON {'sku' : t.sku, 'name' : d.name, 'units' : t.units}
                                 ORDER BY t.units DESC, t.sku RETURNING JSON)
              FROM (SELECT ds.sku, ds.units
                      FROM device_sales ds
                     WHERE ds.region_id = r.region_id
                     ORDER BY ds.units DESC, ds.sku
                     FETCH FIRST 10 ROWS ONLY) t
-             JOIN device d ON d.sku = t.sku) }
+             JOIN device d ON d.sku = t.sku), JSON_ARRAY(RETURNING JSON)) }
   FROM region r
 /

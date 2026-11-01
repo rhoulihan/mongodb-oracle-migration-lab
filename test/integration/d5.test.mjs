@@ -8,6 +8,7 @@ import { createContext, runDemo } from '../../demos/contract.mjs';
 import d5, { planChecks } from '../../demos/d5-topn/index.mjs';
 import { D5_ID_RANGE, seededOrders } from '../../demos/d5-topn/variants.mjs';
 import { canonical } from '../../lib/compare.mjs';
+import { prepareTarget } from '../../oracle/prep.mjs';
 
 let ctx, results;
 const result = (id) => results[d5.steps.findIndex((s) => s.id === id)];
@@ -95,7 +96,7 @@ describe('D5 Top-N counter: embedded vs $lookup vs converged', () => {
 
   // Spec: "the duality view covers the write path". A MongoDB API $inc on the
   // region document lands in the one device_sales row (afterAll resets).
-  test('a MongoDB API $inc through region_top_devices_dv updates the device_sales row', async () => {
+  test('$inc, replaceOne and a SQL update through region_top_devices_dv update the device_sales row', async () => {
     const db = await ctx.oraMongo(), conn = await ctx.oraSql();
     const doc = await db.collection('region_top_devices_dv').findOne({ _id: 'R01' });
     const { sku } = doc.top[0];
@@ -105,5 +106,34 @@ describe('D5 Top-N counter: embedded vs $lookup vs converged', () => {
     const r = await db.collection('region_top_devices_dv').updateOne({ _id: 'R01', 'top.sku': sku }, { $inc: { 'top.$.units': 1 } });
     expect(r.modifiedCount).toBe(1);
     expect(await units()).toBe(before + 1);
+
+    // replaceOne of the whole region document with one entry changed.
+    const next = await db.collection('region_top_devices_dv').findOne({ _id: 'R01' });
+    next.top.find((t) => t.sku === sku).units = before + 5;
+    const rr = await db.collection('region_top_devices_dv').replaceOne({ _id: 'R01' }, next);
+    expect(rr.modifiedCount).toBe(1);
+    expect(await units()).toBe(before + 5);
+
+    // A SQL update of the view (JSON_TRANSFORM) lands in the same row.
+    const idx = next.top.findIndex((t) => t.sku === sku);
+    const u = await conn.execute(
+      `update region_top_devices_dv v set v.data = json_transform(v.data, set '$.top[${idx}].units' = ${before + 9})
+        where v.data."_id".string() = 'R01'`);
+    await conn.commit();
+    expect(u.rowsAffected).toBe(1);
+    expect(await units()).toBe(before + 9);
   });
+});
+
+// The console runs the setup step on its own (demos/run.mjs --step skips
+// demo.setup). On an empty MIG it must restore D3's data itself, not report
+// "0 regions". Runs after the suite above; afterAll resets again.
+describe('D5 setup step on an empty MIG (console / --step path)', () => {
+  test('the setup step alone restores D3 data and passes', async () => {
+    await prepareTarget({ drop: true });
+    const [r] = await runDemo(d5, { only: ['setup'], ctx });
+    expect(r.ok, r.summary).toBe(true);
+    expect(r.metrics.regions).toBe(8);
+    expect(r.summary).toMatch(/^8 regions; \d+ counter rows/);
+  }, 600_000);
 });

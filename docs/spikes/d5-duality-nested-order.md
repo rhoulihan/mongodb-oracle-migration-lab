@@ -18,7 +18,8 @@ fallback the spec allows:
 - `region_top_devices_dv` is the duality view. It carries the region with
   **every** device sold there, unordered, and it covers the write path: a
   MongoDB API `$inc` or `replaceOne` on a `top` entry, or a SQL update of the
-  view, lands in that one `device_sales` row (pinned by `test/integration/d5.test.mjs`).
+  view (`JSON_TRANSFORM ... SET`), lands in that one `device_sales` row. All
+  three write paths are pinned by `test/integration/d5.test.mjs`.
 - Deck note, said plainly: *"The duality view handles writes and the full
   device list. The Top 10 document comes from a read-only JSON view over the
   same pre-sorted index, because 26ai cannot yet sort or cut a nested array
@@ -149,8 +150,10 @@ SELECT STATEMENT
                     INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1
                 JSON EXPAND ARRAY EVALUATION
 ```
-Every refresh reads all of R03's orders (about 25,500 documents, 19,150 device
-lines) through the region index, expands the line arrays, groups, sorts, then
+Every refresh reads all of R03's orders (25,522 documents and 19,150 device
+lines on the restored dataset: the row counts after the pipeline's first
+`$match` and after its `$match` on `lines.kind`, run stage by stage through the
+Oracle API during the spike) through the region index, expands the line arrays, groups, sorts, then
 looks up 10 names. It is a `SORT GROUP BY`, not a hash group or a full scan: the
 brief's prediction ("full scan or hash group") did not hold, so the test pins
 what the plan really does (reads the orders table, then a GROUP BY).
@@ -195,7 +198,7 @@ dashboards were asserted identical before any number was shown.
 | redo per order, run 2 (bytes) | 5252 | 2588 | 3494 |
 | dashboard read, run 1 (ms) | 0.3 | 235.9 | 0.7 |
 | dashboard read, run 2 (ms) | 0.4 | 236.3 | 0.7 |
-| what each order writes | the order, plus two updates of the 801-byte R03 Top-N document | the order only | the order, plus one MERGE of a 24-byte counter row (and its index entry) |
+| what each order writes | the order, plus two updates of the 801-byte R03 Top-N document | the order only | the order, plus one MERGE of a counter row, 24 bytes on average (`user_tables.avg_row_len` after the setup stats), and its index entry |
 | what each read does | one document by primary key | groups every order line in the region | 10 index entries per region, joined to device |
 
 How to read it:
@@ -205,15 +208,22 @@ How to read it:
   same orders). So the counter itself costs about **2,600 bytes per order
   embedded** and about **900 to 1,000 bytes per order converged**: about 2.5
   to 3 times less write work for the same dashboard.
-- The lookup pipeline writes the least, and pays on every read: about 300x
-  slower here than either other read, and it grows with the region's order count.
+- The lookup pipeline writes the least, and pays on every read. From the two
+  runs above: about 340x the converged read (236 / 0.7 ms) and about 600 to
+  800x the embedded read (236 / 0.3 to 0.4 ms), and it grows with the
+  region's order count. The sub-millisecond reads are close to timer noise, so
+  the ratios are only an order of magnitude.
 - Converged and embedded read in about the same time on this laptop. The
   converged read is a join, not free: it is cheap because the index hands it
   the 10 rows in order.
-- Across 7 development runs the medians stayed within 5243 to 5262 (embedded),
-  2588 to 2693 (lookup) and 3487 to 3637 (converged), with one embedded outlier
-  at 5897: background redo lands in a batch now and then, which is why the
-  number is a median of batches.
+- Across 8 development runs the medians stayed within 5243 to 5263 (embedded),
+  2588 to 2694 (lookup) and 3487 to 3637 (converged), apart from two embedded
+  runs at 5897 and 5906: background redo lands in a batch now and then, which is why the
+  number is a median of batches. The likely sources are the TTL monitor
+  purging expired `orderEvents` (and `carts`) documents, which Oracle runs
+  from the restored TTL indexes (D3), and routine instance work (ORDS pool,
+  statistics). Not measured separately; an idle 2-second window showed about
+  600 bytes of redo.
 - `embedded-write` also showed the batch spread: 4722 to 6683 bytes per order.
   The Top-N document changes size as devices enter and move, and the redo
   follows it.

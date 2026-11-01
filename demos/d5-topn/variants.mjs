@@ -26,7 +26,7 @@ export const TOP_N = 10;
 /** The dashboard's projected shape: {_id, top:[{sku, name, units: Int32}]}. */
 export const dashboard = (_id, top) => ({
   _id,
-  top: top.map((t) => ({ sku: String(t.sku), name: String(t.name), units: new Int32(Number(t.units)) })),
+  top: (top ?? []).map((t) => ({ sku: String(t.sku), name: String(t.name), units: new Int32(Number(t.units)) })),
 });
 
 // ---------------------------------------------------------------- the orders

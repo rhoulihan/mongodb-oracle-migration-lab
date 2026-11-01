@@ -147,7 +147,18 @@ export default {
       title: 'Start all three from the same truth',
       lane: 'console',
       async run(ctx) {
-        const regions = await restoreBaseline(ctx);
+        // The console runs this step on its own (no demo.setup), so it
+        // establishes the full starting state itself, D3's restore included.
+        let regions;
+        try {
+          await startingState(ctx);
+          regions = await regionIds((await handles(ctx)).conn);
+        } catch (err) {
+          return { ok: false, summary: `could not build the starting state (${err.message}): run ./lab.sh reset d5` };
+        }
+        if (regions.length === 0) {
+          return { ok: false, summary: 'no regions in MIG after the restore: run ./lab.sh reset d5' };
+        }
         const { db, conn } = await handles(ctx);
         // The counters were built in SQL; the pipeline re-counts the orders
         // independently, so this checks the starting truth, not a copy of it.
@@ -159,10 +170,10 @@ export default {
         const same = sameDocs(convergedDocs, lookupDocs);
         const rows = Number((await conn.execute('select count(*) from device_sales')).rows[0][0]);
         return {
-          ok: same.equal && regions.length > 0,
+          ok: same.equal,
           summary: same.equal
             ? `${regions.length} regions; ${rows} counter rows built from the restored orders; their Top 10 matches a fresh count of the orders`
-            : `the starting Top 10 differs from a fresh count of the orders: ${same.diff}`,
+            : `the starting Top 10 differs from a fresh count of the orders: ${same.diff}; run ./lab.sh reset d5`,
           metrics: { regions: regions.length, counterRows: rows },
         };
       },
@@ -196,7 +207,7 @@ export default {
         return {
           ok,
           summary: `dashboard read takes ${r.readMs} ms (median): it groups every ${SHOW_REGION} order line on each refresh` +
-            (ok ? '' : '; the plan shows no full scan or group'),
+            (ok ? '' : '; the plan does not show a read of the orders table followed by a GROUP BY'),
           metrics: { redoPerOrder: r.redoPerOrder, batches: r.batches, readMs: r.readMs },
           panes: { left: r.docs.find((d) => d._id === SHOW_REGION) },
           plan: { left: r.plan },
@@ -214,7 +225,7 @@ export default {
         const doc = r.docs.find((d) => d._id === SHOW_REGION);
         return {
           ok,
-          summary: `${r.redoPerOrder} bytes of redo per order; dashboard read ${r.readMs} ms (median) through an index range scan that stops after 10 rows` +
+          summary: `${r.redoPerOrder} bytes of redo per order; dashboard read ${r.readMs} ms (median) through an index range scan that stops after 10 rows per region (the view builds all ${r.docs.length} regions, then keeps ${SHOW_REGION} by _id)` +
             (ok ? '' : '; the plan does not show INDEX RANGE SCAN DEVICE_SALES_TOPN with STOPKEY'),
           metrics: { redoPerOrder: r.redoPerOrder, batches: r.batches, readMs: r.readMs },
           panes: { left: doc },
