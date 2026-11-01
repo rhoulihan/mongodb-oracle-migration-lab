@@ -129,8 +129,11 @@ expression, `orders.version` is a 64-bit integer (one order holds
 9007199254740993, more than 2^53), `orderEvents.ts` is a BSON Timestamp, and
 prices and totals are Decimal128.
 
-Carts get `updatedAt` spread from 2 minutes before the load to 58 minutes after
-it, so they expire steadily over the first hour. Each order event gets a
+Carts get `updatedAt` spread from 2 minutes before the load to 3 hours 58 minutes
+after it, so they expire steadily over the first 4 hours (about 21 a minute at
+demo scale). Run `./lab.sh generate` no more than 30 minutes before the session:
+about half the carts are still there at the end of it, and some expire live
+during D2. Each order event gets a
 `createdAt` Date between 7 days before the load and the load itself, so the event
 log ages out steadily over the next week. The TTL index sits on `createdAt`
 because a TTL index only expires Date values; `ts` stays a BSON Timestamp.

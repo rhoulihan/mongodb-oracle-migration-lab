@@ -119,6 +119,26 @@ describe('buildDataset', () => {
     expect(d.carts.every((c) => c.updatedAt >= new Date(now - 120_000))).toBe(true);
   });
 
+  // Ruling R: carts must outlast a 90-minute session (run generate up to 30 min
+  // before it) and still expire live during it: deadlines spread evenly over
+  // the 4 hours after the load.
+  test('carts expire in a steady trickle over the 4 hours after `now` (Ruling R)', () => {
+    const now = new Date('2030-01-01T00:00:00Z');
+    const d = buildDataset({ seed: SEED, scale: 'demo', now });
+    const H = 3_600_000;
+    const left = d.carts.map((c) => c.updatedAt.getTime() + 120_000 - now.getTime()); // ms until expiry
+    expect(Math.min(...left)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...left)).toBeLessThan(4 * H);
+    expect(Math.max(...left)).toBeGreaterThan(3.9 * H);
+    // Two hours in (30 min wait + 90 min session), about half are still there.
+    const alive2h = left.filter((ms) => ms > 2 * H).length / left.length;
+    expect(alive2h).toBeGreaterThan(0.45);
+    expect(alive2h).toBeLessThan(0.55);
+    // Every 15 minutes of the 4 hours sees carts expire (no gaps, no cliff).
+    const per15 = Array.from({ length: 16 }, (_, k) => left.filter((ms) => ms >= k * H / 4 && ms < (k + 1) * H / 4).length);
+    for (const n of per15) expect(n).toBeGreaterThan(d.carts.length / 16 * 0.8);
+  });
+
   test('orderEvents.createdAt is a Date within the 7 days before `now`', () => {
     const now = new Date('2030-01-01T00:00:00Z');
     const d = buildDataset({ seed: SEED, scale: 'tiny', now });

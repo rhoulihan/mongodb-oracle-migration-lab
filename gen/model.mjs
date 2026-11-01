@@ -4,7 +4,7 @@
 // order, so the same seed and scale always give byte-identical documents.
 // The only input that is not derived from the seed is `now` (the load clock).
 // It anchors the two TTL fields, which must be fresh at load time:
-//   carts.updatedAt        TTL 120 s
+//   carts.updatedAt        TTL 120 s; deadlines spread over the 4 hours after now
 //   orderEvents.createdAt  TTL 7 days; now minus a seeded offset in [0, 7 days)
 // Seeded offsets do not depend on `now`, and orders never see it, so order
 // hashes are seed-only.
@@ -227,7 +227,11 @@ function buildOrderEvents(t, target, orders, now) {
 }
 
 // Carts expire 120 s after updatedAt. updatedAt is spread so the carts expire
-// steadily over the hour after `now` instead of all at once.
+// steadily over the 4 hours after `now` instead of all at once (Ruling R): a
+// 90-minute session that starts up to 30 minutes after the load still has
+// about half of them, and sees some expire every minute (about 21 a minute at
+// demo scale).
+const CART_SPREAD_MS = 4 * 3_600_000;
 function buildCarts(t, n, subscribers, catalog, now) {
   const out = [];
   for (let i = 0; i < n; i++) {
@@ -238,7 +242,7 @@ function buildCarts(t, n, subscribers, catalog, now) {
       if (!seen.has(c._id)) { seen.add(c._id); items.push({ sku: c._id, qty: new Int32(t.int(1, 2)) }); }
     }
     out.push({ _id: `CART-${pad(i + 1, 6)}`, subscriberId: t.pick(subscribers)._id, items,
-      updatedAt: new Date(now.getTime() - 120_000 + Math.floor(t.rand() * 3_600_000)) });
+      updatedAt: new Date(now.getTime() - 120_000 + Math.floor(t.rand() * CART_SPREAD_MS)) });
   }
   return out;
 }
