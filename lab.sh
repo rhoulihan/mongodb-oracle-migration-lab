@@ -8,6 +8,7 @@
 #   ./lab.sh exec <service> <cmd...>
 #   ./lab.sh app-uri <mongo|oracle>  switch the order service's backend (no restart)
 #   ./lab.sh agent read|write|retry --agent A|B  a D7 agent (runs in the runner)
+#   ./lab.sh repl fwd|rev|stop|status|logs  the D4 stand-in for Oracle GoldenGate
 # demo, reset dN, generate and agent run Node in a one-off runner container (the app
 # image), so the laptop needs no Node. LAB_HOST_NODE=1 uses the host's node.
 set -uo pipefail
@@ -80,8 +81,8 @@ sync_app_env() {
 
 MIG_PASSWORD="${MIG_PASSWORD:-MigUser2026}"
 PORTS="27117 1523 8183 27119 3200 3300"
-# node:22-bookworm-slim is the app/runner base; node:22-alpine runs the console
-# and replicator placeholders until their tasks land.
+# node:22-bookworm-slim is the app/runner/replicator base; node:22-alpine runs
+# the console placeholder until its task lands.
 BASE_IMAGES="docker.io/library/mongo:8.2 docker.io/gvenzl/oracle-free:23.26.3-faststart docker.io/library/node:22-bookworm-slim docker.io/library/node:22-alpine"
 LAB_IMAGES="mongodb-oracle-migration-lab-mongo:latest mongodb-oracle-migration-lab-oracle:latest mongodb-oracle-migration-lab-app:latest docker.io/library/node:22-alpine"
 CHECK_TIMEOUT="${CHECK_TIMEOUT:-300}"
@@ -203,8 +204,50 @@ cmd_mongosh() {
   esac
 }
 
+# D4 replicator (Ruling O): the compose `replicator` service on the app image.
+# fwd|rev recreate it in that mode and wait for its "ready" line; stop sends
+# SIGTERM, and it drains to lag 0 and saves its position before exiting.
+REPL_LOG_READY=' ready$'
+repl_running() { [ "$("$ENGINE" inspect -f '{{.State.Running}}' lab-replicator 2>/dev/null)" = "true" ]; }
+
+wait_repl_ready() {
+  local i out=""
+  for i in $(seq 1 60); do
+    out="$("$ENGINE" logs lab-replicator 2>&1)"
+    if printf '%s\n' "$out" | grep -q "$REPL_LOG_READY"; then printf '%s\n' "$out"; return 0; fi
+    if ! repl_running; then
+      printf '%s\n' "$out"; echo "FAIL  the replicator exited (see above)" >&2; return 1
+    fi
+    sleep 1
+  done
+  printf '%s\n' "$out"; echo "FAIL  the replicator did not report ready within 60 s" >&2; return 1
+}
+
+repl_stop() {
+  if repl_running; then
+    compose --profile d4 stop -t 30 replicator >/dev/null 2>&1
+    "$ENGINE" logs --tail 3 lab-replicator 2>&1
+  else
+    echo "[stand-in for Oracle GoldenGate] replicator is not running"
+  fi
+}
+
+cmd_repl() {
+  case "${1:-}" in
+    fwd|rev)
+      export REPL_MODE="$1"
+      compose --profile d4 up -d --no-deps --force-recreate replicator >/dev/null 2>&1 \
+        || { echo "FAIL  could not start the replicator (run ./lab.sh build first?)" >&2; return 1; }
+      wait_repl_ready ;;
+    stop)   repl_stop ;;
+    status) run_node replicator/cli.mjs status ;;
+    logs)   "$ENGINE" logs -f lab-replicator ;;
+    *)      usage ;;
+  esac
+}
+
 usage() {
-  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -220,6 +263,8 @@ case "$cmd" in
     if [ $# -eq 0 ]; then
       compose --profile d4 down -v && compose up -d && cmd_check
     else
+      # D4's replicator runs in its own container; stop it before the reset.
+      [ "$1" = "d4" ] && repl_stop >/dev/null
       run_demo_cli "$1" --reset
     fi ;;
   demo)      [ $# -ge 1 ] || usage; run_demo_cli "$@" ;;
@@ -228,5 +273,6 @@ case "$cmd" in
   exec)      [ $# -ge 2 ] || usage; lab_exec "$@" ;;
   app-uri)   [ $# -eq 1 ] || usage; cmd_app_uri "$1" ;;
   agent)     [ $# -ge 1 ] || usage; run_node demos/d7-etag/agent.mjs "$@" ;;
+  repl)      [ $# -eq 1 ] || usage; cmd_repl "$1" ;;
   *)         usage ;;
 esac

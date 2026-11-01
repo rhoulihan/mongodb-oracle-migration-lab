@@ -156,3 +156,67 @@ describe('lab.sh mongosh src|ora', () => {
     expect(sh(['mongosh', 'prod']).status).toBe(2);
   });
 });
+
+// D4: the replicator is the compose `replicator` service (profile d4). A fake
+// engine that logs every call (and REPL_MODE) to a file, answers `logs` with
+// the replicator's ready line and `inspect` with a running container.
+describe('lab.sh repl fwd|rev|stop|status (D4 stand-in for Oracle GoldenGate)', () => {
+  let bin, logFile;
+  beforeAll(() => {
+    bin = mkdtempSync(join(tmpdir(), 'lab-repl-'));
+    logFile = join(bin, 'calls.log');
+    const fake = [
+      '#!/bin/sh',
+      `echo "ENGINE REPL_MODE=\${REPL_MODE:-} $*" >> "${logFile}"`,
+      'case "$1" in',
+      '  logs) echo "[stand-in for Oracle GoldenGate] forward ready" ;;',
+      '  inspect) echo true ;;',
+      '  *) echo "ENGINE $*" ;;',
+      'esac',
+    ].join('\n');
+    for (const name of ['podman', 'docker']) {
+      writeFileSync(join(bin, name), fake + '\n');
+      chmodSync(join(bin, name), 0o755);
+    }
+  });
+  const run = (args) => {
+    writeFileSync(logFile, '');
+    const e = { ...process.env, PATH: `${bin}:${process.env.PATH}`, LAB_APP_URL: 'http://127.0.0.1:9' };
+    delete e.LAB_HOST_NODE;
+    const r = spawnSync('./lab.sh', args, { cwd: root, encoding: 'utf8', env: e });
+    return { ...r, calls: readFileSync(logFile, 'utf8') };
+  };
+
+  test.each(['fwd', 'rev'])('repl %s recreates the replicator in that mode and waits for ready', (mode) => {
+    const r = run(['repl', mode]);
+    expect(r.status).toBe(0);
+    expect(r.calls).toContain(`ENGINE REPL_MODE=${mode} compose -f compose.yml --profile d4 up -d --no-deps --force-recreate replicator\n`);
+    expect(r.stdout).toContain('[stand-in for Oracle GoldenGate] forward ready');
+  });
+
+  test('repl stop sends SIGTERM with a 30 s grace period and shows the last log lines', () => {
+    const r = run(['repl', 'stop']);
+    expect(r.status).toBe(0);
+    expect(r.calls).toContain('compose -f compose.yml --profile d4 stop -t 30 replicator\n');
+    expect(r.calls).toContain('logs --tail 3 lab-replicator\n');
+  });
+
+  test('repl status runs the CLI in the runner', () => {
+    const r = run(['repl', 'status']);
+    expect(r.calls).toMatch(/--profile runner run --rm --no-deps -T -e MIG_PASSWORD=MigUser2026 runner node replicator\/cli\.mjs status\n/);
+  });
+
+  test('reset d4 stops the replicator before the demo reset', () => {
+    const r = run(['reset', 'd4']);
+    const lines = r.calls.split('\n');
+    const stop = lines.findIndex((l) => l.includes('stop -t 30 replicator'));
+    const reset = lines.findIndex((l) => l.includes('demos/run.mjs d4 --reset'));
+    expect(stop).toBeGreaterThanOrEqual(0);
+    expect(reset).toBeGreaterThan(stop);
+  });
+
+  test('an unknown repl command prints usage and exits 2', () => {
+    expect(run(['repl', 'sideways']).status).toBe(2);
+    expect(run(['repl']).status).toBe(2);
+  });
+});

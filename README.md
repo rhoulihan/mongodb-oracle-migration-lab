@@ -81,6 +81,7 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh exec <service> <cmd...>` | Run a command inside a lab container, for example `./lab.sh exec mongo mongosh` |
 | `./lab.sh app-uri <mongo\|oracle>` | Point the order service at MongoDB or at the Oracle API for MongoDB (switched live, no restart) |
 | `./lab.sh agent read\|write\|retry --agent A\|B` | One of demo 7's two agents (`--api sql` on `read` to use SQL instead of the MongoDB API) |
+| `./lab.sh repl fwd\|rev\|stop\|status\|logs` | Demo 4's stand-in for Oracle GoldenGate: start it forward (MongoDB to Oracle) or reverse (Oracle to MongoDB), stop it (drains to lag 0 first), show its state, follow its log |
 
 `demo`, `reset dN`, `generate` and `agent` run Node in a one-off `runner` container
 (`compose run --rm runner`, the app image), never inside `lab-app`, so a demo
@@ -225,6 +226,41 @@ path: with `.../MIG?...` mongorestore treats it as `--db MIG` and restores 0
 documents while still exiting 0. Counts are compared at the dump snapshot
 (the archive itself): carts and orderEvents keep expiring on both sides,
 because the TTL indexes come across and Oracle runs them too.
+
+## Demo 4: blue/green with a fallback path
+
+`./lab.sh demo d4` runs it headless; `./lab.sh reset d4` stops the
+replicator, drops the capture objects, clears `/state/d4` and points the
+order service back at MongoDB. Setup does the initial load itself: it notes
+the source's operation time, runs D3's dump and restore, then installs the
+reverse capture (`oracle/sql/d4-changelog.sql`). The replicator is a stand-in
+for Oracle GoldenGate, labeled as one on every log line. The presenter's
+terminal commands, in order, with console steps between them:
+
+```sh
+./lab.sh repl fwd                                 # MongoDB change stream -> Oracle API for MongoDB
+./lab.sh repl stop && ./lab.sh app-uri oracle     # cutover: drain to lag 0, stop, flip the app
+./lab.sh repl rev                                 # mig_changelog -> MongoDB, the fallback path
+```
+
+- Forward reads the `telco` change stream (`fullDocument: 'updateLookup'`,
+  exact BSON types) and writes `replaceOne` (upsert) or `deleteOne` by `_id`
+  in batches of 100 changes or 250 ms, saving the resume token after each
+  batch in `/state/d4/fwd.token`. Kill it at any point and `./lab.sh repl
+  fwd` resumes from the token; a replayed batch is idempotent, so nothing is
+  lost or doubled.
+- Reverse: one compound trigger per MIG collection writes each changed
+  document to `mig_changelog`; the replicator polls it every 250 ms (position
+  in `/state/d4/rev.seq`) and makes MongoDB match Oracle for those documents.
+- No ping-pong: ORDS sets each session's `CLIENT_INFO` to the MongoDB logical
+  session id of the request, so the forward applier sends all its writes in
+  one session, registers its id in `mig_repl_session`, and the triggers skip
+  it. A `CLIENT_INFO` set by the replicator itself would never reach ORDS.
+- `verify` compares counts and sha-256 on both sides in the form the Oracle
+  API stores (Decimal128 without trailing zeros, Timestamp and regex as BSON
+  types). carts and orderEvents expire on both sides on their own clocks, so
+  only their documents not near expiry are compared.
+- `./lab.sh repl status` shows each direction's changes applied and lag.
 
 ## Demo 5: Top-N real-time counter
 

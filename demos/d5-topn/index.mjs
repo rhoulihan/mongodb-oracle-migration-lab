@@ -17,6 +17,7 @@ import { sameDocs } from '../../lib/compare.mjs';
 import { mongoExplain, sqlPlan, sysRedoBytes, timeMedian } from '../../lib/measure.mjs';
 import d3 from '../d3-dump-restore/index.mjs';
 import { BSON } from 'mongodb';
+import { dropCapture } from '../../replicator/capture.mjs';
 import { buildConverged, converged, D5_ID_RANGE, dashboard, embedded, lookup, seededOrders, VARIANTS } from './variants.mjs';
 
 const ORDERS = 200, WARMUP = 20, BATCH = 20;
@@ -33,6 +34,9 @@ async function handles(ctx) {
 async function startingState(ctx) {
   last.clear();
   const { conn } = await handles(ctx);
+  // D4's capture triggers, if D4 was not reset, would add their own redo to
+  // every write D5 measures.
+  await dropCapture(conn);
   await ensureRestored(ctx, conn);
   await restoreBaseline(ctx);
 }

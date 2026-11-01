@@ -39,7 +39,7 @@ let lastRestore = null;
 
 const tail = (s, n = 3) => s.trim().split('\n').slice(-n).join(' | ');
 
-async function app(method, path, body) {
+export async function app(method, path, body) {
   const res = await fetch(config.appUrl + path, {
     method,
     headers: body ? { 'content-type': 'application/json' } : {},
@@ -51,7 +51,7 @@ async function app(method, path, body) {
   return { status: res.status, body: value };
 }
 
-async function switchApp(target) {
+export async function switchApp(target) {
   let r;
   try {
     r = await app('POST', '/admin/backend', { target });

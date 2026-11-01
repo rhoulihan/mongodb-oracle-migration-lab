@@ -9,7 +9,7 @@ name: lab
 #               POST /admin/backend by `./lab.sh app-uri mongo|oracle`
 #   runner      one-off demo / reset / generator container from the app image,
 #               profile runner (`./lab.sh demo|reset dN|generate` use it)
-#   replicator  D4 stand-in replicator, profile d4 (placeholder until its task lands)
+#   replicator  D4 stand-in for Oracle GoldenGate, profile d4 (`./lab.sh repl fwd|rev|stop|status`)
 services:
   mongo:
     build: ./docker/mongo
@@ -98,14 +98,22 @@ services:
       - dumps:/dumps
       - state:/state             # small state kept between one-off runs (D7 agents' memory)
 
-  # Placeholder: only starts with `--profile d4`. The real replicator replaces this.
+  # D4 stand-in for Oracle GoldenGate (replicator/cli.mjs), profile d4, on the
+  # app image. `./lab.sh repl fwd|rev` recreates it with REPL_MODE set;
+  # `./lab.sh repl stop` sends SIGTERM, and it drains to lag 0 before exiting.
+  # Its resume token and changelog position live in the state volume
+  # (/state/d4), so a restarted container resumes where it stopped.
   replicator:
-    image: docker.io/library/node:22-alpine
+    image: mongodb-oracle-migration-lab-app:latest
     container_name: lab-replicator
     profiles: ['d4']
-    command: ['node', '-e', "console.log('Stand-in for Oracle GoldenGate: placeholder, not implemented yet')"]
+    command: ['node', 'replicator/cli.mjs', '${REPL_MODE:-status}']
+    stop_grace_period: 30s
     environment:
       LAB_IN_CONTAINER: '1'
+      MIG_PASSWORD: '${MIG_PASSWORD:-MigUser2026}'
+    volumes:
+      - state:/state
 
 volumes:
   mongo-data:
