@@ -1,0 +1,18 @@
+Reveal.js 5.1.0, vendored so the deck runs offline from file://.
+
+Source:   npm pack reveal.js@5.1.0
+Tarball:  sha256 524caf847e98033595943d994725dd357d20c7d07ad18afbaa932f1535e636e7
+License:  MIT (LICENSE in this folder)
+
+Copied:   dist/reveal.js, dist/reveal.esm.js, dist/reveal.css, dist/reset.css,
+          plugin/notes/ (notes.js, notes.esm.js, plugin.js, speaker-view.html)
+Left out: dist/*.map (source maps) and dist/theme/ (built-in themes and their
+          fonts). The deck uses its own theme.css and the fonts in ../../fonts/.
+
+One edit: in plugin/notes/notes.js and notes.esm.js the bundled Markdown
+"smartypants" rule replaced "---" with a literal U+2014 character. It is
+rewritten as the JavaScript escape "\u2014" (same string at run time), so the
+repo copy lint, which bans that character in every tracked file, passes.
+
+The deck loads the UMD builds (reveal.js, notes.js) with classic script tags:
+ES module scripts do not load from file:// in Chrome.

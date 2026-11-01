@@ -216,6 +216,33 @@ step. It is baked into the app image: run `./lab.sh build` after changing it.
 `node scripts/shots.mjs --run d5` (developers, needs Chrome) clicks through a
 demo and saves 1280x720 screenshots in both themes to `docs/shots/`.
 
+## Deck
+
+Open `deck/index.html` straight from disk (file://) in Chrome. It needs no
+server and no network: Reveal.js 5.1.0 and the fonts are in the repo.
+
+- **Keys:** arrows or a clicker walk every slide in order; **S** opens the
+  speaker view (notes, timer, next slide); **T** switches light and dark.
+  `?theme=dark` in the URL picks dark at load.
+- **Authoring:** one `<section data-segment="N">` per session segment, slides
+  inside it, and an `<aside class="notes">` on every slide. Demo transition
+  slides get `class="demo"`.
+- **Figures:** each `fig_<name>()` in `deck/build/build_figs.py` writes
+  `deck/figures/<name>.svg` and splices the figure into the deck between
+  `<!-- FIG:<name> -->` markers. It refuses anything out of frame, colliding
+  or with a line through text, and renders light and dark PNGs to check by eye.
+- **QA:** `deck/build/qa_deck.py` renders every slide at 1280x720 and fails on
+  overflow, an SVG drawn below 0.80 scale, missing or empty notes, an em dash,
+  the old version name, more than 45 visible words on a non-demo slide
+  (`--word-budget N`), and with `--offline` any request that is not file://.
+
+```sh
+python3 deck/build/build_figs.py
+python3 -m pytest deck/build
+python3 deck/build/qa_deck.py deck/index.html --offline --shots /tmp/shots
+python3 deck/build/qa_deck.py deck/index.html --dark --offline --shots /tmp/shots
+```
+
 ## Tests
 
 Developers only: needs Node.js 22 or newer and `npm install` on the host. The

@@ -1,0 +1,191 @@
+/* House theme for the migration deep dive deck (Reveal.js 5.1.0, 1280x720).
+   Token names match the Workshop 1 deck (converged-data-modeling-workshop1.html) so
+   deckfig figures and slide markup carry over; values use the Oracle palette.
+   Light by default, dark by prefers-color-scheme, and data-theme="light|dark" wins. */
+
+:root {
+  --paper: #F6F8F9;
+  --panel: #FFFFFF;
+  --ink: #1C2733;
+  --slate: #334155;
+  --muted: #5A6B7C;
+  --faint: #8B99A7;
+  --hairline: #D8DEE4;
+  --chip: #EDF1F4;
+  --hot: #C74634;                       /* Oracle red: the cost, the risk, the landmine */
+  --hot-soft: rgba(199, 70, 52, 0.10);
+  --cool: #16A34A;                      /* green: the converged answer */
+  --cool-soft: rgba(22, 163, 74, 0.10);
+  --flow: #2563EB;                      /* blue: data in motion */
+  --flow-soft: rgba(37, 99, 235, 0.10);
+  --vec: #7C3AED;
+  --vec-soft: rgba(124, 58, 237, 0.10);
+  --graph: #B45309;
+  --graph-soft: rgba(180, 83, 9, 0.10);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #131A22;
+    --panel: #1A232E;
+    --ink: #E8EDF2;
+    --slate: #CBD5E1;
+    --muted: #93A3B4;
+    --faint: #6B7B8C;
+    --hairline: #26313D;
+    --chip: #222D39;
+    --hot: #E06552;
+    --hot-soft: rgba(224, 101, 82, 0.14);
+    --cool: #34C26A;
+    --cool-soft: rgba(52, 194, 106, 0.14);
+    --flow: #60A5FA;
+    --flow-soft: rgba(96, 165, 250, 0.16);
+    --vec: #A78BFA;
+    --vec-soft: rgba(167, 139, 250, 0.16);
+    --graph: #F59E0B;
+    --graph-soft: rgba(245, 158, 11, 0.15);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #131A22;
+  --panel: #1A232E;
+  --ink: #E8EDF2;
+  --slate: #CBD5E1;
+  --muted: #93A3B4;
+  --faint: #6B7B8C;
+  --hairline: #26313D;
+  --chip: #222D39;
+  --hot: #E06552;
+  --hot-soft: rgba(224, 101, 82, 0.14);
+  --cool: #34C26A;
+  --cool-soft: rgba(52, 194, 106, 0.14);
+  --flow: #60A5FA;
+  --flow-soft: rgba(96, 165, 250, 0.16);
+  --vec: #A78BFA;
+  --vec-soft: rgba(167, 139, 250, 0.16);
+  --graph: #F59E0B;
+  --graph-soft: rgba(245, 158, 11, 0.15);
+  color-scheme: dark;
+}
+
+/* ---------- Frame ---------- */
+html, body { background: var(--paper); }
+.reveal-viewport { background: var(--paper); }
+.reveal {
+  font-family: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  font-size: 24px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+.reveal .slides { text-align: left; }
+
+/* A segment is a vertical stack; each leaf slide fills the 1280x720 frame. */
+.reveal .slides section { height: 100%; box-sizing: border-box; }
+.reveal .slides > section.stack { padding: 0; }
+.reveal .slides section:not(.stack) {
+  flex-direction: column;
+  padding: 40px 72px 52px;
+  gap: 10px;
+}
+
+/* ---------- Type ---------- */
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family: "Bricolage Grotesque", "Public Sans", sans-serif;
+  color: var(--ink);
+  text-transform: none;
+  text-wrap: balance;
+  letter-spacing: 0;
+  margin: 0;
+}
+.reveal h1 { font-size: 64px; font-weight: 800; line-height: 1.04; }
+.reveal h2 { font-size: 40px; font-weight: 800; line-height: 1.12; }
+.reveal h3 { font-size: 24px; font-weight: 700; }
+.reveal p { margin: 0; }
+.reveal strong, .reveal b { color: var(--ink); }
+.reveal code, .reveal .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+.reveal code { font-size: 0.86em; background: var(--chip); padding: 1px 6px; border-radius: 4px; }
+.reveal .hot { color: var(--hot); }
+.reveal .cool { color: var(--cool); }
+.reveal .flow { color: var(--flow); }
+
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.eyebrow .clock { margin-left: auto; color: var(--faint); letter-spacing: 0.06em; text-transform: none; }
+.lede { color: var(--muted); font-size: 24px; max-width: 52ch; }
+.lede strong { color: var(--ink); }
+.body { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; gap: 14px; }
+.takeaway {
+  border-top: 1px solid var(--hairline);
+  padding-top: 10px;
+  font-size: 22px;
+  color: var(--muted);
+}
+.takeaway strong { color: var(--ink); }
+
+/* ---------- Figures (inline SVG from build_figs.py) ---------- */
+.reveal figure { margin: 0; }
+.reveal svg.fig { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+
+/* ---------- Title slide ---------- */
+.reveal .slides section.title-slide { justify-content: center; }
+.kicker {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 17px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hot);
+}
+.title-slide h1 { max-width: 20ch; }
+.title-sub { color: var(--muted); font-size: 26px; max-width: 48ch; margin-top: 8px; }
+.byline { margin-top: 28px; font-size: 20px; color: var(--muted); }
+.byline b { color: var(--ink); }
+
+/* ---------- Placeholders and demo transitions ---------- */
+.pill {
+  display: inline-block;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 15px; font-weight: 600;
+  padding: 3px 12px; border-radius: 20px;
+  background: var(--cool-soft); color: var(--cool);
+}
+.pill.hot { background: var(--hot-soft); color: var(--hot); }
+.pill.flow { background: var(--flow-soft); color: var(--flow); }
+.placeholder {
+  border: 2px dashed var(--hairline);
+  border-radius: 12px;
+  color: var(--faint);
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 0;
+  font-size: 20px;
+}
+.reveal .slides section.demo { border-left: 8px solid var(--flow); }
+.watch { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 26px; }
+.watch li { position: relative; padding-left: 26px; }
+.watch li::before {
+  content: ""; position: absolute; left: 2px; top: 0.5em;
+  width: 10px; height: 10px; border-radius: 2px; background: var(--flow);
+}
+
+/* ---------- Reveal chrome ---------- */
+.reveal .controls { color: var(--hot); }
+.reveal .progress { color: var(--hot); height: 4px; }
+.reveal .slide-number {
+  background: transparent;
+  color: var(--faint);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 14px;
+  right: 16px; bottom: 12px;
+}
+.reveal .slide-number a { color: inherit; text-decoration: none; }
+.reveal .slides section aside.notes { display: none; }

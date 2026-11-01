@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MongoDB to Oracle: Migration Deep Dive</title>
+<!-- Everything is local so the deck runs offline from file://. Reveal.js 5.1.0 is vendored
+     (vendor/reveal/VENDORED.txt); fonts are bundled (SIL OFL 1.1, fonts/LICENSE-*.txt). -->
+<link rel="stylesheet" href="vendor/reveal/dist/reset.css">
+<link rel="stylesheet" href="vendor/reveal/dist/reveal.css">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<!-- Authoring: one <section data-segment="N"> per segment (spec 5.1), slides nested inside.
+     Every slide has <aside class="notes">. Demo transition slides get class="demo".
+     Figures are built by build/build_figs.py and spliced between FIG markers. -->
+
+<section data-segment="0">
+  <section class="title-slide">
+    <div class="kicker">Instructor-led deep dive · 90 minutes</div>
+    <h1>MongoDB to Oracle: Migration Deep Dive</h1>
+    <p class="title-sub">Three doors and one room: age out, dump and restore, blue/green. Then optimize.</p>
+    <p class="byline"><b>Rick Houlihan</b> · Field CTO, Oracle · Oracle AI Database 26ai</p>
+    <aside class="notes">Welcome. The question everyone brings to this session is "how do I move my data?" By the end of the next ninety minutes I want you asking a better question: what can I afford to lose, and for how long can I be down?<br><br>Everything you see today runs on this laptop. MongoDB 8 on one side, Oracle AI Database 26ai Free with the Oracle API for MongoDB on the other, and seven live demos in between. If a demo breaks, you'll see me recover it, and that's a lesson too.</aside>
+  </section>
+  <section>
+    <div class="eyebrow">Open <span class="clock">0:00 · 5 min</span></div>
+    <h2>Three doors and one room</h2>
+    <p class="lede">Moving the bytes is the easy part. <strong>Pick the door.</strong></p>
+    <div class="body"><figure><!-- FIG:session-map --><svg class="fig" viewBox="0 0 1120 270" role="img" aria-label="Session map: seven segments over 90 minutes. Open, discovery, three migration strategies (age out, dump and restore, blue/green), optimization, and the decision matrix recap" xmlns="http://www.w3.org/2000/svg"><defs></defs><text x="18.0" y="34.0" font-size="13" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="600" fill="var(--muted)" text-anchor="start">90 MINUTES</text><rect x="18.0" y="48.0" width="58.2" height="22.0" rx="4" fill="var(--slate)" stroke="var(--slate)" stroke-width="1"/><text x="47.1" y="63.5" font-size="12" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="700" fill="var(--panel)" text-anchor="middle">0</text><rect x="82.2" y="48.0" width="116.4" height="22.0" rx="4" fill="var(--flow)" stroke="var(--flow)" stroke-width="1"/><text x="140.4" y="63.5" font-size="12" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="700" fill="var(--panel)" text-anchor="middle">1</text><rect x="204.7" y="48.0" width="139.7" height="22.0" rx="4" fill="var(--flow)" stroke="var(--flow)" stroke-width="1"/><text x="274.5" y="63.5" font-size="12" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="700" fill="var(--panel)" text-anchor="middle">2</text><rect x="350.4" y="48.0" width="151.4" height="22.0" rx="4" fill="var(--flow)" stroke="var(--flow)" stroke-width="1"/><text x="426.1" y="63.5" font-size="12" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="700" fill="var(--panel)" text-anchor="middle">3</text><rect x="507.8" y="48.0" width="163.0" height="22.0" rx="4" fill="var(--flow)" stroke="var(--flow)" stroke-width="1"/><text x="589.3" y="63.5" font-size="12" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="700" fill="var(--panel)" text-anchor="middle">4</text><rect x="676.8" y="48.0" width="302.8" height="22.0" rx="4" fill="var(--cool)" stroke="var(--cool)" stroke-width="1"/><text x="828.2" y="63.5" font-size="12" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="700" fill="var(--panel)" text-anchor="middle">5</text><rect x="985.6" y="48.0" width="116.4" height="22.0" rx="4" fill="var(--slate)" stroke="var(--slate)" stroke-width="1"/><text x="1043.8" y="63.5" font-size="12" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="700" fill="var(--panel)" text-anchor="middle">6</text><rect x="18.0" y="92.0" width="146.0" height="104.0" rx="6" fill="var(--panel)" stroke="var(--hairline)" stroke-width="1.4"/><rect x="18.0" y="92.0" width="4" height="104.0" rx="2" fill="var(--ink)"/><text x="93.0" y="129.9" font-size="15" font-family="Bricolage Grotesque, Public Sans, sans-serif" font-weight="700" fill="var(--ink)" text-anchor="middle">Open</text><text x="93.0" y="149.1" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">three doors,</text><text x="93.0" y="168.3" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">one room</text><text x="93.0" y="222.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="400" fill="var(--muted)" text-anchor="middle">5 min</text><rect x="174.3" y="92.0" width="146.0" height="104.0" rx="6" fill="var(--panel)" stroke="var(--flow)" stroke-width="1.4"/><rect x="174.3" y="92.0" width="4" height="104.0" rx="2" fill="var(--flow)"/><text x="249.3" y="129.9" font-size="15" font-family="Bricolage Grotesque, Public Sans, sans-serif" font-weight="700" fill="var(--ink)" text-anchor="middle">Discovery</text><text x="249.3" y="149.1" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">decision</text><text x="249.3" y="168.3" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">factors</text><text x="249.3" y="222.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="400" fill="var(--muted)" text-anchor="middle">10 min</text><text x="249.3" y="246.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="600" fill="var(--flow)" text-anchor="middle">D1</text><rect x="330.7" y="92.0" width="146.0" height="104.0" rx="6" fill="var(--panel)" stroke="var(--flow)" stroke-width="1.4"/><rect x="330.7" y="92.0" width="4" height="104.0" rx="2" fill="var(--flow)"/><text x="405.7" y="139.5" font-size="15" font-family="Bricolage Grotesque, Public Sans, sans-serif" font-weight="700" fill="var(--ink)" text-anchor="middle">Strategy A</text><text x="405.7" y="158.7" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">age out</text><text x="405.7" y="222.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="400" fill="var(--muted)" text-anchor="middle">12 min</text><text x="405.7" y="246.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="600" fill="var(--flow)" text-anchor="middle">D2</text><rect x="487.0" y="92.0" width="146.0" height="104.0" rx="6" fill="var(--panel)" stroke="var(--flow)" stroke-width="1.4"/><rect x="487.0" y="92.0" width="4" height="104.0" rx="2" fill="var(--flow)"/><text x="562.0" y="129.9" font-size="15" font-family="Bricolage Grotesque, Public Sans, sans-serif" font-weight="700" fill="var(--ink)" text-anchor="middle">Strategy B</text><text x="562.0" y="149.1" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">dump and</text><text x="562.0" y="168.3" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">restore</text><text x="562.0" y="222.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="400" fill="var(--muted)" text-anchor="middle">13 min</text><text x="562.0" y="246.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="600" fill="var(--flow)" text-anchor="middle">D3</text><rect x="643.3" y="92.0" width="146.0" height="104.0" rx="6" fill="var(--panel)" stroke="var(--flow)" stroke-width="1.4"/><rect x="643.3" y="92.0" width="4" height="104.0" rx="2" fill="var(--flow)"/><text x="718.3" y="129.9" font-size="15" font-family="Bricolage Grotesque, Public Sans, sans-serif" font-weight="700" fill="var(--ink)" text-anchor="middle">Strategy C</text><text x="718.3" y="149.1" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">blue/green</text><text x="718.3" y="168.3" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">with fallback</text><text x="718.3" y="222.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="400" fill="var(--muted)" text-anchor="middle">14 min</text><text x="718.3" y="246.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="600" fill="var(--flow)" text-anchor="middle">D4</text><rect x="799.7" y="92.0" width="146.0" height="104.0" rx="6" fill="var(--panel)" stroke="var(--cool)" stroke-width="1.4"/><rect x="799.7" y="92.0" width="4" height="104.0" rx="2" fill="var(--cool)"/><text x="874.7" y="129.9" font-size="15" font-family="Bricolage Grotesque, Public Sans, sans-serif" font-weight="700" fill="var(--ink)" text-anchor="middle">Optimization</text><text x="874.7" y="149.1" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">model, duality,</text><text x="874.7" y="168.3" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">$sql, ETags</text><text x="874.7" y="222.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="400" fill="var(--muted)" text-anchor="middle">26 min</text><text x="874.7" y="246.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="600" fill="var(--cool)" text-anchor="middle">D5 D6 D7</text><rect x="956.0" y="92.0" width="146.0" height="104.0" rx="6" fill="var(--panel)" stroke="var(--hairline)" stroke-width="1.4"/><rect x="956.0" y="92.0" width="4" height="104.0" rx="2" fill="var(--ink)"/><text x="1031.0" y="129.9" font-size="15" font-family="Bricolage Grotesque, Public Sans, sans-serif" font-weight="700" fill="var(--ink)" text-anchor="middle">Recap</text><text x="1031.0" y="149.1" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">decision</text><text x="1031.0" y="168.3" font-size="13" font-family="Public Sans, Segoe UI, system-ui, sans-serif" font-weight="400" fill="var(--muted)" text-anchor="middle">matrix, Q&amp;A</text><text x="1031.0" y="222.0" font-size="14" font-family="IBM Plex Mono, ui-monospace, monospace" font-weight="400" fill="var(--muted)" text-anchor="middle">10 min</text></svg><!-- /FIG:session-map --></figure></div>
+    <aside class="notes">Here's the map. Three strategies, plotted on two axes: downtime and reversibility. Age out is near-zero downtime but slow, and the legacy system becomes your archive. Dump and restore is planned downtime, fast, and a one-way door once writes resume. Blue/green is near-zero downtime and reversible, with the most moving parts.<br><br>Optimization is not a fourth strategy. It's the room on the other side of every door, and each door gives you a different amount of time and freedom to remodel once you're in it.<br><br>Timing: five minutes here, then straight into discovery.</aside>
+  </section>
+</section>
+
+<section data-segment="1">
+  <section>
+    <div class="eyebrow">Segment 1 · Discovery <span class="clock">0:05 · 10 min</span></div>
+    <h2>Inventory the workload, not just the data</h2>
+    <p class="lede">Which operators, which types, which data even needs to move.</p>
+    <div class="placeholder">Figure: workload inventory and decision factors</div>
+    <aside class="notes">Discovery decides the door. Collections and sizes matter, but the questions that pick a strategy are about life cycle and features. How much of this data is transient? Carts, sessions and event logs with a TTL index never need migrating. Which operators does the app actually use? Which BSON types are sitting in there that have no Oracle JSON scalar?<br><br>Demo 1 answers the last two on our telecom order system: a scripted operator scan against the compatibility matrix, and a per-field type census that finds the landmines before they find you.</aside>
+  </section>
+</section>
+
+<section data-segment="2">
+  <section>
+    <div class="eyebrow">Segment 2 · Strategy A <span class="clock">0:15 · 12 min</span></div>
+    <h2>Age out: move only what matters</h2>
+    <p class="lede">New writes land on Oracle. Old data expires where it lives.</p>
+    <div class="placeholder">Figure: cutoff router, entity data moved, event data ageing out</div>
+    <aside class="notes">Strategy A. From day N every new write goes to Oracle. You migrate only the long-lived entity data that new records point at: subscribers, accounts, the catalog. Everything else stays in MongoDB until its retention window runs out.<br><br>The cost is a router in the app tier that sends each read to the right side of the cutoff, and a second database you operate for the life of the window. Demo 2 shows the router and shows carts expiring in MongoDB, data that never needed to move.</aside>
+  </section>
+</section>
+
+<section data-segment="3">
+  <section>
+    <div class="eyebrow">Segment 3 · Strategy B <span class="clock">0:27 · 13 min</span></div>
+    <h2>Dump and restore in a window</h2>
+    <p class="lede">Stop writes, move everything, prove it, then flip.</p>
+    <div class="placeholder">Figure: maintenance window timeline and validation gate</div>
+    <aside class="notes">Strategy B is the simplest to explain and the hardest to undo. Open the window, stop writes, mongodump, mongorestore into Oracle, validate, swap the connection string, restart. Once writes land on Oracle, the door is locked behind you.<br><br>Equal document counts prove nothing. The validation gate is a type differential per field and a replay of the app's own predicates on both sides. Demo 3 does exactly that, live, and the differential catches a field that reads back identical but fails a type check.</aside>
+  </section>
+</section>
+
+<section data-segment="4">
+  <section>
+    <div class="eyebrow">Segment 4 · Strategy C <span class="clock">0:40 · 14 min</span></div>
+    <h2>Blue/green with a way back</h2>
+    <p class="lede">Sync live, flip with no downtime, keep the fallback path open.</p>
+    <div class="placeholder">Figure: forward sync, cutover, reverse sync for fallback</div>
+    <aside class="notes">Strategy C keeps both systems live. A replicator reads the MongoDB change stream and applies every change to Oracle. When lag is near zero, you flip the app. Then you reverse the replicator so changes on Oracle flow back to MongoDB, and the old system stays a real fallback.<br><br>In production that replicator is Oracle GoldenGate. On this laptop it's a small stand-in we built, and the console labels it that way. Demo 4 proves no lost and no duplicated writes across the flip.</aside>
+  </section>
+</section>
+
+<section data-segment="5">
+  <section>
+    <div class="eyebrow">Segment 5 · Optimization <span class="clock">0:54 · 26 min</span></div>
+    <h2>The room behind every door</h2>
+    <p class="lede">Model the domain. Project the access.</p>
+    <div class="placeholder">Figure: canonical form, projections, projected shapes</div>
+    <aside class="notes">This is the part most migrations skip. You moved the data. Now the question is whether the model you brought along still makes sense on an engine that can join, index and plan across shapes.<br><br>Three demos. Demo 5 is a real-time top-N counter: the embedded document pays on every write, the lookup pipeline pays on every read, and the converged model pays a cheap join that the optimizer plans. Demo 6 runs a hard pipeline and the same question as $sql, results asserted equal before any timing. Demo 7 shows ETags stopping a silent lost update between two agents.</aside>
+  </section>
+</section>
+
+<section data-segment="6">
+  <section>
+    <div class="eyebrow">Segment 6 · Recap <span class="clock">1:20 · 10 min</span></div>
+    <h2>Which door fits your workload?</h2>
+    <p class="lede">The decision matrix, then your questions.</p>
+    <div class="placeholder">Figure: decision matrix</div>
+    <aside class="notes">Back to the matrix from discovery. Short data life cycle pushes you to age out. A downtime window that fits your data volume pushes you to dump and restore. No tolerance for downtime, or a mandatory rollback plan, pushes you to blue/green. Heavy aggregation pain today works with any door, through the optimization track.<br><br>Then open it up. Leave at least eight minutes for questions.</aside>
+  </section>
+</section>
+
+</div></div>
+<script src="vendor/reveal/dist/reveal.js"></script>
+<script src="vendor/reveal/plugin/notes/notes.js"></script>
+<script src="deck.js"></script>
+</body>
+</html>
