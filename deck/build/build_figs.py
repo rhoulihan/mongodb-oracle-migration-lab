@@ -183,7 +183,7 @@ def fig_on_ramp() -> Fig:
     for x0, x1, label, col in ((18, 710, "THE ON-RAMP", "var(--flow)"), (802, 1102, "THE DESTINATION", "var(--cool)")):
         f.path(f"M{x0},{58} V{48} H{x1} V{58}", [(x0, 48), (x1, 58)], stroke=col, sw=1.6, name="bracket", seg=False)
         f.text((x0 + x1) / 2, 36, label, size=14, weight=700, font=MONO, fill=col, anchor="middle")
-    f.box(18, 228, 1084, 50, ["Post 46: my own app, Atlas free to ADB Free. One gap ($near), closed with $sql."],
+    f.box(18, 228, 1084, 50, ["My own app: Atlas free to ADB Free. One gap ($near), closed with $sql."],
           tone="hot", size=16)
     return f
 
