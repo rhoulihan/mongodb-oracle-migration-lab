@@ -21,9 +21,9 @@ import re
 import zlib
 from html import escape as _esc
 
-SANS = "Public Sans, Segoe UI, system-ui, sans-serif"
+SANS = "Oracle Sans Tab, Oracle Sans, Public Sans, Segoe UI, system-ui, sans-serif"
 MONO = "IBM Plex Mono, ui-monospace, monospace"
-HEAD = "Bricolage Grotesque, Public Sans, sans-serif"
+HEAD = "Oracle Sans Tab, Oracle Sans, Public Sans, Segoe UI, sans-serif"
 
 TONE = {  # semantic colour -> (stroke/text, soft fill)
     "hot": ("var(--hot)", "var(--hot-soft)"),
