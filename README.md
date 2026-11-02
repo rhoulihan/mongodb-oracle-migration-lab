@@ -253,8 +253,9 @@ Open `deck/index.html` straight from disk (file://) in Chrome. It needs no
 server and no network: Reveal.js 5.1.0 and the fonts are in the repo.
 
 - **Keys:** arrows or a clicker walk every slide in order; **S** opens the
-  speaker view (notes, timer, next slide); **T** switches light and dark.
-  `?theme=dark` in the URL picks dark at load.
+  speaker view (notes, timer, next slide). In the speaker view the timer stays
+  pinned at the top, **A-** / **A+** size the notes, and the bars between panes
+  drag to resize them (double-click a bar to reset). Both settings are remembered.
 - **Authoring:** one `<section data-segment="N">` per session segment, slides
   inside it, and an `<aside class="notes">` on every slide. Demo transition
   slides get `class="demo"`.

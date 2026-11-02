@@ -25,3 +25,7 @@ speaker-view.html, each marked "deck edit":
 - Every slide change re-applies the chosen layout. The choice is still saved
   in localStorage (reveal-speaker-layout), so reopening the notes window (S)
   restores it.
+
+Not a vendor edit: deck/deck.js extends the speaker view after the plugin
+opens it (pinned smaller timer, notes font control, draggable pane bars).
+The files in this folder are unchanged by that.
