@@ -373,7 +373,7 @@ describe('lab.sh preflight checks the compose provider', () => {
       cwd: root, encoding: 'utf8', env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, PODMAN: '1' },
     });
     expect(r.status).not.toBe(0);
-    expect(r.stdout).toMatch(/FAIL  podman compose has no provider \(brew install docker-compose/);
+    expect(r.stdout).toMatch(/FAIL  podman compose has no provider \(brew install podman-compose/);
   });
 
   test('a working compose passes', () => {

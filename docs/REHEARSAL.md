@@ -9,7 +9,7 @@ the environment, so no password ever shows on screen or in the deck.
 
 1. Install Podman. Use the installer from podman.io, or run
    `brew install podman`. Then install a compose provider for
-   `podman compose`: `brew install docker-compose`.
+   `podman compose`: `brew install podman-compose`.
 2. Create and start a machine big enough for Oracle:
 
    ```sh

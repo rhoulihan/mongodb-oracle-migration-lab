@@ -46,7 +46,7 @@ Every port binds to `127.0.0.1` only. Nothing is published to the network.
 ## One-time setup on the Mac (Apple silicon)
 
 1. Install Podman (the installer from podman.io, or `brew install podman`)
-   and a compose provider for `podman compose` (`brew install docker-compose`),
+   and a compose provider for `podman compose` (`brew install podman-compose`),
    then create a machine big enough for Oracle:
 
    ```sh

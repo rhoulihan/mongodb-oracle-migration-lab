@@ -52,6 +52,12 @@ services:
       timeout: 10s
       retries: 60
       start_period: 180s
+    # The image seeds oracle-data under the first container's SELinux label.
+    # podman-compose recreates the container under a new random one, and
+    # Oracle can't read its own files (ORA-01078 on boot); it also drops :Z
+    # on named volumes. A fixed label keeps every recreation on the same one.
+    security_opt:
+      - label=level:s0:c100,c200
     volumes:
       - oracle-data:/opt/oracle/oradata
 

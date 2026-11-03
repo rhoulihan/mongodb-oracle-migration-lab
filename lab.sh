@@ -200,7 +200,7 @@ cmd_preflight() {
   # `podman compose` needs a provider (docker-compose or podman-compose) on PATH.
   if "$ENGINE" compose version >/dev/null 2>&1; then ok "$ENGINE compose works"
   elif [ "$ENGINE" = "podman" ]; then
-    fail "podman compose has no provider (brew install docker-compose, or install podman-compose)"
+    fail "podman compose has no provider (brew install podman-compose)"
   else
     fail "docker compose is missing (install the Docker Compose plugin)"
   fi
