@@ -3,3 +3,6 @@ node_modules/
 clips/
 deck/build/__pycache__/
 deck/.qa-*.html
+
+# macOS folder metadata
+.DS_Store
