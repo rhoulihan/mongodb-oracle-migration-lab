@@ -2,7 +2,7 @@
   "id": "d7",
   "steps": {
     "setup": {
-      "at": "2026-11-01T11:09:38.917Z",
+      "at": "2026-11-04T13:44:51.123Z",
       "result": {
         "ok": true,
         "summary": "orders_dv holds 25629 R03 orders (61046 lines in order_line); the agents will work on order 69d0558abbd818e800004c01: status placed, device SKU-DEV-0025",
@@ -44,7 +44,7 @@
               },
               "asof": {
                 "$binary": {
-                  "base64": "AAAAAAAjItA=",
+                  "base64": "AAAAAAAg0So=",
                   "subType": "00"
                 }
               }
@@ -55,42 +55,42 @@
       }
     },
     "agent-a-read": {
-      "at": "2026-11-01T11:09:43.943Z",
+      "at": "2026-11-04T13:44:56.942Z",
       "result": {
         "ok": true,
         "summary": "agent A holds order 69d0558abbd818e800004c01 with its current ETag 33A7B3DA802EED6593D426CE6C78C114"
       }
     },
     "agent-b-read": {
-      "at": "2026-11-01T11:09:49.065Z",
+      "at": "2026-11-04T13:45:02.527Z",
       "result": {
         "ok": true,
         "summary": "agent B holds order 69d0558abbd818e800004c01 with its current ETag 33A7B3DA802EED6593D426CE6C78C114; both agents hold the same ETag"
       }
     },
     "agent-a-write": {
-      "at": "2026-11-01T11:09:54.214Z",
+      "at": "2026-11-04T13:45:08.149Z",
       "result": {
         "ok": true,
         "summary": "order 69d0558abbd818e800004c01 is provisioned; 1 update applied (status placed -> provisioned)"
       }
     },
     "agent-b-write-stale": {
-      "at": "2026-11-01T11:09:59.343Z",
+      "at": "2026-11-04T13:45:13.803Z",
       "result": {
         "ok": true,
         "summary": "agent B's write was rejected (ORA-42699): order 69d0558abbd818e800004c01 still has A's status and device SKU-DEV-0025; still 1 update applied"
       }
     },
     "agent-b-retry": {
-      "at": "2026-11-01T11:10:04.484Z",
+      "at": "2026-11-04T13:45:19.423Z",
       "result": {
         "ok": true,
         "summary": "order 69d0558abbd818e800004c01 has both changes: provisioned, device SKU-DEV-0026; 2 updates applied"
       }
     },
     "final": {
-      "at": "2026-11-01T11:10:08.925Z",
+      "at": "2026-11-04T13:45:23.935Z",
       "result": {
         "ok": true,
         "summary": "order 69d0558abbd818e800004c01: status provisioned (agent A) and device SKU-DEV-0026 (agent B); exactly 2 updates applied, none lost, none from the rejected write",
@@ -131,7 +131,7 @@
               },
               "asof": {
                 "$binary": {
-                  "base64": "AAAAAAAjI60=",
+                  "base64": "AAAAAAAg0eU=",
                   "subType": "00"
                 }
               }

@@ -2,7 +2,7 @@
   "id": "d1",
   "steps": {
     "scan": {
-      "at": "2026-11-01T15:19:02.451Z",
+      "at": "2026-11-04T13:39:12.584Z",
       "result": {
         "ok": true,
         "summary": "order service: 8 operators (0 unsupported, 0 caveat, 8 supported); demo pipelines: 24 operators (1 unsupported, 2 caveat, 21 supported)",
@@ -359,7 +359,7 @@
       }
     },
     "census": {
-      "at": "2026-11-01T15:19:07.106Z",
+      "at": "2026-11-04T13:39:17.214Z",
       "result": {
         "ok": true,
         "summary": "60 fields in 8 collections, 8 landmines: catalog.price, catalog.skuPattern, orders.lines, orders.lines.price, orders.total, carts.items, orderEvents.ts, regionTopDevices.top",

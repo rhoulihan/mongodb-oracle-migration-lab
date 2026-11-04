@@ -2,7 +2,7 @@
   "id": "d5",
   "steps": {
     "setup": {
-      "at": "2026-11-01T12:32:39.261Z",
+      "at": "2026-11-04T13:42:14.244Z",
       "result": {
         "ok": true,
         "summary": "8 regions; 960 counter rows built from the restored orders; their Top 10 matches a fresh count of the orders",
@@ -13,25 +13,25 @@
       }
     },
     "embedded-write": {
-      "at": "2026-11-01T12:32:47.829Z",
+      "at": "2026-11-04T13:42:19.983Z",
       "result": {
         "ok": true,
-        "summary": "200 orders placed: 5251 bytes of redo per order; each order rewrites its region's Top-N document (R03: 801 bytes), usually twice ($inc, then a re-sort)",
+        "summary": "200 orders placed: 5660 bytes of redo per order; each order rewrites its region's Top-N document (R03: 801 bytes), usually twice ($inc, then a re-sort)",
         "metrics": {
-          "redoPerOrder": 5251,
+          "redoPerOrder": 5660,
           "batches": [
-            6728,
-            6006,
-            6091,
-            5005,
-            4988,
-            5811,
-            5251,
-            4747,
-            4992
+            6482,
+            5814,
+            6022,
+            4888,
+            4891,
+            5789,
+            5169,
+            5660,
+            4913
           ],
           "docBytes": 801,
-          "readMs": 0.6
+          "readMs": 0.4
         },
         "panes": {
           "left": {
@@ -40,7 +40,7 @@
               {
                 "sku": "SKU-DEV-0015",
                 "name": "Google Pixel 10 Pro 256GB Black",
-                "units": 3494
+                "units": 3496
               },
               {
                 "sku": "SKU-DEV-0016",
@@ -55,7 +55,7 @@
               {
                 "sku": "SKU-DEV-0018",
                 "name": "Nokia XR21 64GB Blue",
-                "units": 1027
+                "units": 1029
               },
               {
                 "sku": "SKU-DEV-0019",
@@ -80,41 +80,41 @@
               {
                 "sku": "SKU-DEV-0023",
                 "name": "OnePlus Nord 256GB Blue",
-                "units": 464
+                "units": 466
               },
               {
                 "sku": "SKU-DEV-0024",
                 "name": "Nokia XR21 128GB Green",
-                "units": 462
+                "units": 465
               }
             ]
           }
         },
         "plan": {
-          "left": "SELECT STATEMENT\n  TABLE ACCESS BY INDEX ROWID regionTopDevices\n    INDEX UNIQUE SCAN SYS_C009039"
+          "left": "SELECT STATEMENT\n  TABLE ACCESS BY INDEX ROWID regionTopDevices\n    INDEX UNIQUE SCAN SYS_C009070"
         },
-        "detail": "redo per order, by batch of 20: 6728, 6006, 6091, 5005, 4988, 5811, 5251, 4747, 4992\nread plan:\nSELECT STATEMENT\n  TABLE ACCESS BY INDEX ROWID regionTopDevices\n    INDEX UNIQUE SCAN SYS_C009039"
+        "detail": "redo per order, by batch of 20: 6482, 5814, 6022, 4888, 4891, 5789, 5169, 5660, 4913\nread plan:\nSELECT STATEMENT\n  TABLE ACCESS BY INDEX ROWID regionTopDevices\n    INDEX UNIQUE SCAN SYS_C009070"
       }
     },
     "lookup-read": {
-      "at": "2026-11-01T12:32:58.016Z",
+      "at": "2026-11-04T13:42:27.606Z",
       "result": {
         "ok": true,
-        "summary": "2606 bytes of redo per order; every dashboard read groups each R03 order line again",
+        "summary": "2601 bytes of redo per order; every dashboard read groups each R03 order line again",
         "metrics": {
-          "redoPerOrder": 2606,
+          "redoPerOrder": 2601,
           "batches": [
             2712,
-            2546,
-            2636,
-            2608,
-            2605,
-            2606,
-            2594,
-            2608,
-            2585
+            2519,
+            2640,
+            2600,
+            2601,
+            2590,
+            2647,
+            2676,
+            2584
           ],
-          "readMs": 236.5
+          "readMs": 159.3
         },
         "panes": {
           "left": {
@@ -123,7 +123,7 @@
               {
                 "sku": "SKU-DEV-0015",
                 "name": "Google Pixel 10 Pro 256GB Black",
-                "units": 3494
+                "units": 3496
               },
               {
                 "sku": "SKU-DEV-0016",
@@ -138,7 +138,7 @@
               {
                 "sku": "SKU-DEV-0018",
                 "name": "Nokia XR21 64GB Blue",
-                "units": 1027
+                "units": 1029
               },
               {
                 "sku": "SKU-DEV-0019",
@@ -163,41 +163,41 @@
               {
                 "sku": "SKU-DEV-0023",
                 "name": "OnePlus Nord 256GB Blue",
-                "units": 464
+                "units": 466
               },
               {
                 "sku": "SKU-DEV-0024",
                 "name": "Nokia XR21 128GB Green",
-                "units": 462
+                "units": 465
               }
             ]
           }
         },
         "plan": {
-          "left": "SELECT STATEMENT\n  SORT GROUP BY\n    TABLE ACCESS BY INDEX ROWID catalog\n      INDEX UNIQUE SCAN SYS_C009033\n  VIEW\n    COUNT STOPKEY\n      VIEW\n        SORT ORDER BY STOPKEY\n          VIEW\n            SORT GROUP BY\n              NESTED LOOPS\n                TABLE ACCESS BY INDEX ROWID BATCHED orders\n                  HASH UNIQUE\n                    INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1\n                JSON EXPAND ARRAY EVALUATION"
+          "left": "SELECT STATEMENT\n  SORT GROUP BY\n    TABLE ACCESS BY INDEX ROWID catalog\n      INDEX UNIQUE SCAN SYS_C009064\n  VIEW\n    COUNT STOPKEY\n      VIEW\n        SORT ORDER BY STOPKEY\n          VIEW\n            SORT GROUP BY\n              NESTED LOOPS\n                TABLE ACCESS BY INDEX ROWID BATCHED orders\n                  HASH UNIQUE\n                    INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1\n                JSON EXPAND ARRAY EVALUATION"
         },
-        "detail": "read plan:\nSELECT STATEMENT\n  SORT GROUP BY\n    TABLE ACCESS BY INDEX ROWID catalog\n      INDEX UNIQUE SCAN SYS_C009033\n  VIEW\n    COUNT STOPKEY\n      VIEW\n        SORT ORDER BY STOPKEY\n          VIEW\n            SORT GROUP BY\n              NESTED LOOPS\n                TABLE ACCESS BY INDEX ROWID BATCHED orders\n                  HASH UNIQUE\n                    INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1\n                JSON EXPAND ARRAY EVALUATION"
+        "detail": "read plan:\nSELECT STATEMENT\n  SORT GROUP BY\n    TABLE ACCESS BY INDEX ROWID catalog\n      INDEX UNIQUE SCAN SYS_C009064\n  VIEW\n    COUNT STOPKEY\n      VIEW\n        SORT ORDER BY STOPKEY\n          VIEW\n            SORT GROUP BY\n              NESTED LOOPS\n                TABLE ACCESS BY INDEX ROWID BATCHED orders\n                  HASH UNIQUE\n                    INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1\n                JSON EXPAND ARRAY EVALUATION"
       }
     },
     "converged": {
-      "at": "2026-11-01T12:33:04.144Z",
+      "at": "2026-11-04T13:42:32.660Z",
       "result": {
         "ok": true,
-        "summary": "3486 bytes of redo per order; the dashboard read is an index range scan that stops after 10 rows per region (the view builds all 8 regions, then keeps R03 by _id)",
+        "summary": "3490 bytes of redo per order; the dashboard read is an index range scan that stops after 10 rows per region (the view builds all 8 regions, then keeps R03 by _id)",
         "metrics": {
-          "redoPerOrder": 3486,
+          "redoPerOrder": 3490,
           "batches": [
-            3574,
-            3443,
-            3537,
-            3486,
-            3515,
-            3468,
-            3495,
-            3471,
-            3475
+            3546,
+            3410,
+            3556,
+            3499,
+            3493,
+            3485,
+            3475,
+            3490,
+            3471
           ],
-          "readMs": 0.8
+          "readMs": 0.5
         },
         "panes": {
           "left": {
@@ -206,7 +206,7 @@
               {
                 "sku": "SKU-DEV-0015",
                 "name": "Google Pixel 10 Pro 256GB Black",
-                "units": 3494
+                "units": 3496
               },
               {
                 "sku": "SKU-DEV-0016",
@@ -221,7 +221,7 @@
               {
                 "sku": "SKU-DEV-0018",
                 "name": "Nokia XR21 64GB Blue",
-                "units": 1027
+                "units": 1029
               },
               {
                 "sku": "SKU-DEV-0019",
@@ -246,37 +246,37 @@
               {
                 "sku": "SKU-DEV-0023",
                 "name": "OnePlus Nord 256GB Blue",
-                "units": 464
+                "units": 466
               },
               {
                 "sku": "SKU-DEV-0024",
                 "name": "Nokia XR21 128GB Green",
-                "units": 462
+                "units": 465
               }
             ]
           }
         },
         "plan": {
-          "left": "EXPLAINED SQL STATEMENT:\n------------------------\n/* measure:bd787014dc2c */ SELECT JSON_SERIALIZE(v.data) FROM \nregion_top_devices_v v WHERE v.data.\"_id\".string() = :region\n \nPlan hash value: 1108501831\n \n--------------------------------------------------------------\n| Id  | Operation             | Name                 | Rows  |\n--------------------------------------------------------------\n|   0 | SELECT STATEMENT      |                      |       |\n|   1 |  SORT GROUP BY        |                      |     1 |\n|*  2 |   HASH JOIN           |                      |    10 |\n|   3 |    VIEW               |                      |    10 |\n|*  4 |     COUNT STOPKEY     |                      |       |\n|   5 |      VIEW             |                      |   120 |\n|*  6 |       INDEX RANGE SCAN| DEVICE_SALES_TOPN    |   120 |\n|   7 |    TABLE ACCESS FULL  | DEVICE               |   120 |\n|*  8 |  VIEW                 | REGION_TOP_DEVICES_V |     8 |\n|   9 |   INDEX FULL SCAN     | SYS_C009243          |     8 |\n--------------------------------------------------------------\n \nPredicate Information (identified by operation id):\n---------------------------------------------------\n \n   2 - access(\"D\".\"SKU\"=\"T\".\"SKU\")\n   4 - filter(ROWNUM<=10)\n   6 - access(\"DS\".\"REGION_ID\"=:B1)\n   8 - filter(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"V\".\"DATA\" FORMAT OSON , '$.\"_id\".string()' \n              RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) )=:REGION)"
+          "left": "EXPLAINED SQL STATEMENT:\n------------------------\n/* measure:61b1d5ab8b7d */ SELECT JSON_SERIALIZE(v.data) FROM \nregion_top_devices_v v WHERE v.data.\"_id\".string() = :region\n \nPlan hash value: 36573191\n \n--------------------------------------------------------------\n| Id  | Operation             | Name                 | Rows  |\n--------------------------------------------------------------\n|   0 | SELECT STATEMENT      |                      |       |\n|   1 |  SORT GROUP BY        |                      |     1 |\n|*  2 |   HASH JOIN           |                      |    10 |\n|   3 |    VIEW               |                      |    10 |\n|*  4 |     COUNT STOPKEY     |                      |       |\n|   5 |      VIEW             |                      |   120 |\n|*  6 |       INDEX RANGE SCAN| DEVICE_SALES_TOPN    |   120 |\n|   7 |    TABLE ACCESS FULL  | DEVICE               |   120 |\n|*  8 |  VIEW                 | REGION_TOP_DEVICES_V |     8 |\n|   9 |   INDEX FULL SCAN     | SYS_C009123          |     8 |\n--------------------------------------------------------------\n \nPredicate Information (identified by operation id):\n---------------------------------------------------\n \n   2 - access(\"D\".\"SKU\"=\"T\".\"SKU\")\n   4 - filter(ROWNUM<=10)\n   6 - access(\"DS\".\"REGION_ID\"=:B1)\n   8 - filter(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"V\".\"DATA\" FORMAT OSON , '$.\"_id\".string()' \n              RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) )=:REGION)"
         },
-        "detail": "read plan:\nEXPLAINED SQL STATEMENT:\n------------------------\n/* measure:bd787014dc2c */ SELECT JSON_SERIALIZE(v.data) FROM \nregion_top_devices_v v WHERE v.data.\"_id\".string() = :region\n \nPlan hash value: 1108501831\n \n--------------------------------------------------------------\n| Id  | Operation             | Name                 | Rows  |\n--------------------------------------------------------------\n|   0 | SELECT STATEMENT      |                      |       |\n|   1 |  SORT GROUP BY        |                      |     1 |\n|*  2 |   HASH JOIN           |                      |    10 |\n|   3 |    VIEW               |                      |    10 |\n|*  4 |     COUNT STOPKEY     |                      |       |\n|   5 |      VIEW             |                      |   120 |\n|*  6 |       INDEX RANGE SCAN| DEVICE_SALES_TOPN    |   120 |\n|   7 |    TABLE ACCESS FULL  | DEVICE               |   120 |\n|*  8 |  VIEW                 | REGION_TOP_DEVICES_V |     8 |\n|   9 |   INDEX FULL SCAN     | SYS_C009243          |     8 |\n--------------------------------------------------------------\n \nPredicate Information (identified by operation id):\n---------------------------------------------------\n \n   2 - access(\"D\".\"SKU\"=\"T\".\"SKU\")\n   4 - filter(ROWNUM<=10)\n   6 - access(\"DS\".\"REGION_ID\"=:B1)\n   8 - filter(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"V\".\"DATA\" FORMAT OSON , '$.\"_id\".string()' \n              RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) )=:REGION)\n\ndashboard document:\n{\n  \"_id\": \"R03\",\n  \"top\": [\n    {\n      \"sku\": \"SKU-DEV-0015\",\n      \"name\": \"Google Pixel 10 Pro 256GB Black\",\n      \"units\": 3494\n    },\n    {\n      \"sku\": \"SKU-DEV-0016\",\n      \"name\": \"Motorola Razr 64GB Silver\",\n      \"units\": 1884\n    },\n    {\n      \"sku\": \"SKU-DEV-0017\",\n      \"name\": \"OnePlus Nord 128GB Blue\",\n      \"units\": 1263\n    },\n    {\n      \"sku\": \"SKU-DEV-0018\",\n      \"name\": \"Nokia XR21 64GB Blue\",\n      \"units\": 1027\n    },\n    {\n      \"sku\": \"SKU-DEV-0019\",\n      \"name\": \"Apple iPad Air 512GB Black\",\n      \"units\": 820\n    },\n    {\n      \"sku\": \"SKU-DEV-0020\",\n      \"name\": \"Samsung Galaxy Z Fold 64GB Blue\",\n      \"units\": 704\n    },\n    {\n      \"sku\": \"SKU-DEV-0021\",\n      \"name\": \"Google Pixel 10 128GB Blue\",\n      \"units\": 655\n    },\n    {\n      \"sku\": \"SKU-DEV-0022\",\n      \"name\": \"Motorola Moto G 64GB Green\",\n      \"units\": 579\n    },\n    {\n      \"sku\": \"SKU-DEV-0023\",\n      \"name\": \"OnePlus Nord 256GB Blue\",\n      \"units\": 464\n    },\n    {\n      \"sku\": \"SKU-DEV-0024\",\n      \"name\": \"Nokia XR21 128GB Green\",\n      \"units\": 462\n    }\n  ]\n}"
+        "detail": "read plan:\nEXPLAINED SQL STATEMENT:\n------------------------\n/* measure:61b1d5ab8b7d */ SELECT JSON_SERIALIZE(v.data) FROM \nregion_top_devices_v v WHERE v.data.\"_id\".string() = :region\n \nPlan hash value: 36573191\n \n--------------------------------------------------------------\n| Id  | Operation             | Name                 | Rows  |\n--------------------------------------------------------------\n|   0 | SELECT STATEMENT      |                      |       |\n|   1 |  SORT GROUP BY        |                      |     1 |\n|*  2 |   HASH JOIN           |                      |    10 |\n|   3 |    VIEW               |                      |    10 |\n|*  4 |     COUNT STOPKEY     |                      |       |\n|   5 |      VIEW             |                      |   120 |\n|*  6 |       INDEX RANGE SCAN| DEVICE_SALES_TOPN    |   120 |\n|   7 |    TABLE ACCESS FULL  | DEVICE               |   120 |\n|*  8 |  VIEW                 | REGION_TOP_DEVICES_V |     8 |\n|   9 |   INDEX FULL SCAN     | SYS_C009123          |     8 |\n--------------------------------------------------------------\n \nPredicate Information (identified by operation id):\n---------------------------------------------------\n \n   2 - access(\"D\".\"SKU\"=\"T\".\"SKU\")\n   4 - filter(ROWNUM<=10)\n   6 - access(\"DS\".\"REGION_ID\"=:B1)\n   8 - filter(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"V\".\"DATA\" FORMAT OSON , '$.\"_id\".string()' \n              RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) )=:REGION)\n\ndashboard document:\n{\n  \"_id\": \"R03\",\n  \"top\": [\n    {\n      \"sku\": \"SKU-DEV-0015\",\n      \"name\": \"Google Pixel 10 Pro 256GB Black\",\n      \"units\": 3496\n    },\n    {\n      \"sku\": \"SKU-DEV-0016\",\n      \"name\": \"Motorola Razr 64GB Silver\",\n      \"units\": 1884\n    },\n    {\n      \"sku\": \"SKU-DEV-0017\",\n      \"name\": \"OnePlus Nord 128GB Blue\",\n      \"units\": 1263\n    },\n    {\n      \"sku\": \"SKU-DEV-0018\",\n      \"name\": \"Nokia XR21 64GB Blue\",\n      \"units\": 1029\n    },\n    {\n      \"sku\": \"SKU-DEV-0019\",\n      \"name\": \"Apple iPad Air 512GB Black\",\n      \"units\": 820\n    },\n    {\n      \"sku\": \"SKU-DEV-0020\",\n      \"name\": \"Samsung Galaxy Z Fold 64GB Blue\",\n      \"units\": 704\n    },\n    {\n      \"sku\": \"SKU-DEV-0021\",\n      \"name\": \"Google Pixel 10 128GB Blue\",\n      \"units\": 655\n    },\n    {\n      \"sku\": \"SKU-DEV-0022\",\n      \"name\": \"Motorola Moto G 64GB Green\",\n      \"units\": 579\n    },\n    {\n      \"sku\": \"SKU-DEV-0023\",\n      \"name\": \"OnePlus Nord 256GB Blue\",\n      \"units\": 466\n    },\n    {\n      \"sku\": \"SKU-DEV-0024\",\n      \"name\": \"Nokia XR21 128GB Green\",\n      \"units\": 465\n    }\n  ]\n}"
       }
     },
     "same-shape": {
-      "at": "2026-11-01T12:33:08.439Z",
+      "at": "2026-11-04T13:42:37.111Z",
       "result": {
         "ok": true,
-        "summary": "all 8 region dashboards are identical in the three variants; redo per order 5251 / 2606 / 3486 bytes, read 0.6 / 236.5 / 0.8 ms (embedded / lookup / converged)",
+        "summary": "all 8 region dashboards are identical in the three variants; redo per order 5660 / 2601 / 3490 bytes, read 0.4 / 159.3 / 0.5 ms (embedded / lookup / converged)",
         "metrics": {
           "redoPerOrder": {
-            "embedded": 5251,
-            "lookup": 2606,
-            "converged": 3486
+            "embedded": 5660,
+            "lookup": 2601,
+            "converged": 3490
           },
           "readMs": {
-            "embedded": 0.6,
-            "lookup": 236.5,
-            "converged": 0.8
+            "embedded": 0.4,
+            "lookup": 159.3,
+            "converged": 0.5
           }
         },
         "panes": {
@@ -287,7 +287,7 @@
                 {
                   "sku": "SKU-DEV-0015",
                   "name": "Google Pixel 10 Pro 256GB Black",
-                  "units": 3494
+                  "units": 3496
                 },
                 {
                   "sku": "SKU-DEV-0016",
@@ -302,7 +302,7 @@
                 {
                   "sku": "SKU-DEV-0018",
                   "name": "Nokia XR21 64GB Blue",
-                  "units": 1027
+                  "units": 1029
                 },
                 {
                   "sku": "SKU-DEV-0019",
@@ -327,12 +327,12 @@
                 {
                   "sku": "SKU-DEV-0023",
                   "name": "OnePlus Nord 256GB Blue",
-                  "units": 464
+                  "units": 466
                 },
                 {
                   "sku": "SKU-DEV-0024",
                   "name": "Nokia XR21 128GB Green",
-                  "units": 462
+                  "units": 465
                 }
               ]
             },
@@ -342,7 +342,7 @@
                 {
                   "sku": "SKU-DEV-0015",
                   "name": "Google Pixel 10 Pro 256GB Black",
-                  "units": 3494
+                  "units": 3496
                 },
                 {
                   "sku": "SKU-DEV-0016",
@@ -357,7 +357,7 @@
                 {
                   "sku": "SKU-DEV-0018",
                   "name": "Nokia XR21 64GB Blue",
-                  "units": 1027
+                  "units": 1029
                 },
                 {
                   "sku": "SKU-DEV-0019",
@@ -382,12 +382,12 @@
                 {
                   "sku": "SKU-DEV-0023",
                   "name": "OnePlus Nord 256GB Blue",
-                  "units": 464
+                  "units": 466
                 },
                 {
                   "sku": "SKU-DEV-0024",
                   "name": "Nokia XR21 128GB Green",
-                  "units": 462
+                  "units": 465
                 }
               ]
             },
@@ -397,7 +397,7 @@
                 {
                   "sku": "SKU-DEV-0015",
                   "name": "Google Pixel 10 Pro 256GB Black",
-                  "units": 3494
+                  "units": 3496
                 },
                 {
                   "sku": "SKU-DEV-0016",
@@ -412,7 +412,7 @@
                 {
                   "sku": "SKU-DEV-0018",
                   "name": "Nokia XR21 64GB Blue",
-                  "units": 1027
+                  "units": 1029
                 },
                 {
                   "sku": "SKU-DEV-0019",
@@ -437,22 +437,22 @@
                 {
                   "sku": "SKU-DEV-0023",
                   "name": "OnePlus Nord 256GB Blue",
-                  "units": 464
+                  "units": 466
                 },
                 {
                   "sku": "SKU-DEV-0024",
                   "name": "Nokia XR21 128GB Green",
-                  "units": 462
+                  "units": 465
                 }
               ]
             }
           }
         },
-        "detail": "variant     redo/order  read ms  plan\nembedded          5251      0.6  TABLE ACCESS BY INDEX ROWID regionTopDevices > INDEX UNIQUE SCAN SYS_C009039\nlookup            2606    236.5  SORT GROUP BY > TABLE ACCESS BY INDEX ROWID catalog > INDEX UNIQUE SCAN SYS_C009033 > COUNT STOPKEY > SORT ORDER BY STOPKEY > SORT GROUP BY > TABLE ACCESS BY INDEX ROWID BATCHED orders > INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1 > JSON EXPAND ARRAY EVALUATION\nconverged         3486      0.8  SORT GROUP BY > HASH JOIN > COUNT STOPKEY > INDEX RANGE SCAN DEVICE_SALES_TOPN > TABLE ACCESS FULL DEVICE > INDEX FULL SCAN SYS_C009243\n\nR03 top 3: SKU-DEV-0015 3494, SKU-DEV-0016 1884, SKU-DEV-0017 1263"
+        "detail": "variant     redo/order  read ms  plan\nembedded          5660      0.4  TABLE ACCESS BY INDEX ROWID regionTopDevices > INDEX UNIQUE SCAN SYS_C009070\nlookup            2601    159.3  SORT GROUP BY > TABLE ACCESS BY INDEX ROWID catalog > INDEX UNIQUE SCAN SYS_C009064 > COUNT STOPKEY > SORT ORDER BY STOPKEY > SORT GROUP BY > TABLE ACCESS BY INDEX ROWID BATCHED orders > INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1 > JSON EXPAND ARRAY EVALUATION\nconverged         3490      0.5  SORT GROUP BY > HASH JOIN > COUNT STOPKEY > INDEX RANGE SCAN DEVICE_SALES_TOPN > TABLE ACCESS FULL DEVICE > INDEX FULL SCAN SYS_C009123\n\nR03 top 3: SKU-DEV-0015 3496, SKU-DEV-0016 1884, SKU-DEV-0017 1263"
       }
     },
     "mongosh-read": {
-      "at": "2026-11-01T12:33:13.566Z",
+      "at": "2026-11-04T13:42:42.134Z",
       "result": {
         "ok": true,
         "summary": "region_top_devices_v is readable through the MongoDB API: R03 has 10 devices, sorted"

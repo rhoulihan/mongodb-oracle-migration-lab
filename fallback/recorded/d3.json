@@ -2,21 +2,21 @@
   "id": "d3",
   "steps": {
     "dump": {
-      "at": "2026-11-01T11:02:27.700Z",
+      "at": "2026-11-04T13:39:55.655Z",
       "result": {
         "ok": true,
-        "summary": "/dumps/telco.archive holds 8 collections, 555278 documents"
+        "summary": "/dumps/telco.archive holds 8 collections, 555280 documents"
       }
     },
     "restore": {
-      "at": "2026-11-01T11:03:13.821Z",
+      "at": "2026-11-04T13:40:13.832Z",
       "result": {
         "ok": true,
         "summary": "MIG holds the 8 pre-created collections; orders has 200000 documents, as dumped"
       }
     },
     "counts": {
-      "at": "2026-11-01T11:03:19.236Z",
+      "at": "2026-11-04T13:40:19.233Z",
       "result": {
         "ok": true,
         "summary": "all 8 collections match the dump",
@@ -64,22 +64,22 @@
             },
             {
               "coll": "carts",
-              "archive": 4985,
+              "archive": 4986,
               "restored": null,
-              "oracle": 4973,
+              "oracle": 4978,
               "smokeExcluded": 0,
               "ttl": "updatedAt + 120s",
-              "unexpired": 4972,
+              "unexpired": 4977,
               "ok": true
             },
             {
               "coll": "orderEvents",
-              "archive": 299977,
+              "archive": 299978,
               "restored": null,
-              "oracle": 299954,
+              "oracle": 299972,
               "smokeExcluded": 0,
               "ttl": "createdAt + 604800s",
-              "unexpired": 299946,
+              "unexpired": 299968,
               "ok": true
             },
             {
@@ -92,11 +92,11 @@
             }
           ]
         },
-        "detail": "collection        in the dump  restored  on Oracle now  note\n----------------  -----------  --------  -------------  ---------------------------------------------------------------------------\nregions           8            -         8\ncatalog           300          -         300\naccounts          20000        -         20000\nsubscribers       30000        -         30000\norders            200000       -         200000\ncarts             4985         -         4973           TTL updatedAt + 120s: 12 expired since the dump (4972 still unexpired)\norderEvents       299977       -         299954         TTL createdAt + 604800s: 23 expired since the dump (299946 still unexpired)\nregionTopDevices  8            -         8"
+        "detail": "collection        in the dump  restored  on Oracle now  note\n----------------  -----------  --------  -------------  --------------------------------------------------------------------------\nregions           8            -         8\ncatalog           300          -         300\naccounts          20000        -         20000\nsubscribers       30000        -         30000\norders            200000       -         200000\ncarts             4986         -         4978           TTL updatedAt + 120s: 8 expired since the dump (4977 still unexpired)\norderEvents       299978       -         299972         TTL createdAt + 604800s: 6 expired since the dump (299968 still unexpired)\nregionTopDevices  8            -         8"
       }
     },
     "typediff": {
-      "at": "2026-11-01T11:03:30.988Z",
+      "at": "2026-11-04T13:40:27.823Z",
       "result": {
         "ok": true,
         "summary": "5 fields with a type or $type difference, 3 value checks that changed",
@@ -263,14 +263,14 @@
       }
     },
     "flip": {
-      "at": "2026-11-01T11:03:35.470Z",
+      "at": "2026-11-04T13:40:32.467Z",
       "result": {
         "ok": true,
         "summary": "order service reports backend oracle (26.3.0.r2721811)"
       }
     },
     "smoke": {
-      "at": "2026-11-01T11:03:40.314Z",
+      "at": "2026-11-04T13:40:37.206Z",
       "result": {
         "ok": true,
         "summary": "6 app calls passed on Oracle, app code unchanged",
@@ -314,7 +314,7 @@
       }
     },
     "explain": {
-      "at": "2026-11-01T11:03:45.306Z",
+      "at": "2026-11-04T13:40:42.136Z",
       "result": {
         "ok": true,
         "summary": "Oracle plan: SELECT STATEMENT > TABLE ACCESS BY INDEX ROWID BATCHED orders > HASH UNIQUE > INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1"

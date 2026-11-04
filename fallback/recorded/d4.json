@@ -2,7 +2,7 @@
   "id": "d4",
   "steps": {
     "setup": {
-      "at": "2026-11-01T11:04:33.223Z",
+      "at": "2026-11-04T13:41:02.306Z",
       "result": {
         "ok": true,
         "summary": "initial load done: 200000 orders on MongoDB and on Oracle; Oracle captures its own changes for the way back",
@@ -12,231 +12,176 @@
       }
     },
     "start-forward": {
-      "at": "2026-11-01T11:04:38.901Z",
+      "at": "2026-11-04T13:41:09.454Z",
       "result": {
         "ok": true,
-        "summary": "forward replicator running: 44 changes applied, lag 0 ms"
+        "summary": "forward replicator running: 22 changes applied, lag 0 ms"
       }
     },
     "write-blue": {
-      "at": "2026-11-01T11:04:48.936Z",
+      "at": "2026-11-04T13:41:17.084Z",
       "result": {
         "ok": true,
-        "summary": "400 new and 100 updated orders on MongoDB; 400 of the new orders are on Oracle; peak lag 2291 ms, now caught up (lag 0 ms)",
+        "summary": "400 new and 100 updated orders on MongoDB; 400 of the new orders are on Oracle; peak lag 830 ms, now caught up (lag 0 ms)",
         "metrics": {
           "placed": 400,
           "updated": 100,
           "landed": 400,
-          "peakLagMs": 2291,
-          "applied": 1113,
-          "writeMs": 1887
+          "peakLagMs": 830,
+          "applied": 1089,
+          "writeMs": 1038
         },
         "panes": {
           "left": [
             {
-              "t": 250,
+              "t": 249,
               "lagMs": 0,
-              "applied": 47
+              "applied": 25
             },
             {
               "t": 500,
               "lagMs": 0,
-              "applied": 47
+              "applied": 25
             },
             {
-              "t": 751,
-              "lagMs": 0,
-              "applied": 47
+              "t": 750,
+              "lagMs": 295,
+              "applied": 125
             },
             {
-              "t": 1000,
-              "lagMs": 523,
-              "applied": 147
+              "t": 999,
+              "lagMs": 455,
+              "applied": 225
             },
             {
               "t": 1250,
-              "lagMs": 523,
-              "applied": 147
+              "lagMs": 629,
+              "applied": 425
             },
             {
               "t": 1500,
-              "lagMs": 809,
-              "applied": 247
+              "lagMs": 644,
+              "applied": 625
             },
             {
-              "t": 1751,
-              "lagMs": 809,
-              "applied": 247
+              "t": 1749,
+              "lagMs": 664,
+              "applied": 925
             },
             {
               "t": 2001,
-              "lagMs": 1076,
-              "applied": 347
+              "lagMs": 830,
+              "applied": 1089
             },
             {
               "t": 2251,
-              "lagMs": 1076,
-              "applied": 347
-            },
-            {
-              "t": 2500,
-              "lagMs": 1315,
-              "applied": 447
-            },
-            {
-              "t": 2751,
-              "lagMs": 1485,
-              "applied": 547
-            },
-            {
-              "t": 3001,
-              "lagMs": 1651,
-              "applied": 647
-            },
-            {
-              "t": 3250,
-              "lagMs": 1651,
-              "applied": 647
-            },
-            {
-              "t": 3500,
-              "lagMs": 1780,
-              "applied": 747
-            },
-            {
-              "t": 3751,
-              "lagMs": 1918,
-              "applied": 847
-            },
-            {
-              "t": 4001,
-              "lagMs": 2116,
-              "applied": 947
-            },
-            {
-              "t": 4251,
-              "lagMs": 2116,
-              "applied": 947
-            },
-            {
-              "t": 4502,
-              "lagMs": 2291,
-              "applied": 1047
-            },
-            {
-              "t": 4752,
               "lagMs": 0,
-              "applied": 1113
+              "applied": 1089
             },
             {
-              "t": 5002,
+              "t": 2501,
               "lagMs": 0,
-              "applied": 1113
+              "applied": 1089
             },
             {
-              "t": 5251,
+              "t": 2752,
               "lagMs": 0,
-              "applied": 1113
+              "applied": 1089
             },
             {
-              "t": 5502,
+              "t": 3003,
               "lagMs": 0,
-              "applied": 1113
+              "applied": 1089
             }
           ]
         },
-        "detail": "lag over time: 0.3s 0ms, 1.3s 523ms, 2.3s 1076ms, 3.3s 1651ms, 4.3s 2116ms, 5.3s 0ms"
+        "detail": "lag over time: 0.2s 0ms, 1.3s 629ms, 2.3s 0ms"
       }
     },
     "cutover": {
-      "at": "2026-11-01T11:04:53.798Z",
+      "at": "2026-11-04T13:41:22.628Z",
       "result": {
         "ok": true,
-        "summary": "forward replicator stopped after 1116 changes; the app writes to Oracle; 200400 orders on both sides"
+        "summary": "forward replicator stopped after 1094 changes; the app writes to Oracle; 200400 orders on both sides"
       }
     },
     "start-reverse": {
-      "at": "2026-11-01T11:04:59.569Z",
+      "at": "2026-11-04T13:41:29.866Z",
       "result": {
         "ok": true,
         "summary": "reverse replicator running: 0 changes applied, lag 0 ms"
       }
     },
     "write-green": {
-      "at": "2026-11-01T11:05:06.739Z",
+      "at": "2026-11-04T13:41:36.678Z",
       "result": {
         "ok": true,
-        "summary": "150 new and 40 updated orders on Oracle; 150 of the new orders are back on MongoDB; peak lag 229 ms, now caught up (lag 0 ms)",
+        "summary": "150 new and 40 updated orders on Oracle; 150 of the new orders are back on MongoDB; peak lag 68 ms, now caught up (lag 0 ms)",
         "metrics": {
           "placed": 150,
           "updated": 40,
           "landed": 150,
-          "peakLagMs": 229,
+          "peakLagMs": 68,
           "applied": 404,
-          "writeMs": 1212
+          "writeMs": 850
         },
         "panes": {
           "left": [
             {
-              "t": 250,
+              "t": 251,
               "lagMs": 0,
               "applied": 0
             },
             {
-              "t": 502,
-              "lagMs": 78,
-              "applied": 3
+              "t": 501,
+              "lagMs": 58,
+              "applied": 63
             },
             {
-              "t": 752,
-              "lagMs": 78,
-              "applied": 3
+              "t": 751,
+              "lagMs": 58,
+              "applied": 63
             },
             {
               "t": 1002,
-              "lagMs": 67,
-              "applied": 87
-            },
-            {
-              "t": 1252,
               "lagMs": 68,
-              "applied": 209
+              "applied": 223
             },
             {
-              "t": 1503,
-              "lagMs": 63,
-              "applied": 342
-            },
-            {
-              "t": 1753,
-              "lagMs": 229,
+              "t": 1251,
+              "lagMs": 60,
               "applied": 404
             },
             {
-              "t": 2003,
+              "t": 1504,
               "lagMs": 0,
               "applied": 404
             },
             {
-              "t": 2254,
+              "t": 1754,
               "lagMs": 0,
               "applied": 404
             },
             {
-              "t": 2504,
+              "t": 2004,
+              "lagMs": 0,
+              "applied": 404
+            },
+            {
+              "t": 2256,
               "lagMs": 0,
               "applied": 404
             }
           ]
         },
-        "detail": "lag over time: 0.3s 0ms, 1.3s 68ms, 2.3s 0ms"
+        "detail": "lag over time: 0.3s 0ms, 1.3s 60ms, 2.3s 0ms"
       }
     },
     "verify": {
-      "at": "2026-11-01T11:05:41.232Z",
+      "at": "2026-11-04T13:42:04.345Z",
       "result": {
         "ok": true,
-        "summary": "all 8 collections match: 556319 documents, same counts, same sha-256 on both sides",
+        "summary": "all 8 collections match: 556379 documents, same counts, same sha-256 on both sides",
         "panes": {
           "left": [
             {
@@ -287,8 +232,8 @@
               "coll": "orders",
               "mongo": 200550,
               "oracle": 200550,
-              "mongoHash": "c53d9ded413f7317e1113bcc6126ef7121874e27f39fcc14359b0a8e4c2833da",
-              "oracleHash": "c53d9ded413f7317e1113bcc6126ef7121874e27f39fcc14359b0a8e4c2833da",
+              "mongoHash": "f6e5743374c025fccea39a51b8364a8d8c2fecca645ba32300551f993a79a166",
+              "oracleHash": "f6e5743374c025fccea39a51b8364a8d8c2fecca645ba32300551f993a79a166",
               "equal": true,
               "ttl": null,
               "mongoTotal": 200550,
@@ -296,25 +241,25 @@
             },
             {
               "coll": "carts",
-              "mongo": 4900,
-              "oracle": 4900,
-              "mongoHash": "62c73d150924dd4e172beaeca63d19d39a7c6da1aa14c1497a5626ce4021813c",
-              "oracleHash": "62c73d150924dd4e172beaeca63d19d39a7c6da1aa14c1497a5626ce4021813c",
+              "mongo": 4928,
+              "oracle": 4928,
+              "mongoHash": "04451e434f049e325b0a03dc3a801a2c6240c9e9162104e0bf64f9766a596750",
+              "oracleHash": "04451e434f049e325b0a03dc3a801a2c6240c9e9162104e0bf64f9766a596750",
               "equal": true,
               "ttl": "updatedAt + 120s",
-              "mongoTotal": 4919,
-              "oracleTotal": 4920
+              "mongoTotal": 4945,
+              "oracleTotal": 4961
             },
             {
               "coll": "orderEvents",
-              "mongo": 300553,
-              "oracle": 300553,
-              "mongoHash": "deed4409f4ce7d9e6210423d00ee89b22e620f24ee0c8cf36ebbc3a880563113",
-              "oracleHash": "deed4409f4ce7d9e6210423d00ee89b22e620f24ee0c8cf36ebbc3a880563113",
+              "mongo": 300585,
+              "oracle": 300585,
+              "mongoHash": "463895f59a941fce0505b2f8855b200b6235ff0cfc4b7f9959284d7b89a20c36",
+              "oracleHash": "463895f59a941fce0505b2f8855b200b6235ff0cfc4b7f9959284d7b89a20c36",
               "equal": true,
               "ttl": "createdAt + 604800s",
-              "mongoTotal": 300573,
-              "oracleTotal": 300578
+              "mongoTotal": 300603,
+              "oracleTotal": 300603
             },
             {
               "coll": "regionTopDevices",
@@ -331,9 +276,9 @@
         },
         "metrics": {
           "collections": 8,
-          "documents": 556319
+          "documents": 556379
         },
-        "detail": "collection        MongoDB  Oracle  sha-256 (MongoDB)  sha-256 (Oracle)  match  note\n----------------  -------  ------  -----------------  ----------------  -----  ---------------------------------------------------------------------------------------------\nregions           8        8       19cf0dced645       19cf0dced645      yes\ncatalog           300      300     5c816c21a89e       5c816c21a89e      yes\naccounts          20000    20000   6e629eed68f2       6e629eed68f2      yes\nsubscribers       30000    30000   a19adbf6fc1a       a19adbf6fc1a      yes\norders            200550   200550  c53d9ded413f       c53d9ded413f      yes\ncarts             4900     4900    62c73d150924       62c73d150924      yes    TTL updatedAt + 120s: compared 4900 not near expiry (all: MongoDB 4919, Oracle 4920)\norderEvents       300553   300553  deed4409f4ce       deed4409f4ce      yes    TTL createdAt + 604800s: compared 300553 not near expiry (all: MongoDB 300573, Oracle 300578)\nregionTopDevices  8        8       0b2e4612e2ab       0b2e4612e2ab      yes"
+        "detail": "collection        MongoDB  Oracle  sha-256 (MongoDB)  sha-256 (Oracle)  match  note\n----------------  -------  ------  -----------------  ----------------  -----  ---------------------------------------------------------------------------------------------\nregions           8        8       19cf0dced645       19cf0dced645      yes\ncatalog           300      300     5c816c21a89e       5c816c21a89e      yes\naccounts          20000    20000   6e629eed68f2       6e629eed68f2      yes\nsubscribers       30000    30000   a19adbf6fc1a       a19adbf6fc1a      yes\norders            200550   200550  f6e5743374c0       f6e5743374c0      yes\ncarts             4928     4928    04451e434f04       04451e434f04      yes    TTL updatedAt + 120s: compared 4928 not near expiry (all: MongoDB 4945, Oracle 4961)\norderEvents       300585   300585  463895f59a94       463895f59a94      yes    TTL createdAt + 604800s: compared 300585 not near expiry (all: MongoDB 300603, Oracle 300603)\nregionTopDevices  8        8       0b2e4612e2ab       0b2e4612e2ab      yes"
       }
     }
   }
