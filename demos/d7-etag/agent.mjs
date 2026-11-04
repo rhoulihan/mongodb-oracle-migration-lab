@@ -34,6 +34,36 @@ const APIS = ['mongo', 'sql'];
 
 // ------------------------------------------------------------ reads and writes
 
+// Every call to the database, as mongosh would type it, and what came back:
+// the CLI prints it so the audience sees the command behind each line.
+let trace = [];
+const binHex = (b) => (b?.buffer ? Buffer.from(b.buffer).toString('hex').toUpperCase() : String(b));
+const scnOf = (b) => { let n = 0n; for (const x of b?.buffer ?? []) n = (n << 8n) | BigInt(x); return n.toString(); };
+// A value in mongosh style, one line: Binary shown as hex, asof as its SCN.
+function show(v, key) {
+  if (v?._bsontype === 'Binary') return key === 'asof' ? `Binary(SCN ${scnOf(v)})` : `Binary('${binHex(v)}')`;
+  if (v instanceof Date) return `ISODate('${v.toISOString()}')`;
+  if (Array.isArray(v)) return `[ ${v.map((x) => show(x)).join(', ')} ]`;
+  if (v && typeof v === 'object') return `{ ${Object.entries(v).map(([k, x]) => `${k}: ${show(x, k)}`).join(', ')} }`;
+  return typeof v === 'string' ? `'${v}'` : String(v);
+}
+// A document over several lines: top-level fields one per line, each array
+// item (an order line) on its own line.
+function showDoc(doc, pad = '') {
+  const out = ['{'];
+  for (const [k, v] of Object.entries(doc)) {
+    if (Array.isArray(v) && v.length) {
+      out.push(`${pad}  ${k}: [`);
+      for (const x of v) out.push(`${pad}    ${show(x)},`);
+      out.push(`${pad}  ],`);
+    } else out.push(`${pad}  ${k}: ${show(v, k)},`);
+  }
+  out.push(`${pad}}`);
+  return out.join('\n');
+}
+/** The calls made since the last takeTrace(), and clears them. */
+export const takeTrace = () => { const t = trace; trace = []; return t; };
+
 /**
  * Read one order document and its ETag.
  * @param {'mongo'|'sql'} api
@@ -43,6 +73,7 @@ export async function readOrder(api, id) {
   let doc;
   if (api === 'mongo') {
     doc = await (await oraMongo()).collection(VIEW).findOne({ _id: id });
+    trace.push({ cmd: `db.${VIEW}.findOne({ _id: '${id}' })`, out: doc ? showDoc(doc) : 'null' });
   } else if (api === 'sql') {
     const r = await (await oraSql()).execute(
       `select json_serialize(data) from ${VIEW} v where v.data."_id" = :id`, { id });
@@ -65,7 +96,16 @@ export const isEtagMismatch = (err) => err?.errorNum === 42699 || /ORA-42699/.te
 export async function writeOrder(api, doc) {
   try {
     if (api === 'mongo') {
-      const r = await (await oraMongo()).collection(VIEW).replaceOne({ _id: doc._id }, doc);
+      const t = { cmd: `db.${VIEW}.replaceOne({ _id: '${doc._id}' }, ${showDoc(doc)})` };
+      trace.push(t);
+      let r;
+      try {
+        r = await (await oraMongo()).collection(VIEW).replaceOne({ _id: doc._id }, doc);
+      } catch (err) {
+        t.out = `${err.name ?? 'Error'}: ${String(err.message).split('\n')[0]}`;
+        throw err;
+      }
+      t.out = show({ acknowledged: r.acknowledged, matchedCount: r.matchedCount, modifiedCount: r.modifiedCount });
       if (r.matchedCount !== 1) throw new Error(`order ${doc._id} is not in ${VIEW}: run ./lab.sh reset d7`);
     } else if (api === 'sql') {
       const conn = await oraSql();
@@ -267,7 +307,16 @@ async function main() {
     return 2;
   }
   try {
+    takeTrace();
     const r = await agentCommand(cmd, agent, { api: values.api });
+    // On a terminal: each database call and its reply, then the summary.
+    if (process.stdout.isTTY || process.env.LAB_TTY === '1') {
+      for (const t of takeTrace()) {
+        console.log(`  > ${t.cmd.replace(/\n/g, '\n    ')}`);
+        console.log(`  < ${(t.out ?? '').replace(/\n/g, '\n    ')}`);
+      }
+      console.log('');
+    }
     for (const l of r.lines) console.log(l);
     return r.ok ? 0 : 1;
   } finally {

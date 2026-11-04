@@ -27,9 +27,12 @@ async function pool(n, k, task) {
 
 /**
  * Place `orders` new orders, then set `updates` of them to provisioned.
+ * With `ratePerSec`, the writes are paced to a steady rate (write n starts no
+ * earlier than n / rate seconds in), so the replicator sees constant load
+ * instead of one burst it catches up on.
  * @returns {Promise<{ids:import('mongodb').ObjectId[], placed:number, updated:number, failed:string[], lastWriteAt:number, ms:number}>}
  */
-export async function placeOrders(ctx, { orders, updates = 0, concurrency = 4, seedOffset = 0, onProgress } = {}) {
+export async function placeOrders(ctx, { orders, updates = 0, concurrency = 4, seedOffset = 0, ratePerSec = 0, onProgress } = {}) {
   const src = await ctx.mongoSrc();
   const pick = rng(config.seed + seedOffset);
   const subs = (await src.collection('subscribers').find({}, { projection: { _id: 1 } }).sort({ _id: 1 }).limit(5000).toArray())
@@ -46,8 +49,14 @@ export async function placeOrders(ctx, { orders, updates = 0, concurrency = 4, s
 
   const t0 = Date.now();
   const ids = [], failed = [];
-  let lastWriteAt = t0, updated = 0;
+  let lastWriteAt = t0, updated = 0, n = 0;
+  const pace = async () => {
+    if (!ratePerSec) return;
+    const due = t0 + (n++ * 1000) / ratePerSec - Date.now();
+    if (due > 0) await new Promise((r) => setTimeout(r, due));
+  };
   await pool(orders, concurrency, async (i) => {
+    await pace();
     const r = await app('POST', '/orders', bodies[i]);
     lastWriteAt = Date.now();
     if (r.status === 201 && r.body?._id) ids.push(r.body._id);
@@ -55,6 +64,7 @@ export async function placeOrders(ctx, { orders, updates = 0, concurrency = 4, s
     onProgress?.({ placed: ids.length, updated });
   });
   await pool(Math.min(updates, ids.length), concurrency, async (i) => {
+    await pace();
     const r = await app('PATCH', `/orders/${ids[i].toHexString()}`, { status: 'provisioned' });
     lastWriteAt = Date.now();
     if (r.status === 200) updated++;

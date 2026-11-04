@@ -70,18 +70,22 @@ describe('D5 Top-N counter: embedded vs $lookup vs converged', () => {
     expect(redoPerOrder.embedded).toBeGreaterThan(redoPerOrder.converged);
   });
 
-  test('the lookup read plan re-aggregates the orders (scans orders, then a GROUP BY)', () => {
+  test('the lookup read plan reads the counter documents through their index and stops at 10', () => {
     const plan = result('lookup-read').plan.left;
     expect(planChecks.lookup(plan)).toBe(true);
-    expect(plan).toMatch(/TABLE ACCESS[^\n]*orders/);
-    expect(plan).toMatch(/(HASH|SORT) GROUP BY/);
+    expect(plan).toMatch(/INDEX RANGE SCAN[^\n]*deviceSales/);
+    expect(plan).toMatch(/STOPKEY/);
   });
 
   test('the converged read plan is an INDEX RANGE SCAN on DEVICE_SALES_TOPN under a STOPKEY', () => {
     const plan = result('converged').plan.left;
-    expect(plan).toMatch(/INDEX RANGE SCAN\s*\|\s*DEVICE_SALES_TOPN/);
+    expect(plan).toMatch(/INDEX RANGE SCAN[^\n]*DEVICE_SALES_TOPN/);
     expect(plan).toMatch(/(COUNT|WINDOW NOSORT) STOPKEY/);
     expect(planChecks.converged(plan)).toBe(true);
+    // The plan view's swap shows the app's MongoDB read and the SQL it generates.
+    const q = result('converged').query.left;
+    expect(q.query).toMatch(/region_top_devices_v/);
+    expect(q.sql).toMatch(/REGION_TOP_DEVICES_V/);
   });
 
   test('metrics carry redo per order and read time for the deck', () => {

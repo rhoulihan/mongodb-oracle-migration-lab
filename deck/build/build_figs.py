@@ -852,15 +852,15 @@ def _bars(f: Fig, x, y, w, n, hot=(), cool=(), h=6, gap=4):
 
 
 TOPN = [  # title, sub lines, tone, write (glyph, lines, tag, tone), read (glyph, lines, tag, tone)
-    ("(a) Embedded", ["Top 10 stored in one", "document per region"], "hot",
-     ("doc-all", ["rewrites the region's", "whole Top-N document"], "pays on every write", "hot"),
-     ("doc-one", ["reads one document", "by its key"], "fast read", "cool")),
-    ("(b) $lookup pipeline", ["count the orders", "at read time"], "hot",
-     ("row-new", ["inserts the order,", "nothing else"], "cheap write", "cool"),
-     ("funnel", ["groups every order", "line in the region"], "pays on every read", "hot")),
+    ("(a) Embedded", ["every device's count in", "one document per region"], "hot",
+     ("doc-all", ["one $inc rewrites the", "whole 9.5 KB document"], "pays on every write", "hot"),
+     ("doc-one", ["reads every device;", "the client sorts"], "one document, client sort", "cool")),
+    ("(b) $lookup pipeline", ["counter documents,", "a pipeline in the app"], "hot",
+     ("row-one", ["the order, then $inc", "one counter document"], "one document per order", "cool"),
+     ("index", ["the app's pipeline:", "sort, limit, $lookup"], "the query lives in the app", "hot")),
     ("(c) Converged", ["counter rows, a sorted", "index, a view"], "cool",
      ("row-one", ["one counter row, +1,", "same transaction"], "one row per order", "cool"),
-     ("index", ["10 index entries, in", "order, then a join"], "short scan, cheap join", "cool")),
+     ("doc-one", ["reads one document;", "SQL builds it"], "the query lives in the database", "cool")),
 ]
 
 
@@ -887,13 +887,14 @@ def _topn_glyph(f: Fig, kind: str, x, y):
 
 def fig_topn_three_ways() -> Fig:
     """D5's question three ways. Each row is a fragment: the whole-document rewrite, then the
-    re-aggregation, then the one counter row."""
-    f = Fig(1120, 414, "Top 10 devices per region, three ways. Embedded: every order rewrites the "
-                       "region's whole Top-N document; the read is one document by key. $lookup pipeline: "
-                       "every order inserts only itself, and every dashboard read groups every order line "
-                       "in the region. Converged: every order adds one to one counter row in the same "
-                       "transaction, and the read takes 10 entries from a pre-sorted index, then joins "
-                       "the device names")
+    counter documents with the app's pipeline, then the counter row behind a view."""
+    f = Fig(1120, 414, "Top 10 devices per region, three ways. Embedded: every device's count in one "
+                       "document per region, and one $inc rewrites the whole document; the read fetches it "
+                       "and the client sorts and keeps 10. $lookup pipeline: "
+                       "every order adds one to a counter document, and the read is a pipeline the app "
+                       "owns: sort, limit, $lookup the names. Converged: every order adds one to one "
+                       "counter row in the same transaction, and the app reads one document from a view; "
+                       "the SQL behind it, a pre-sorted index scan and a join, belongs to the database")
     c2, c3, cw2, cw3 = 300, 700, 380, 402
     f.text(18, 34, "THE MODEL", size=13, weight=700, font=MONO, fill="var(--muted)")
     f.text(c2, 34, "WHAT EACH ORDER WRITES", size=13, weight=700, font=MONO, fill="var(--muted)")
@@ -919,23 +920,23 @@ def fig_topn_three_ways() -> Fig:
 
 def fig_duality_tradeoff() -> Fig:
     """D5's measured result: where each model pays, after the dashboards were proven identical."""
-    f = Fig(1120, 392, "Where each model pays, measured in D5 on the laptop after the three dashboards "
-                       "were proven identical, relative only, ranges over the measured runs. Counter write per "
-                       "order: embedded 2,600 to 3,500 bytes of redo, the lookup pipeline nothing extra, "
-                       "converged 870 to 950 bytes. Dashboard read for one region: embedded 0.3 to 0.8 ms, "
-                       "the lookup pipeline 234 to 262 ms, converged 0.6 to 0.9 ms. A costlier read than "
-                       "one stored document, zero "
-                       "write amplification, and the optimizer plans the join")
+    f = Fig(1120, 392, "Where each model pays, measured in D5 on the presenter's Mac after the three "
+                       "dashboards were proven identical, relative only, ranges over the measured runs. Redo "
+                       "per order, the order included: embedded about 17 KB, counter documents about 5 KB, "
+                       "converged about 3.5 KB. Dashboard read for one region: embedded about 0.6 ms, the "
+                       "counter pipeline 0.6 to 0.7 ms, converged about 0.4 ms. The same counts at the same "
+                       "speed: the difference is where the query lives")
     cols = [(320, "(a) Embedded", "hot"), (580, "(b) $lookup", "hot"), (840, "(c) Converged", "cool")]
     cw = 250  # 10 px gaps between cells
     for x, t, tone in cols:
         f.text(x + cw / 2, 40, t, size=19, weight=800, font=HEAD, fill=TONE[tone][0], anchor="middle")
     rows = [
-        ("Counter write", "redo per order, on top", "of the order itself",
-         [("2.6 to 3.5 KB", "every order", "hot"), ("0 B", "nothing extra", "ink"), ("870 to 950 B", "one row, +1", "cool")]),
+        ("Write", "redo per order,", "the order included",
+         [("17 KB", "$inc, whole doc rewritten", "hot"), ("5 KB", "$inc one counter doc", "hot"),
+          ("3.5 KB", "one row, +1", "cool")]),
         ("Dashboard read", "one region, median", "of 7, across runs",
-         [("0.3 to 0.8 ms", "usually fastest: one document", "cool"), ("234 to 262 ms", "counts every order", "hot"),
-          ("0.6 to 0.9 ms", "index scan and a join", "cool")]),
+         [("0.6 ms", "one doc, client sorts", "cool"), ("0.6 to 0.7 ms", "the app's pipeline", "cool"),
+          ("0.4 ms", "one document, SQL behind it", "cool")]),
     ]
     top, rh = 60, 104
     for i, (label, s1, s2, cells) in enumerate(rows):
@@ -949,8 +950,8 @@ def fig_duality_tradeoff() -> Fig:
                    name="cell")
             f.text(x + cw / 2, y + 50, big, size=30, weight=800, font=HEAD, fill=col, anchor="middle")
             f.text(x + cw / 2, y + 80, sub, size=15, fill="var(--muted)", anchor="middle")
-    f.box(18, 300, 1084, 74, ["A costlier read than one stored document. Zero write amplification.",
-                              "The optimizer plans the join. Laptop, relative only, after the dashboards matched."],
+    f.box(18, 300, 1084, 74, ["(b) and (c): the same counts, the same speed. The query moves into the database.",
+                              "The app retrieves documents. Laptop, relative only, after the dashboards matched."],
           tone="cool", size=18, sub_size=15)
     return f
 

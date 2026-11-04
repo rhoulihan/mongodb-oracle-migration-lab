@@ -19,6 +19,7 @@ You never touch the screen directly. Every action is one `./lab.sh drive` comman
 | Show the rehearsal result | `./lab.sh drive console dN STEP --skip` |
 | Start a step without waiting | `./lab.sh drive console dN STEP --nowait`, then `./lab.sh drive wait SEQ` |
 | Type a terminal command | `./lab.sh drive term 'CMD'`, or `./lab.sh drive term A 'CMD'` / `B` for D7 |
+| Bring a window to the front (macOS) | `./lab.sh drive focus console` / `./lab.sh drive focus term`; `./lab.sh drive focus home` returns to Claude's terminal |
 
 Give every drive command a 600000 ms Bash timeout. Some steps run 1 to 3 minutes.
 
@@ -27,7 +28,8 @@ Give every drive command a 600000 ms Bash timeout. Some steps run 1 to 3 minutes
 1. **Status.** Run `./lab.sh drive status`. On any FAIL line, say what it is in one line, then stop. Examples: "open the console in Chrome", or "run `tmux attach -t lab` in the terminal you share".
 2. **Plan.** Run `./lab.sh drive plan dN`. Also read the demo's table in `docs/REHEARSAL.md` section 5 (the "Expect" column, and the notes under the table).
 3. **Each step, in order:**
-   1. **Window.** When the window changes from the last step, say one line: **Share the Console**, **Share the Terminal**, or for D7 **Share the Terminal (A and B)**. Wait for the presenter to say ready. Don't ask again while the window stays the same.
+   1. **Window.** When the window changes from the last step, run `./lab.sh drive focus console` or `./lab.sh drive focus term` (D7: `term`). It brings that window to the front of the shared screen. Focus first, before any `drive wait` or long step, so the window switches the moment the presenter says next. The presenter doesn't switch windows. Don't wait for "ready". If focus prints FAIL, fall back: say **Share the Console** or **Share the Terminal** and wait for ready. For a terminal step's Mark done, don't focus the console.
+   2a. **Return.** After the step's commands finish (and after Mark done), always run `./lab.sh drive focus home` to give focus back to the terminal running this Claude session, then report.
    2. **Run it.**
       - Console step: `drive console dN STEP`.
       - Terminal step: `drive term 'COMMAND'` with the exact command from the plan, then `drive console dN STEP`. That is **Mark done**, the console's check that the command worked. Run it without asking: the console is not on screen, the check still runs.

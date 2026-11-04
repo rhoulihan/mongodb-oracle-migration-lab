@@ -69,7 +69,7 @@ Paste these back after the Mac rehearsal:
       lab; it decides how early you must click it in the session)
 - [ ] D3 restore time: the last line of the restore command
       (`INFO  restore took N s on this laptop`)
-- [ ] D6 ratio: the summary of the D6 step "Relative timing: the pipeline vs
+- [ ] D6 ratio: the summary of the D6 step "Relative timing: MongoDB, the pipeline on Oracle, and $sql" (was "the pipeline vs
       $sql, same engine" (pipeline seconds, $sql seconds, ratio)
 - [ ] The headless pass, **run twice in a row** with nothing done between the
       runs (the first command is a full reset). It needs no Node and takes
@@ -155,13 +155,13 @@ Segment 3, slide 22 (clock 0:36, 4 min).
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
-| 1 | terminal | `./lab.sh exec mongo mongodump --archive=/dumps/telco.archive --gzip --db telco` | Mark done: the archive holds all 8 collections |
-| 2 | terminal | `./lab.sh mongorestore-ora --archive=/dumps/telco.archive --gzip --nsFrom 'telco.*' --nsTo 'MIG.*' --numParallelCollections=4` | "restoring to existing collection ... without dropping". The last line is `INFO  restore took N s on this laptop`: **read N out loud, live.** Don't quote a fixed number. Mark done: 8 collections, orders as dumped |
+| 1 | terminal | `./lab.sh exec mongo mongodump --archive=/dumps/telco.archive --gzip --db telco --verbose` | Mark done: the archive holds all 8 collections |
+| 2 | terminal | `./lab.sh mongorestore-ora --archive=/dumps/telco.archive --gzip --nsFrom 'telco.*' --nsTo 'MIG.*' --numParallelCollections=4 --verbose` | "restoring to existing collection ... without dropping". The last line is `INFO  restore took N s on this laptop`: **read N out loud, live.** Don't quote a fixed number. Mark done: 8 collections, orders as dumped |
 | 3 | console | Compare document counts at the dump snapshot | All 8 match the dump. carts and orderEvents run lower "now" (TTL) |
-| 4 | console | The $type differential | skuPattern: regex vs object; `{$type:'regex'}` gives 300 vs rejected; Int64 exact; Decimal128 trailing zeros gone |
+| 4 | console | The $type differential | Left, what differs: skuPattern regex vs object, `{$type:'regex'}` 300 vs rejected; Int64 exact; Decimal128 trailing zeros gone. Right, how to handle it: a fix per row, each rewritten query counting the same on both sides ($exists, $elemMatch, compare as numbers) |
 | 5 | terminal | `./lab.sh app-uri oracle` | "order service now uses oracle". Mark done: health says backend oracle |
 | 6 | console | Smoke-test the unchanged app on Oracle | All app calls pass |
-| 7 | terminal | `./lab.sh mongosh ora --eval 'db.orders.find({region:"R03",status:"provisioned"}).explain()'` | SELECT STATEMENT, then INDEX RANGE SCAN (MULTI VALUE) on an index from the dump |
+| 7 | terminal | `./lab.sh mongosh ora --quiet --eval 'const q = db.orders.find({region:"R03",status:"provisioned"}).explain().queryPlanner; print(q.generatedSql); print(q.winningPlan)'` | SELECT STATEMENT, then INDEX RANGE SCAN (MULTI VALUE) on an index from the dump |
 
 Reset after: none. D4's first step reloads Oracle from a fresh dump.
 
@@ -174,7 +174,7 @@ Segment 4, slide 29 (clock 0:50, 4 min). Say first: the replicator is a
 |---|---|---|---|
 | 1 | console | Initial load: MongoDB copied to Oracle | About a minute: same orders count on both sides |
 | 2 | terminal | `./lab.sh repl fwd` | The log ends in `ready`. Mark done: forward replicator running |
-| 3 | console | Write to MongoDB through the app, watch the lag | The lag climbs, then falls to 0; every new order lands on Oracle |
+| 3 | console | Write to MongoDB through the app, watch the lag | About 20 s of steady writes (25/s). The lag stays live while they flow; read p50 and p95 off the summary (Mac: about 20 and 30 ms). Every new order lands on Oracle |
 | 4 | terminal | `./lab.sh repl stop && ./lab.sh app-uri oracle` | Drains to lag 0, stops; the app flips. Mark done: same counts |
 | 5 | terminal | `./lab.sh repl rev` | `ready`. The first reverse lag can read about 49 s: those are Oracle's TTL deletes from the forward phase |
 | 6 | console | Write to Oracle through the app, watch it land in MongoDB | Every new order shows up on MongoDB |
@@ -193,10 +193,10 @@ Segment 5, slide 34 (clock 1:00, 4 min).
 | # | Lane | Do | Expect |
 |---|---|---|---|
 | 1 | console | Start all three from the same truth | The counter rows match a fresh count of the orders |
-| 2 | console | (a) Embedded Top-N document: every order rewrites it | Redo per order; the Top-N document is about 800 bytes |
-| 3 | console | (b) $lookup pipeline: every read re-aggregates the orders | Plan shown, read time hidden |
-| 4 | console | (c) Converged: one counter row per order, a pre-sorted index | INDEX RANGE SCAN on DEVICE_SALES_TOPN under COUNT STOPKEY |
-| 5 | console | Same document, three ways | All 8 dashboards identical, **then** the read times appear (Linux lab: embedded 0.3 to 0.8 ms, converged 0.6 to 0.9, lookup 234 to 262; counter redo per order embedded 2,600 to 3,500 bytes, converged 870 to 950) |
+| 2 | console | (a) Embedded counters: one document per region, sorted by the client | Redo per order (about 17 KB); the R03 document holds 120 devices, about 9.5 KB, rewritten by each $inc |
+| 3 | console | (b) Counter documents and a $lookup pipeline the app owns | INDEX RANGE SCAN on the deviceSales counters under COUNT STOPKEY; read time hidden. Say: the query lives in the app |
+| 4 | console | (c) Converged: counter rows, read as one document through a JSON view | INDEX RANGE SCAN on DEVICE_SALES_TOPN under COUNT STOPKEY. Say: the query lives in the database |
+| 5 | console | Same document, three ways | All 8 dashboards identical, **then** the read times appear (Mac: embedded about 0.6 ms, counter pipeline 0.6 to 0.7, converged about 0.4; redo per order, the order included, about 17 / 5 / 3.5 KB) |
 | 6 | terminal | `./lab.sh mongosh ora --eval 'db.region_top_devices_v.findOne({_id:"R03"})'` | Ten devices, sorted. Mark done |
 
 If step 1 fails: `./lab.sh reset d5`. Reset after: none.
@@ -214,12 +214,12 @@ until it finishes. Measure the Mac's setup time at rehearsal (section 3).
 | # | Lane | Do | Expect |
 |---|---|---|---|
 | 1 | console | Same data on both sides, statistics gathered | **Click it right after D5's last step**, then go back to the deck for slides 35 to 37 while it runs (about 2.5 min: statistics, then one untimed warm-up run of the pipeline and of $sql). Expect: same window counts, stats gathered, both sides warmed once. Say "both sides warmed once during setup" |
-| 2 | console | (1) The pipeline on MongoDB: the stage tree (plan shape only, no timing) | COLLSCAN, three $lookups, $unwinds, $groups, $sort |
-| 3 | console | (2) The same pipeline on Oracle through the MongoDB API | **One timed run, warm, about 35 s** (34 to 35 s measured on the Mac). The timer runs. Narrate the plan while it runs: it is one run, not three, to keep the demo inside its 4 minutes. No time is shown yet |
+| 2 | console | (1) The pipeline on MongoDB: the stage tree, timed | COLLSCAN, three $lookups, $unwinds, $groups, $sort; median of 3 runs, hidden until step 5 |
+| 3 | console | (2) The same pipeline on Oracle through the MongoDB API | **One timed run, warm, about 35 s** (34 to 35 s measured on the Mac). The timer runs. Narrate the plan while it runs: it is one run, not three, to keep the demo inside its 4 minutes. Then the summary: the same 160 rows as MongoDB, and both times (Mac: about 34 s against about 4.5 s, about 7.6x slower). Say why, and lead into $sql: the API translates stage by stage, the optimizer never sees the whole question |
 | 4 | terminal | `./lab.sh mongosh ora demos/d6-sql/sql-stage.js` | The first 10 of 160 rows. Mark done: 160 rows, ranks 1 to 5 for 32 pairs |
 | 5 | console | Equal results, proven before any timing | 160 rows identical on all three; **now** the times appear |
 | 6 | console | Both Oracle plans, side by side | Nested loops vs hash joins + WINDOW SORT PUSHED RANK |
-| 7 | console | Relative timing: the pipeline vs $sql, same engine | The ratio, read live (Mac, warm against warm: about 85 to 90x; 87 to 89x measured). Laptop, relative only. Then the field number: 3 to 15x |
+| 7 | console | Relative timing: MongoDB, the pipeline on Oracle, and $sql | All three times (Mac: MongoDB about 4.4 s, pipeline on Oracle about 34 s, $sql about 0.4 s). The ratios, read live (Mac, warm against warm: $sql about 85 to 90x the pipeline on Oracle, about 11x MongoDB). Laptop, relative only. Then the field number: 3 to 15x |
 
 If setup fails live: click **Skip to result** on each step and say it's
 the rehearsal recording. Before the segment only: `./lab.sh reset d6`. It

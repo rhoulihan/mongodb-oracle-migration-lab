@@ -1,4 +1,4 @@
-// D6 step 3, run with: ./lab.sh mongosh ora demos/d6-sql/sql-stage.js
+// D6 step 4, run with: ./lab.sh mongosh ora demos/d6-sql/sql-stage.js
 // The question as SQL, sent from mongosh through the Oracle API for MongoDB
 // in one $sql stage. The SQL text is top-spenders.sql, next to this file
 // (the demo and the tests read the same file). The window is the last 90
@@ -12,9 +12,19 @@ const binds = {
   toTs: new Date('2026-10-01T00:00:00.000Z'),
 };
 
-const rows = db.aggregate([{ $sql: { statement, binds } }]).toArray();
+// Timed in this session: one run, then the median of 3 more (warm, like the
+// console's own median of 7).
+const run = () => db.aggregate([{ $sql: { statement, binds } }]).toArray();
+let t0 = Date.now();
+let rows = run();
+const firstMs = Date.now() - t0;
+const ms = [];
+for (let i = 0; i < 3; i++) { t0 = Date.now(); rows = run(); ms.push(Date.now() - t0); }
+const median = ms.slice().sort((a, b) => a - b)[1];
 
-print(`$sql returned ${rows.length} rows (top 5 per region and tier). First 10:`);
+print(`$sql returned ${rows.length} rows (top 5 per region and tier) in ${(median / 1000).toFixed(2)} s`);
+print(`  timed here: median of 3 runs (${ms.join(', ')} ms) after a first run of ${firstMs} ms`);
+print('First 10:');
 print('region  tier      rank  subscriber  name              plan              spend');
 for (const r of rows.slice(0, 10)) {
   print([

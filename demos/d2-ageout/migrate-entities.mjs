@@ -35,12 +35,21 @@ const tail = (s, n = 3) => s.trim().split('\n').slice(-n).join(' | ');
  * Dump the four entity collections and restore them into the pre-created,
  * empty MIG collections. Throws on any failure, a zero count, or a restore
  * that had to create a collection.
+ * @param {{verbose?: boolean, onStderr?: (chunk: Buffer) => void, onCommand?: (argv: string[]) => void, pauseMs?: number}} [opts]
+ *   verbose adds the tools' --verbose; onStderr streams their log and onCommand
+ *   sees each command before it runs (the CLI prints both); pauseMs waits between
+ *   the dump and the restore
  * @returns {Promise<{coll:string, count:number}[]>} restored documents per entity, in ENTITIES order
  */
-export async function migrateEntities() {
-  const d = await runTool(dumpArgs());
+export async function migrateEntities({ verbose = false, onStderr, onCommand, pauseMs = 0 } = {}) {
+  const v = verbose ? ['--verbose'] : [];
+  const dump = [...dumpArgs(), ...v], restore = [...restoreArgs(), ...v];
+  onCommand?.(dump);
+  const d = await runTool(dump, { onStderr });
   if (d.code !== 0) throw new Error(`mongodump failed: ${tail(d.stderr)}`);
-  const r = await runTool(restoreArgs());
+  if (pauseMs) await new Promise((res) => setTimeout(res, pauseMs));
+  onCommand?.(restore);
+  const r = await runTool(restore, { onStderr });
   if (r.code !== 0) throw new Error(`mongorestore failed: ${tail(r.stderr)}`);
   if (/creating collection/i.test(r.stderr)) throw new Error('mongorestore created a collection: the target was not pre-created');
   const done = new Map([...r.stderr.matchAll(/finished restoring `MIG\.(\w+)` \((\d+) documents?, (\d+) failures?\)/g)]

@@ -145,11 +145,25 @@ ol.steps button.busy { border-left-color: var(--blue); }
   background: var(--code-bg); border-radius: 8px; padding: 8px 10px;
 }
 .plans .pane pre { max-height: 460px; }
+/* the Plan / Query and SQL swap above a plan view */
+.pane-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pane-head h3 { margin-right: auto; }
+.seg { display: inline-flex; border: 1px solid var(--hairline); border-radius: 6px; overflow: hidden; flex: none; }
+.seg button { font: inherit; font-size: 14px; padding: 4px 10px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--hairline); }
+.seg button.on { background: var(--chip); color: var(--ink); font-weight: 600; }
+/* Query and SQL: two frames side by side in one pane, each scrolling on its own */
+.qsql { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 0; }
+.qsql-frame { min-width: 0; }
+.qsql-frame h4 { margin: 0 0 4px; color: var(--muted); }
+.qsql-frame pre { margin: 0; font: 15px/1.4 var(--mono); white-space: pre; overflow: auto; max-height: 460px; }
 .table-wrap { overflow: auto; max-height: 420px; }
 table.grid { border-collapse: collapse; font: 16px/1.35 var(--mono); width: 100%; }
 table.grid th, table.grid td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--hairline); vertical-align: top; white-space: nowrap; }
-table.grid th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
+table.grid th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); text-align: center; }
 table.grid td.num { text-align: right; }
+/* long text cells (D3's fixes) wrap instead of scrolling the table sideways */
+table.grid td.wrap { white-space: normal; min-width: 22ch; overflow-wrap: anywhere; }
 .more { color: var(--muted); font-size: 16px; margin: 4px 0 0; }
 
 details.text { margin-bottom: 12px; }
@@ -158,4 +172,4 @@ details.text summary { cursor: pointer; font: 600 18px var(--sans); color: var(-
 .toast { position: fixed; right: 20px; bottom: 20px; background: var(--slate); color: #fff; padding: 8px 16px; border-radius: 10px; font-size: 18px; }
 .doc h4 { font: 700 17px var(--mono); margin: 10px 0 4px; color: var(--muted); }
 table.grid.kv { width: auto; margin-bottom: 4px; }
-table.grid.kv th { position: static; padding-right: 16px; }
+table.grid.kv th { position: static; padding-right: 16px; text-align: left; }

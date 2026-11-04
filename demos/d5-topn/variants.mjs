@@ -1,11 +1,14 @@
 // D5: three ways to serve "top 10 devices selling right now, per region".
 //
-//   embedded   the Top-N document (the Computed pattern), kept exact on every
-//              order by the order service's own code (app/store.mjs createTopN):
-//              $inc the matched array element, then $push with $sort and
-//              $slice 10. Writes go through the Oracle API for MongoDB.
-//   lookup     the order insert only; every dashboard read re-aggregates the
-//              region's orders ($match, $unwind, $group, $sort, $limit, $lookup).
+//   embedded   one counter document per region (regionDeviceCounts) holding
+//              every device it sold: each order is one $inc on its device's
+//              entry ($push for a first sale), no re-sort. The read fetches the
+//              whole document and the client sorts it and keeps the top 10.
+//              Writes go through the Oracle API for MongoDB.
+//   lookup     the order insert plus $inc on one counter document per device
+//              (deviceSales, {_id: "R03:SKU-...", region, sku, units}); the
+//              dashboard read is the app's own pipeline over those counters
+//              ($match, $sort, $limit, $lookup the catalog for the name).
 //   converged  the order insert plus a MERGE into one narrow device_sales row,
 //              in one SQL transaction; the dashboard document is read from
 //              region_top_devices_v over the pre-sorted device_sales_topn index.
@@ -17,7 +20,6 @@
 // Ties: units descending, then sku ascending (gen/model.mjs topDevices()).
 import { readFileSync } from 'node:fs';
 import { BSON, Decimal128, Int32, Long, ObjectId } from 'mongodb';
-import { createTopN } from '../../app/store.mjs';
 import { mulberry32 } from '../../gen/model.mjs';
 
 const { EJSON } = BSON;
@@ -91,30 +93,68 @@ export async function seededOrders(db, { n = 200, seed }) {
 
 // ---------------------------------------------------------------- (a) embedded
 
+/** (a)'s documents: one per region, every device it sold, unsorted. */
+export const EMBEDDED = 'regionDeviceCounts';
+const bySales = (a, b) => Number(b.units) - Number(a.units) || (a.sku < b.sku ? -1 : a.sku > b.sku ? 1 : 0);
+
 export const embedded = {
   id: 'embedded',
   surface: 'mongo',
-  /** Order insert, then the order service's own Top-N maintenance. */
+  /** Order insert, then one $inc on the device's entry (a $push, with its name, for a first sale). */
   async placeOrder(db, order) {
-    const devices = order.lines.filter((l) => l.kind === 'device');
-    // The device name, read from the catalog as the order service reads it.
-    const names = new Map((await db.collection('catalog')
-      .find({ _id: { $in: devices.map((l) => l.sku) } }, { projection: { name: 1 } }).toArray()).map((c) => [c._id, c.name]));
     await db.collection('orders').insertOne(order);
-    const topN = createTopN(db);
-    for (const l of devices) await topN.bump(order.region, l.sku, names.get(l.sku), Number(l.qty));
+    const c = db.collection(EMBEDDED);
+    for (const l of order.lines) {
+      if (l.kind !== 'device') continue;
+      const qty = new Int32(Number(l.qty));
+      const r = await c.updateOne({ _id: order.region, 'devices.sku': l.sku }, { $inc: { 'devices.$.units': qty } });
+      if (r.matchedCount) continue;
+      const dev = await db.collection('catalog').findOne({ _id: l.sku }, { projection: { name: 1 } });
+      await c.updateOne({ _id: order.region, 'devices.sku': { $ne: l.sku } },
+        { $push: { devices: { sku: l.sku, name: dev?.name ?? l.sku, units: qty } } });
+    }
   },
+  /** The whole document, sorted and cut to 10 here, in the client. */
   async readDashboard(db, region) {
-    const d = await db.collection('regionTopDevices').findOne({ _id: region });
-    if (!d) throw new Error(`no regionTopDevices document for ${region}`);
-    return dashboard(d._id, d.top);
+    const d = await db.collection(EMBEDDED).findOne({ _id: region });
+    if (!d) throw new Error(`no ${EMBEDDED} document for ${region}`);
+    return dashboard(d._id, [...d.devices].sort(bySales).slice(0, TOP_N));
   },
-  readTarget: (region) => ['regionTopDevices', { _id: region }],
+  readTarget: (region) => [EMBEDDED, { _id: region }],
 };
+
+/** (a)'s documents rebuilt to match device_sales (the converged counters, built from the orders). */
+export async function buildEmbedded(db, conn) {
+  const rows = (await conn.execute(
+    'select ds.region_id, ds.sku, d.name, ds.units from device_sales ds join device d on d.sku = ds.sku order by ds.region_id, ds.sku')).rows;
+  const per = new Map();
+  for (const [region, sku, name, units] of rows) {
+    if (!per.has(region)) per.set(region, []);
+    per.get(region).push({ sku, name, units: new Int32(Number(units)) });
+  }
+  const c = db.collection(EMBEDDED);
+  if (!(await db.listCollections({ name: EMBEDDED }).toArray()).length) await db.createCollection(EMBEDDED);
+  await c.deleteMany({});
+  await c.insertMany([...per].map(([region, devices]) => ({ _id: region, devices })));
+  return per.size;
+}
 
 // ---------------------------------------------------------------- (b) lookup
 
+/** (b)'s counters: one document per region and device, kept with $inc. */
+export const COUNTERS = 'deviceSales';
+export const counterId = (region, sku) => `${region}:${sku}`;
+
 export const lookupPipeline = (region) => [
+  { $match: { region } },
+  { $sort: { units: -1, sku: 1 } },
+  { $limit: TOP_N },
+  { $lookup: { from: 'catalog', localField: 'sku', foreignField: '_id', as: 'device' } },
+  { $project: { _id: 0, sku: 1, name: { $arrayElemAt: ['$device.name', 0] }, units: 1 } },
+];
+
+/** The same Top 10 counted from the orders themselves: setup's independent check of the starting truth. */
+export const recountPipeline = (region) => [
   { $match: { region } },
   { $unwind: '$lines' },
   { $match: { 'lines.kind': 'device' } },
@@ -128,17 +168,38 @@ export const lookupPipeline = (region) => [
 export const lookup = {
   id: 'lookup',
   surface: 'mongo',
-  /** The order insert only: nothing is maintained on write. */
+  /** The order insert, then $inc on the region's counter document for each device line. */
   async placeOrder(db, order) {
     await db.collection('orders').insertOne(order);
+    for (const l of order.lines) {
+      if (l.kind !== 'device') continue;
+      await db.collection(COUNTERS).updateOne({ _id: counterId(order.region, l.sku) },
+        { $inc: { units: Number(l.qty) }, $setOnInsert: { region: order.region, sku: l.sku } }, { upsert: true });
+    }
   },
   async readDashboard(db, region) {
-    const rows = await db.collection('orders').aggregate(lookupPipeline(region)).toArray();
+    const rows = await db.collection(COUNTERS).aggregate(lookupPipeline(region)).toArray();
     // $sort carries the tie rule; the $lookup stage keeps the order.
     return dashboard(region, rows);
   },
-  readTarget: (region) => ['orders', lookupPipeline(region)],
+  readTarget: (region) => [COUNTERS, lookupPipeline(region)],
 };
+
+/** Setup's check: the region's Top 10 recounted from its orders. */
+export async function recountDashboard(db, region) {
+  return dashboard(region, await db.collection('orders').aggregate(recountPipeline(region)).toArray());
+}
+
+/** (b)'s counters rebuilt to match device_sales (the converged counters, built from the orders). */
+export async function buildCounters(db, conn) {
+  const rows = (await conn.execute('select region_id, sku, units from device_sales')).rows;
+  const c = db.collection(COUNTERS);
+  if (!(await db.listCollections({ name: COUNTERS }).toArray()).length) await db.createCollection(COUNTERS);
+  await c.deleteMany({});
+  await c.insertMany(rows.map(([region, sku, units]) => ({ _id: counterId(region, sku), region, sku, units: new Int32(Number(units)) })));
+  await c.createIndex({ region: 1, units: -1, sku: 1 });
+  return rows.length;
+}
 
 // ---------------------------------------------------------------- (c) converged
 
@@ -179,7 +240,9 @@ export const converged = {
     const d = JSON.parse(text);
     return dashboard(d._id, d.top);
   },
-  readTarget: (region) => [DASHBOARD_SQL, { region }],
+  // The plan step explains the read the app makes: findOne on the JSON view
+  // through the MongoDB API, and the SQL the API generates for it.
+  readTarget: (region) => ['region_top_devices_v', { _id: region }],
 };
 
 export const VARIANTS = { embedded, lookup, converged };

@@ -12,11 +12,11 @@
 // MIG collections pre-created and empty, no dump in /dumps.
 import { BSON } from 'mongodb';
 import { config } from '../../lib/config.mjs';
-import { mongoExplain } from '../../lib/measure.mjs';
+import { mongoExplain, mongoExplainDetail } from '../../lib/measure.mjs';
 import { dumpExists, readDump, removeDump, runTool } from '../../lib/tools.mjs';
 import { COLLECTIONS, prepareTarget } from '../../oracle/prep.mjs';
 import { readArchive } from './archive.mjs';
-import { formatTypeDiff, typeDiff } from './typediff.mjs';
+import { formatTypeDiff, typeDiff, typeDiffPanes } from './typediff.mjs';
 
 const { EJSON } = BSON;
 const DUMP = '/dumps/telco.archive';
@@ -27,10 +27,13 @@ const EXPLAIN_FILTER = { region: 'R03', status: 'provisioned' };
 // (MIG, password from MIG_PASSWORD, no database in the path: with `/MIG`
 // mongorestore restores 0 documents and still exits 0, Ruling Q), so the
 // command never shows the password.
-const DUMP_CMD = `./lab.sh exec mongo mongodump --archive=${DUMP} --gzip --db ${SRC_DB}`;
+const DUMP_CMD = `./lab.sh exec mongo mongodump --archive=${DUMP} --gzip --db ${SRC_DB} --verbose`;
 const RESTORE_CMD = `./lab.sh mongorestore-ora --archive=${DUMP} --gzip --nsFrom '${SRC_DB}.*' --nsTo 'MIG.*' ` +
-  '--numParallelCollections=4';
-const EXPLAIN_CMD = `./lab.sh mongosh ora --eval 'db.orders.find(${JSON.stringify(EXPLAIN_FILTER).replace(/"(\w+)":/g, '$1:')}).explain()'`;
+  '--numParallelCollections=4 --verbose';
+// It prints the SQL the find() became, then the plan as Oracle formats it (a
+// bare explain() would show the plan as one long quoted string).
+const EXPLAIN_CMD = `./lab.sh mongosh ora --quiet --eval 'const q = db.orders.find(${JSON.stringify(EXPLAIN_FILTER).replace(/"(\w+)":/g, '$1:')})` +
+  ".explain().queryPlanner; print(q.generatedSql); print(q.winningPlan)'";
 
 // What the last in-process restore reported, per collection (the restore
 // half of the dump-vs-restore snapshot; null when the presenter restored in a
@@ -231,10 +234,13 @@ export default {
         const rows = await typeDiff(await ctx.mongoSrc(), await ctx.oraMongo(), COLLECTIONS);
         const types = rows.filter((r) => r.kind === 'type');
         const values = rows.filter((r) => r.kind === 'value' && !r.ok);
+        const proven = rows.filter((r) => r.fix?.filter && r.fix.srcCount === r.fix.dstCount).length;
         return {
           ok: true,
-          summary: `${types.length} fields with a type or $type difference, ${values.length} value checks that changed`,
-          panes: { left: rows },
+          summary: `${types.length} fields with a type or $type difference, ${values.length} value checks that changed; ` +
+            `each has a fix, ${proven} rewritten queries count the same on both sides`,
+          panes: typeDiffPanes(rows),
+          labels: { left: 'What differs', right: 'How to handle it' },
           detail: formatTypeDiff(rows),
         };
       },
@@ -309,12 +315,14 @@ export default {
       lane: 'terminal',
       command: EXPLAIN_CMD,
       async run(ctx) {
-        const left = await mongoExplain(await ctx.mongoSrc(), 'orders', EXPLAIN_FILTER);
-        const right = await mongoExplain(await ctx.oraMongo(), 'orders', EXPLAIN_FILTER);
+        const l = await mongoExplainDetail(await ctx.mongoSrc(), 'orders', EXPLAIN_FILTER);
+        const r = await mongoExplainDetail(await ctx.oraMongo(), 'orders', EXPLAIN_FILTER);
+        const left = l.plan, right = r.plan;
         return {
           ok: /SELECT STATEMENT/.test(right),
           summary: `Oracle plans the find with ${/INDEX/.test(right) ? 'an index from the dump' : 'no index'}`,
           plan: { left, right },
+          query: { left: l, right: r },
           labels: { left: 'MongoDB', right: 'Oracle' },
           detail: `MongoDB:\n${left}\n\nOracle:\n${right}`,
         };

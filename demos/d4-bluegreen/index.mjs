@@ -33,8 +33,10 @@ export { placeOrders, switchApp };
 
 const RESET = 'run ./lab.sh reset d4';
 const STAND_IN = 'Stand-in for Oracle GoldenGate';
-const BLUE = { orders: 400, updates: 100, concurrency: 4, seedOffset: 101 };
-const GREEN = { orders: 150, updates: 40, concurrency: 4, seedOffset: 202 };
+// Steady load, not a burst: 500 writes at 25/s (20 s) forward, 190 at 19/s (10 s)
+// back, so the lag is measured while writes keep arriving.
+const BLUE = { orders: 400, updates: 100, concurrency: 4, seedOffset: 101, ratePerSec: 25 };
+const GREEN = { orders: 150, updates: 40, concurrency: 4, seedOffset: 202, ratePerSec: 19 };
 const fail = (summary) => ({ ok: false, summary });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -109,7 +111,7 @@ function lagSampler(ctx, dir, label) {
   const timer = setInterval(() => {
     const s = readStatus(dir);
     if (!s) return;
-    samples.push({ t: Date.now() - t0, lagMs: s.lagMs, applied: s.applied });
+    samples.push({ t: Date.now() - t0, at: Date.now(), lagMs: s.lagMs, applied: s.applied });
     if (Date.now() - lastLog >= 1000) {
       ctx.log?.(`      ${LABEL} ${label}: ${s.applied} changes applied, lag ${s.lagMs} ms`);
       lastLog = Date.now();
@@ -117,6 +119,18 @@ function lagSampler(ctx, dir, label) {
   }, 250);
   return { samples, stop: () => clearInterval(timer), peak: () => Math.max(0, ...samples.map((x) => x.lagMs)) };
 }
+
+// Lag while the writes were arriving: the samples inside the write window
+// that measured a change in flight (0 means "nothing waiting" between batches).
+function loadLag(samples, w, plan) {
+  const from = w.lastWriteAt - w.ms;
+  const inWindow = samples.filter((x) => x.at >= from && x.at <= w.lastWriteAt);
+  const live = inWindow.filter((x) => x.lagMs > 0).map((x) => x.lagMs).sort((a, b) => a - b);
+  const pct = (p) => (live.length ? live[Math.min(live.length - 1, Math.floor(p * live.length))] : 0);
+  return { rate: plan.ratePerSec, seconds: Math.round(w.ms / 1000), p50: pct(0.5), p95: pct(0.95), max: live.at(-1) ?? 0,
+    measured: live.length, samples: inWindow.length };
+}
+const loadLine = (l) => `${l.rate} writes/s for ${l.seconds} s, lag under load p50 ${l.p50} ms, p95 ${l.p95} ms, max ${l.max} ms`;
 
 const lagLine = (samples) => samples.filter((_, i) => i % 4 === 0)
   .map((x) => `${(x.t / 1000).toFixed(1)}s ${x.lagMs}ms`).join(', ');
@@ -138,7 +152,7 @@ async function writeThrough(ctx, { dir, want, plan, label }) {
   }
   if (w.failed.length) return fail(`${w.failed.length} app calls failed (${w.failed[0]}): ${RESET}`);
   if (!s) return fail(`the replicator did not catch up within 120 s: ${RESET}`);
-  return { w, s, peak: lag.peak(), samples: lag.samples };
+  return { w, s, peak: lag.peak(), samples: lag.samples, load: loadLag(lag.samples, w, plan) };
 }
 
 /** @type {import('../contract.mjs').Demo} */
@@ -206,11 +220,12 @@ export default {
         const landed = await ora.collection('orders').countDocuments({ _id: { $in: r.w.ids } });
         return {
           ok: landed === r.w.placed,
-          summary: `${r.w.placed} new and ${r.w.updated} updated orders on MongoDB; ${landed} of the new orders are on Oracle; ` +
-            `peak lag ${r.peak} ms, now caught up (lag 0 ms)`,
-          metrics: { placed: r.w.placed, updated: r.w.updated, landed, peakLagMs: r.peak, applied: r.s.applied, writeMs: r.w.ms },
-          panes: { left: r.samples },
-          detail: `lag over time: ${lagLine(r.samples)}`,
+          summary: `${r.w.placed} new and ${r.w.updated} updated orders on MongoDB at ${loadLine(r.load)}; ` +
+            `${landed} of the new orders are on Oracle, now caught up`,
+          metrics: { placed: r.w.placed, updated: r.w.updated, landed, lagP50Ms: r.load.p50, lagP95Ms: r.load.p95, lagMaxMs: r.load.max, applied: r.s.applied, writeMs: r.w.ms },
+          panes: { left: r.samples.map(({ at, ...x }) => x) },
+          detail: `lag under load: ${r.load.measured} of ${r.load.samples} samples (every 250 ms) caught a change in flight\n` +
+            `lag over time: ${lagLine(r.samples)}`,
         };
       },
     },
@@ -266,11 +281,12 @@ export default {
         const landed = await src.collection('orders').countDocuments({ _id: { $in: r.w.ids } });
         return {
           ok: landed === r.w.placed,
-          summary: `${r.w.placed} new and ${r.w.updated} updated orders on Oracle; ${landed} of the new orders are back on MongoDB; ` +
-            `peak lag ${r.peak} ms, now caught up (lag 0 ms)`,
-          metrics: { placed: r.w.placed, updated: r.w.updated, landed, peakLagMs: r.peak, applied: r.s.applied, writeMs: r.w.ms },
-          panes: { left: r.samples },
-          detail: `lag over time: ${lagLine(r.samples)}`,
+          summary: `${r.w.placed} new and ${r.w.updated} updated orders on Oracle at ${loadLine(r.load)}; ` +
+            `${landed} of the new orders are back on MongoDB, now caught up`,
+          metrics: { placed: r.w.placed, updated: r.w.updated, landed, lagP50Ms: r.load.p50, lagP95Ms: r.load.p95, lagMaxMs: r.load.max, applied: r.s.applied, writeMs: r.w.ms },
+          panes: { left: r.samples.map(({ at, ...x }) => x) },
+          detail: `lag under load: ${r.load.measured} of ${r.load.samples} samples (every 250 ms) caught a change in flight\n` +
+            `lag over time: ${lagLine(r.samples)}`,
         };
       },
     },

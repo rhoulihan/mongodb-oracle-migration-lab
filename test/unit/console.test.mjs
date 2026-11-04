@@ -217,8 +217,8 @@ describe('Ruling T: timings stay hidden until the equal step passes in this proc
     }
   });
 
-  test('the real D6 declares the gate on its pipeline and $sql steps', () => {
-    expect(d6.revealAfter).toEqual({ step: 'equal', steps: ['pipeline-oracle', 'sql-stage'], metrics: ['medianMs', 'runsMs'] });
+  test('the real D6 gates $sql on equal; (1) and (2) show after (2) matches (1)', () => {
+    expect(d6.revealAfter).toEqual({ step: 'equal', steps: ['sql-stage'], metrics: ['medianMs', 'runsMs'] });
     expect(d6.steps.findIndex((s) => s.id === 'equal')).toBeGreaterThan(d6.steps.findIndex((s) => s.id === 'sql-stage'));
   });
 
@@ -402,5 +402,18 @@ describe('remote control (./lab.sh drive)', () => {
     await rget('/api/remote/next');
     const t = await (await rget('/api/remote/status')).text();
     expect(t).toMatch(/^OK    services ready\nOK    console page open \(polled \d+\.\d s ago\)\nINFO  idle\n$/);
+  });
+
+  test('a long poll (?wait=) takes a command queued while it waits, and counts as an open page', async () => {
+    const waiting = rget('/api/remote/next?wait=5000');
+    await new Promise((r) => setTimeout(r, 150));
+    expect(await (await rget('/api/remote/status')).text()).toMatch(/console page open \(waiting for a command\)/);
+    const queued = fetch(`${rbase}/api/remote/d6/timing/show`, { method: 'POST' });
+    const r = await waiting;
+    expect(r.status).toBe(200);
+    const cmd = await r.json();
+    expect(cmd).toMatchObject({ demo: 'd6', step: 'timing', action: 'show' });
+    expect((await queued).status).toBe(200);
+    await done(cmd.seq, { ok: true, summary: 'shown' });
   });
 });

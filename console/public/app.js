@@ -103,7 +103,7 @@ function table(rows) {
   const max = 60;
   for (const r of rows.slice(0, max)) {
     const tr = h('tr');
-    for (const c of cols) tr.append(h('td', typeof r[c] === 'number' ? 'num' : null, fmt(r[c])));
+    for (const c of cols) tr.append(h('td', typeof r[c] === 'number' ? 'num' : String(r[c] ?? '').length > 32 ? 'wrap' : null, fmt(r[c])));
     t.append(tr);
   }
   wrap.append(t);
@@ -142,7 +142,7 @@ function paneBody(v, depth = 0) {
   return box;
 }
 
-function pair(kind, left, right, labels, defaults) {
+function pair(kind, left, right, labels, defaults, queries) {
   const hasL = left !== undefined, hasR = right !== undefined;
   if (!hasL && !hasR) return null;
   const box = h('div', `pair ${kind}${hasL && hasR ? '' : ' one'}`);
@@ -150,8 +150,39 @@ function pair(kind, left, right, labels, defaults) {
     if (!has) continue;
     const p = h('section', `pane ${side}`);
     const title = labels?.[side] ?? (hasL && hasR ? defaults[side] : defaults.one);
-    p.append(h('h3', null, title));
-    p.append(kind === 'plans' ? h('pre', null, v) : paneBody(v));
+    const q = kind === 'plans' ? queries?.[side] : undefined;
+    if (!q) {
+      p.append(h('h3', null, title), kind === 'plans' ? h('pre', null, v) : paneBody(v));
+      box.append(p);
+      continue;
+    }
+    // A plan tile with its own switch: the plan, or the query as typed and
+    // the SQL it runs, side by side, each frame scrolling on its own.
+    const head = h('div', 'pane-head');
+    const plan = h('pre', null, v);
+    const grid = h('div', 'qsql');
+    const second = q.sql ? ['The SQL it runs', q.sql]
+      : q.explain ? ['MongoDB explain', q.explain] : ['The SQL it runs', 'none: MongoDB runs it natively'];
+    for (const [t, text] of [['Query', q.query], second]) {
+      const f = h('div', 'qsql-frame');
+      f.append(h('h4', null, t), h('pre', null, text));
+      grid.append(f);
+    }
+    grid.hidden = true;
+    const seg = h('div', 'seg');
+    const views = [['Plan', plan], [q.sql || !q.explain ? 'Query and SQL' : 'Query and explain', grid]];
+    const btns = views.map(([name, el]) => {
+      const b = h('button', name === 'Plan' ? 'on' : null, name);
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        for (const [, e] of views) e.hidden = e !== el;
+        for (const x of btns) x.classList.toggle('on', x === b);
+      });
+      return b;
+    });
+    seg.append(...btns);
+    head.append(h('h3', null, title), seg);
+    p.append(head, plan, grid);
     box.append(p);
   }
   return box;
@@ -286,7 +317,7 @@ function renderResult({ at, result: r }, recorded) {
   const panes = pair('panes', r.panes?.left, r.panes?.right, r.labels, { left: 'Left', right: 'Right', one: 'Result' });
   if (panes) out.push(panes);
   const plans = pair('plans', r.plan?.left, r.plan?.right, r.labels && r.plan ? { left: r.labels.left && `Plan: ${r.labels.left}`, right: r.labels.right && `Plan: ${r.labels.right}` } : null,
-    { left: 'Plan, left', right: 'Plan, right', one: 'Plan' });
+    { left: 'Plan, left', right: 'Plan, right', one: 'Plan' }, r.query);
   if (plans) out.push(plans);
   if (r.detail) {
     const d = h('details', 'text');
@@ -384,7 +415,6 @@ async function runStep(s) {
 // ---- remote control (./lab.sh drive) ------------------------------------
 // The driver queues a command on the server; this page takes it and presses
 // its own buttons, so the shared screen shows exactly what a click shows.
-let remoteBusy = false;
 async function doRemote({ demo, step, action }) {
   if (!state.demos.some((d) => d.id === demo)) return { ok: false, summary: `no demo ${demo}` };
   await select(demo, step);
@@ -400,16 +430,17 @@ async function doRemote({ demo, step, action }) {
   }
   return { ok: true, summary: `showing ${demo}: ${s.title}` };
 }
-async function pollRemote() {
-  if (remoteBusy || !state.demos.length) return;
-  let r;
-  try { r = await api('GET', '/api/remote/next'); } catch { return; }
-  if (r.status !== 200 || !r.body) return;
-  remoteBusy = true;
-  let out;
-  try { out = await doRemote(r.body); } catch (err) { out = { ok: false, summary: `the console page failed: ${err.message}` }; }
-  try { await api('POST', `/api/remote/done/${r.body.seq}`, out); } catch { /* the driver times out */ }
-  remoteBusy = false;
+// A long poll in a loop, not a timer: each request waits on the server for
+// a command, so a hidden or throttled tab still takes commands at once.
+async function remoteLoop() {
+  for (;;) {
+    let r;
+    try { r = await api('GET', '/api/remote/next?wait=20000'); } catch { await new Promise((ok) => setTimeout(ok, 1000)); continue; }
+    if (r.status !== 200 || !r.body) continue;
+    let out;
+    try { out = await doRemote(r.body); } catch (err) { out = { ok: false, summary: `the console page failed: ${err.message}` }; }
+    try { await api('POST', `/api/remote/done/${r.body.seq}`, out); } catch { /* the driver times out */ }
+  }
 }
 
 $('reset').addEventListener('click', async () => {
@@ -437,5 +468,5 @@ addEventListener('hashchange', () => {
   if (!state.demos.length) { $('demo-title').textContent = 'No demos found'; return; }
   const [id, step] = location.hash.slice(1).split('/');
   await select(id || state.demos[0].id, step);
-  setInterval(pollRemote, 500);
+  remoteLoop();
 })();

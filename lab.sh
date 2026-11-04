@@ -15,6 +15,7 @@
 #   ./lab.sh bake-recordings       save the console's rehearsal results in fallback/recorded/
 #   ./lab.sh drive stage|status|plan dN   Claude drives the demos (tmux session `lab` + the console)
 #   ./lab.sh drive console dN STEP [--skip|--show] [--nowait] | wait SEQ | term [A|B] 'CMD'
+#   ./lab.sh drive focus console|term|home  bring the console tab, the tmux terminal, or this session's terminal to the front (macOS)
 # demo, reset dN, generate and agent run Node in a one-off runner container (the app
 # image), so the laptop needs no Node. LAB_HOST_NODE=1 uses the host's node.
 set -uo pipefail
@@ -23,6 +24,8 @@ cd "$(dirname "$0")"
 # Engine: PODMAN=1 forces podman; otherwise podman when on PATH, else docker.
 if [ "${PODMAN:-}" = "1" ] || command -v podman >/dev/null 2>&1; then
   ENGINE=podman
+  # No ">>>> Executing external compose provider" banner on every command.
+  export PODMAN_COMPOSE_WARNING_LOGS=false
 else
   ENGINE=docker
 fi
@@ -74,16 +77,28 @@ switch_failed() {
 #   anything else  (an HTTP error such as 503 "cannot reach oracle", or a
 #                  timeout) print the error, leave the file and the service
 #                  as they were, exit 1
+# What the switch changed, for the audience: the connection string (password
+# as ****) and what the running service reports now. Silent when /health doesn't
+# answer.
+describe_backend() {
+  echo "  connection string: $(app_uri "$1" | sed -E 's#(mongodb://[^:/@]+:)[^@]*@#\1****@#; s#%24#$#g')"
+  echo "  only the connection string changed: same code, no restart, no redeploy"
+  BODY="$(curl -sf --max-time 5 "$APP_URL/health" 2>/dev/null)" || return 0
+  local v o; v="$(json_field version)"; o="$(json_field ordsVersion)"
+  echo "  the service now reports: backend $(json_field backend), server version $v${o:+, served by ORDS $o}"
+}
+
 cmd_app_uri() {
   app_uri "$1" >/dev/null || usage
   post_backend "$1"
   if [ "$RC" -eq 0 ] && [ "$CODE" = "200" ]; then
     write_app_env "$1"
     echo "order service now uses $1 (127.0.0.1:3300)"
+    describe_backend "$1"
   elif [ "$RC" -eq 7 ]; then
     write_app_env "$1"
     echo "order service is not running; starting it on $1" >&2
-    compose up -d --no-deps app && echo "order service now uses $1 (127.0.0.1:3300)"
+    compose up -d --no-deps app && echo "order service now uses $1 (127.0.0.1:3300)" && describe_backend "$1"
   else
     switch_failed "$1"
   fi
@@ -131,7 +146,7 @@ sync_app_env() {
   esac
 }
 
-MIG_PASSWORD="${MIG_PASSWORD:-MigUser2026}"
+export MIG_PASSWORD="${MIG_PASSWORD:-MigUser2026}"
 PORTS="27117 1523 8183 27119 3200 3300"
 # node:22-bookworm-slim is the base of the app image (app, runner, replicator, console).
 BASE_IMAGES="docker.io/library/mongo:8.2 docker.io/gvenzl/oracle-free:23.26.3-faststart docker.io/library/node:22-bookworm-slim"
@@ -247,7 +262,9 @@ run_node() {
   [ -t 0 ] && [ -t 1 ] && tty=
   # $tty is unquoted on purpose: empty means "allocate a TTY" (no argument).
   # --profile runner: podman-compose drops profiled services unless the profile is on.
-  compose --profile runner run --rm --no-deps $tty -e "MIG_PASSWORD=$MIG_PASSWORD" runner node "$@"
+  # The password reaches the runner through compose.yml's ${MIG_PASSWORD} (exported
+  # above), never on this command line: podman-compose prints the command when it fails.
+  compose --profile runner run --rm --no-deps $tty runner node "$@"
 }
 
 # mongorestore into the Oracle API for MongoDB as MIG, from lab-mongo over the
@@ -256,9 +273,34 @@ run_node() {
 # /MIG mongorestore restores 0 documents and still exits 0 (Ruling Q).
 # Its last line is the wall time on this laptop, so the presenter reads the
 # restore time off the screen live (D3) instead of quoting a fixed number.
+# On a terminal, the tool's real command line (password as ****), then its log
+# without the timestamps: the audience reads it, and a long log scrolls the
+# typed command away. Piped (the vitest suite, the console), it passes through
+# untouched. Called as: tool_log lab_exec SERVICE TOOL ARGS...
+# A command line as you would type it: plain words bare, the rest single-quoted.
+shell_words() {
+  local a out="" sq="'" esc="'\\''"
+  for a in "$@"; do
+    case "$a" in
+      *[!A-Za-z0-9_@%+=:,./-]*|'') out+=" '${a//$sq/$esc}'" ;;
+      *) out+=" $a" ;;
+    esac
+  done
+  printf '%s' "${out# }"
+}
+
+tool_log() {
+  if [ -t 1 ]; then
+    printf '  runs: %s (in lab-%s)\n\n' "$(shell_words "${@:3}")" "$2" | sed -E 's#(mongodb://[^:/@]+:)[^@]*@#\1****@#g'
+    "$@" 2>&1 | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+[+-][0-9]{4}[[:space:]]+//'
+    return "${PIPESTATUS[0]}"
+  fi
+  "$@"
+}
+
 cmd_mongorestore_ora() {
   local start=$SECONDS rc=0
-  lab_exec mongo mongorestore "$@" \
+  tool_log lab_exec mongo mongorestore "$@" \
     --uri "mongodb://MIG:${MIG_PASSWORD}@oracle:27017/?authMechanism=PLAIN&authSource=\$external&tls=false&retryWrites=false&loadBalanced=true" \
     || rc=$?
   echo "INFO  restore took $((SECONDS - start)) s on this laptop (wall clock, exit $rc)"
@@ -273,10 +315,24 @@ run_demo_cli() { local rc=0; run_node demos/run.mjs "$@" || rc=$?; sync_app_env;
 #        where the oracle image keeps the repo's mongosh scripts (demos/d6-sql/),
 #        so `./lab.sh mongosh ora demos/d6-sql/sql-stage.js` names the repo path
 cmd_mongosh() {
-  local target="$1"; shift
+  local target="$1" uri svc what; shift
   case "$target" in
-    src) lab_exec mongo mongosh 'mongodb://localhost:27017/telco?replicaSet=rs0&directConnection=true' "$@" ;;
-    ora) LAB_EXEC_WORKDIR=/opt/lab lab_exec oracle mongosh "mongodb://MIG:${MIG_PASSWORD}@localhost:27017/MIG?authMechanism=PLAIN&authSource=\$external&tls=false&retryWrites=false&loadBalanced=true" "$@" ;;
+    src) svc=mongo; uri='mongodb://localhost:27017/telco?replicaSet=rs0&directConnection=true'
+         what='the MongoDB source: replica set rs0, database telco' ;;
+    ora) svc=oracle; uri="mongodb://MIG:${MIG_PASSWORD}@localhost:27017/MIG?authMechanism=PLAIN&authSource=\$external&tls=false&retryWrites=false&loadBalanced=true"
+         what='Oracle 26ai through the Oracle API for MongoDB (ORDS, port 27017), as database user MIG' ;;
+    *)   usage ;;
+  esac
+  # On a terminal, say what this mongosh is connected to: the audience sees
+  # stock mongosh and a standard connection string, nothing Oracle-specific.
+  if [ -t 1 ]; then
+    echo "  runs: mongosh <connection string> $(shell_words "$@") (in lab-$svc)"
+    echo "  connection string: $(printf '%s' "$uri" | sed -E 's#(mongodb://[^:/@]+:)[^@]*@#\1****@#')"
+    echo "  connected to: $what"
+  fi
+  case "$target" in
+    src) lab_exec mongo mongosh "$uri" "$@" ;;
+    ora) LAB_EXEC_WORKDIR=/opt/lab lab_exec oracle mongosh "$uri" "$@" ;;
     *)   usage ;;
   esac
 }
@@ -447,6 +503,11 @@ drive_term() {
   before="$(cut -d' ' -f1 "$f" 2>/dev/null)"
   tmux select-window -t "${target%.*}"
   [ "$pane" = main ] || tmux select-pane -t "$target"
+  # Clear the pane first (Ctrl-L at the prompt, then the scrollback), so the
+  # audience sees only this command and its output.
+  tmux send-keys -t "$target" C-l
+  sleep 0.2
+  tmux clear-history -t "$target"
   tmux send-keys -t "$target" -l -- "$1"
   tmux send-keys -t "$target" Enter
   local limit=$((SECONDS + ${DRIVE_TIMEOUT:-900}))
@@ -461,6 +522,96 @@ drive_term() {
   if [ "$status" = 0 ]; then echo "OK    exit 0"; else echo "FAIL  exit $status"; return 1; fi
 }
 
+# One shared screen: bring the window the audience needs to the front, so the
+# presenter never switches windows. macOS only (AppleScript): the console tab
+# in Chrome, or the Terminal tab attached to the tmux session.
+# Terminal.app window holding the tab on tty $1: "front" selects the tab and
+# brings the window to the front (un-minimized); "min" minimizes it.
+term_window() {
+  osascript - "$1" "${2:-front}" <<'OSA' >/dev/null
+on run argv
+  set d to item 1 of argv
+  set act to item 2 of argv
+  tell application "Terminal"
+    repeat with w in windows
+      repeat with t in tabs of w
+        if tty of t is d then
+          if act is "min" then
+            set miniaturized of w to true
+          else
+            set miniaturized of w to false
+            set selected of t to true
+            set index of w to 1
+            activate
+          end if
+          return "ok"
+        end if
+      end repeat
+    end repeat
+  end tell
+  error "no tab"
+end run
+OSA
+}
+focus_tty() { term_window "$1" front; }
+lab_tty() { tmux list-clients -t "$TMUX_SESSION" -F '#{client_tty}' 2>/dev/null | head -1; }
+
+drive_focus() {
+  mkdir -p "$DRIVE_DIR"
+  [ "$(uname)" = Darwin ] || { echo "FAIL  drive focus needs macOS: switch the window by hand" >&2; return 1; }
+  case "${1:-}" in
+    console)
+      osascript - "$CONSOLE_URL" <<'OSA' >/dev/null || { echo "FAIL  no console tab in Chrome: open $CONSOLE_URL" >&2; return 1; }
+on run argv
+  set u to item 1 of argv
+  tell application "Google Chrome"
+    repeat with w in windows
+      set i to 0
+      repeat with t in tabs of w
+        set i to i + 1
+        if URL of t starts with u then
+          set active tab index of w to i
+          set index of w to 1
+          activate
+          return "ok"
+        end if
+      end repeat
+    end repeat
+  end tell
+  error "no tab"
+end run
+OSA
+      # Terminal.app raises all its windows when it activates (focus home):
+      # keep the tmux window minimized while the console is the one on show.
+      local lt; lt="$(lab_tty)"; [ -n "$lt" ] && term_window "$lt" min
+      echo console > "$DRIVE_DIR/focus"
+      echo "OK    console in front" ;;
+    term)
+      local tty; tty="$(lab_tty)"
+      [ -n "$tty" ] || { echo "FAIL  no terminal attached: run tmux attach -t $TMUX_SESSION" >&2; return 1; }
+      focus_tty "$tty" || { echo "FAIL  the tmux terminal is not a Terminal.app tab: switch by hand" >&2; return 1; }
+      echo term > "$DRIVE_DIR/focus"
+      echo "OK    terminal in front" ;;
+    home)
+      # The terminal this command was started from (Claude's own session):
+      # the first ancestor process that has a tty.
+      local p=$$ t=""
+      while [ "${p:-1}" -gt 1 ]; do
+        t="$(ps -o tty= -p "$p" | tr -d ' ')"
+        case "$t" in ''|'??') p="$(ps -o ppid= -p "$p" | tr -d ' ')" ;; *) break ;; esac
+      done
+      case "$t" in ''|'??') echo "FAIL  no terminal found for this session" >&2; return 1 ;; esac
+      focus_tty "/dev/$t" || { echo "FAIL  /dev/$t is not a Terminal.app tab: switch by hand" >&2; return 1; }
+      # Activating Terminal raises the tmux window too: minimize it again
+      # unless it is the window on show.
+      if [ "$(cat "$DRIVE_DIR/focus" 2>/dev/null)" != term ]; then
+        local lt; lt="$(lab_tty)"; [ -n "$lt" ] && [ "$lt" != "/dev/$t" ] && term_window "$lt" min
+      fi
+      echo "OK    back to /dev/$t" ;;
+    *) usage ;;
+  esac
+}
+
 cmd_drive() {
   local sub="${1:-}"; [ $# -gt 0 ] && shift
   case "$sub" in
@@ -470,6 +621,7 @@ cmd_drive() {
     console) drive_console "$@" ;;
     wait)    [ $# -eq 1 ] || usage; drive_wait "$1" ;;
     term)    drive_term "$@" ;;
+    focus)   [ $# -eq 1 ] || usage; drive_focus "$1" ;;
     *)       usage ;;
   esac
 }
@@ -478,6 +630,13 @@ usage() {
   sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
+
+# On a terminal, every command starts with its own command line in bold: a
+# long output scrolls the typed line away, and the audience must see what
+# caused what follows. Not for drive (Claude's side) or piped runs.
+if [ -t 1 ] && [ $# -gt 0 ] && [ "$1" != "drive" ]; then
+  printf '\n\033[1m$ ./lab.sh %s\033[0m\n' "$(shell_words "$@")"
+fi
 
 cmd="${1:-}"; [ $# -gt 0 ] && shift
 case "$cmd" in
@@ -500,7 +659,8 @@ case "$cmd" in
   demo)      [ $# -ge 1 ] || usage; run_demo_cli "$@" ;;
   generate)  run_node gen/generate.mjs "$@" ;;
   mongosh)   [ $# -ge 1 ] || usage; cmd_mongosh "$@" ;;
-  exec)      [ $# -ge 2 ] || usage; lab_exec "$@" ;;
+  exec)      [ $# -ge 2 ] || usage
+             case "$2" in mongodump|mongorestore) tool_log lab_exec "$@" ;; *) lab_exec "$@" ;; esac ;;
   app-uri)   [ $# -eq 1 ] || usage; cmd_app_uri "$1" ;;
   app-mode)  [ $# -eq 1 ] || usage; cmd_app_mode "$1" ;;
   agent)     [ $# -ge 1 ] || usage; run_node demos/d7-etag/agent.mjs "$@" ;;

@@ -249,7 +249,7 @@ export function createConsoleApp({ demos, ctx, readiness, recordedDir, bakedDir 
   // The driver queues one command; the open console page takes it, presses
   // its own button (so the audience sees the same timer and result as a
   // click) and posts the outcome back.
-  const remote = { seq: 0, pending: null, done: new Map(), lastPoll: 0 };
+  const remote = { seq: 0, pending: null, done: new Map(), lastPoll: 0, waiting: 0 };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const text = (res, code, body) => res.status(code).type('text/plain').send(`${body}\n`);
 
@@ -269,7 +269,8 @@ export function createConsoleApp({ demos, ctx, readiness, recordedDir, bakedDir 
     const age = remote.lastPoll ? (Date.now() - remote.lastPoll) / 1000 : null;
     text(res, 200, [
       isReady(r) ? 'OK    services ready' : `FAIL  not ready: ${down.join(', ')} (run ./lab.sh check)`,
-      age !== null && age < 3 ? `OK    console page open (polled ${age.toFixed(1)} s ago)`
+      remote.waiting > 0 ? 'OK    console page open (waiting for a command)'
+        : age !== null && age < 3 ? `OK    console page open (polled ${age.toFixed(1)} s ago)`
         : 'FAIL  no console page open: open http://127.0.0.1:3200 in Chrome',
       running ? `INFO  running: ${running}` : 'INFO  idle',
     ].join('\n'));
@@ -292,9 +293,25 @@ export function createConsoleApp({ demos, ctx, readiness, recordedDir, bakedDir 
     return text(res, 200, String(cmd.seq));
   });
 
-  // The page polls this; the first page to ask takes the command.
-  app.get('/api/remote/next', (_req, res) => {
+  // The page polls this; the first page to ask takes the command. With
+  // ?wait= ms (at most 25 s) it is a long poll: the request waits for a
+  // command, so the page needs no timer (Chrome throttles a hidden tab's
+  // timers to once a minute, and the page would stop taking commands).
+  app.get('/api/remote/next', async (req, res) => {
     remote.lastPoll = Date.now();
+    const wait = Math.min(Number(req.query.wait) || 0, 25000);
+    if (!remote.pending && wait > 0) {
+      let gone = false;
+      req.on('close', () => { gone = true; });
+      remote.waiting++;
+      try {
+        for (let t = 0; !remote.pending && !gone && t < wait; t += 50) await sleep(50);
+      } finally {
+        remote.waiting--;
+        remote.lastPoll = Date.now();
+      }
+      if (gone) return undefined;
+    }
     const cmd = remote.pending;
     if (!cmd) return res.status(204).end();
     remote.pending = null;

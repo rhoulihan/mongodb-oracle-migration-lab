@@ -120,6 +120,31 @@ async function count(db, coll, filter) {
   }
 }
 
+// How to handle a $type difference, and the rewritten query that proves it:
+// run on both sides, it must count the same. Measured on 26ai + ORDS 26.3:
+// regex and Timestamp read back through the API as plain objects
+// ({$regularExpression:{pattern,options}}, {$timestamp:{t,i}}) and $type on
+// them is rejected; $type on an array field doesn't match element types.
+function fixFor(path, srcTypes, check) {
+  const t = check?.filter[path]?.$type;
+  if (srcTypes.includes('array') && t && t !== 'array') {
+    return { text: 'query element types with $elemMatch', filter: { [path]: { $elemMatch: { $type: t } } } };
+  }
+  if (t === 'regex') {
+    return {
+      text: 'read: rebuild with new RegExp(pattern, options); query: $exists, not $type',
+      filter: { [path]: { $exists: true } },
+    };
+  }
+  if (t === 'timestamp') {
+    return {
+      text: 'query and sort on createdAt (a Date); query: $exists, not $type',
+      filter: { [path]: { $exists: true } },
+    };
+  }
+  return { text: "replay the app's own queries on this field", filter: null };
+}
+
 const setEq = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
 const key = (id) => (id?.toHexString ? id.toHexString() : JSON.stringify(id));
 const TWO_53 = Long.fromString('9007199254740992');
@@ -163,12 +188,18 @@ export async function typeDiff(srcDb, dstDb, colls, { sample = 2000 } = {}) {
         if (!check || (c.srcCount !== c.dstCount && check.srcCount === check.dstCount)) check = c;
       }
       if (!setEq(s, d) || (check && check.srcCount !== check.dstCount)) {
-        rows.push({ kind: 'type', coll, path, srcTypes: [...s].sort(), dstTypes: [...d].sort(), queryCheck: check });
+        const srcTypes = [...s].sort();
+        const fix = fixFor(path, srcTypes, check);
+        if (fix.filter) {
+          const q = { $and: [...scope, fix.filter] };
+          Object.assign(fix, { srcCount: await count(srcDb, coll, q), dstCount: await count(dstDb, coll, q) });
+        }
+        rows.push({ kind: 'type', coll, path, srcTypes, dstTypes: [...d].sort(), queryCheck: check, fix });
       }
 
       // Decimal128 keeps its type; does it keep its scale?
       if (s.has('decimal')) {
-        let changed = 0, of = 0, example;
+        let changed = 0, of = 0, equal = 0, example;
         for (const [sd, dd] of pairs) {
           const a = valuesAt(sd, path), b = valuesAt(dd, path);
           a.forEach((v, i) => {
@@ -176,9 +207,11 @@ export async function typeDiff(srcDb, dstDb, colls, { sample = 2000 } = {}) {
             of++;
             const sv = v.toString(), dv = String(b[i]);
             if (sv !== dv) { changed++; example ??= { src: sv, dst: dv }; }
+            if (Number(sv) === Number(dv)) equal++;
           });
         }
-        rows.push({ kind: 'value', coll, path, check: 'decimal scale', ok: changed === 0, changed, of, example });
+        const fix = { text: 'same value: compare as numbers, format the scale at display', equal };
+        rows.push({ kind: 'value', coll, path, check: 'decimal scale', ok: changed === 0, changed, of, example, fix });
       }
 
       // Int64 above 2^53 (no double holds it exactly): every such value on the
@@ -192,7 +225,8 @@ export async function typeDiff(srcDb, dstDb, colls, { sample = 2000 } = {}) {
           const src = valuesAt(b, path)[0].toString();
           const dstV = o ? valuesAt(o, path)[0] : undefined;
           const dst = dstV === undefined ? 'missing' : `${dstV} (${bsonType(dstV)})`.replace(/ \(long\)$/, '');
-          rows.push({ kind: 'value', coll, path, check: 'Int64 above 2^53', ok: dst === src, src, dst, exact: dst === src });
+          rows.push({ kind: 'value', coll, path, check: 'Int64 above 2^53', ok: dst === src, src, dst, exact: dst === src,
+            fix: { text: dst === src ? 'nothing to do' : 'store it as a string or Decimal128' } });
         }
       }
     }
@@ -203,7 +237,29 @@ export async function typeDiff(srcDb, dstDb, colls, { sample = 2000 } = {}) {
 const fmtCount = (c) => (c === 'rejected' ? 'rejected' : String(c));
 const fmtFilter = (f) => JSON.stringify(f).replace(/"([$\w.]+)":/g, '$1:');
 
-/** The rows as two plain-text tables (type differences, then value checks). */
+const fmtFix = (r) => {
+  if (r.fix?.filter) return `${fmtFilter(r.fix.filter)}: ${fmtCount(r.fix.srcCount)} vs ${fmtCount(r.fix.dstCount)}`;
+  if (r.fix?.equal !== undefined) return `${r.fix.equal} of ${r.of} equal as numbers`;
+  return r.exact ? 'exact' : '-';
+};
+
+/**
+ * The console's two panes, flat rows only: what differs (left), and how to
+ * handle it with the rewritten query run on both sides (right).
+ */
+export function typeDiffPanes(rows) {
+  const field = (r) => `${r.coll}.${r.path}`;
+  const left = rows.map((r) => (r.kind === 'type'
+    ? { field: field(r), MongoDB: r.srcTypes.join(', '), Oracle: r.dstTypes.join(', '),
+        test: r.queryCheck ? fmtFilter(r.queryCheck.filter) : '-',
+        result: r.queryCheck ? `${fmtCount(r.queryCheck.srcCount)} vs ${fmtCount(r.queryCheck.dstCount)}` : '-' }
+    : { field: field(r), MongoDB: r.example?.src ?? r.src ?? '-', Oracle: r.example?.dst ?? r.dst ?? '-', test: r.check,
+        result: r.check === 'decimal scale' ? `${r.changed} of ${r.of} changed` : (r.exact ? 'exact' : 'NOT exact') }));
+  const right = rows.map((r) => ({ field: field(r), 'how to handle it': r.fix?.text ?? '-', 'proof, both sides': fmtFix(r) }));
+  return { left, right };
+}
+
+/** The rows as two plain-text tables (type differences, then value checks), each with its fix. */
 export function formatTypeDiff(rows) {
   const table = (head, body) => {
     const w = head.map((h, i) => Math.max(h.length, ...body.map((r) => r[i].length)));
@@ -221,11 +277,15 @@ export function formatTypeDiff(rows) {
       ? `${r.changed} of ${r.of} values changed${r.example ? ` (${r.example.src} reads back as ${r.example.dst})` : ''}`
       : `source ${r.src}, Oracle ${r.dst}: ${r.exact ? 'exact' : 'NOT exact'}`,
   ]);
+  const fixes = rows.map((r) => [`${r.coll}.${r.path}`, r.fix?.text ?? '-', fmtFix(r)]);
   return [
     'Type differences (sampled documents, same _ids on both sides)',
     types.length ? table(['collection', 'path', 'MongoDB', 'Oracle', '$type query', 'MongoDB', 'Oracle'], types) : '(none)',
     '',
     'Value checks',
     values.length ? table(['collection', 'path', 'check', 'result'], values) : '(none)',
+    '',
+    'How to handle each one (the proof query runs on both sides)',
+    fixes.length ? table(['field', 'how to handle it', 'proof: MongoDB vs Oracle'], fixes) : '(none)',
   ].join('\n');
 }

@@ -1,7 +1,7 @@
 // D6 pipeline vs $sql against the live stack: setup (which restores D3's data
 // when MIG is empty and gathers optimizer statistics), then every step. The
 // same question runs three ways: (1) the pipeline on the MongoDB source, for
-// its explain (no timing, spec section 6a); (2) the same pipeline on Oracle
+// its explain, timed; (2) the same pipeline on Oracle
 // through the MongoDB API, timed; (3) $sql through the MongoDB API, timed.
 // Results must be equal before any timing is shown.
 import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
@@ -15,7 +15,7 @@ import { prepareTarget } from '../../oracle/prep.mjs';
 // Ruling T: live the pipeline is timed once; headless and tests time it 3 times.
 // Set before the demo module reads it (hence the dynamic import).
 process.env.D6_PIPELINE_RUNS ??= '3';
-const { default: d6, planChecks, PIPELINE_RUNS } = await import('../../demos/d6-sql/index.mjs');
+const { default: d6, planChecks, PIPELINE_RUNS, SOURCE_RUNS } = await import('../../demos/d6-sql/index.mjs');
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 let ctx, results, started;
@@ -41,9 +41,9 @@ describe('D6 pipeline vs $sql', () => {
   });
 
   test('setup warms both sides once, untimed (Ruling Z)', () => {
-    expect(started.warmed).toEqual({ pipelineRows: 160, sqlRows: 160 });
+    expect(started.warmed).toEqual({ sourceRows: 160, pipelineRows: 160, sqlRows: 160 });
     const s = result('setup');
-    expect(s.summary).toMatch(/the pipeline and \$sql each run once, untimed/);
+    expect(s.summary).toMatch(/the pipeline \(on both sides\) and \$sql each run once, untimed/);
     expect(JSON.stringify(s.metrics)).not.toMatch(/ms/i);
   });
 
@@ -83,20 +83,24 @@ describe('D6 pipeline vs $sql', () => {
     for (const d of [...src, ...sql]) expect(d.spend?._bsontype).toBe('Decimal128');
   }, 120_000);
 
-  test('metrics.medianMs exists for (2) and (3) only: no MongoDB timing is collected', () => {
+  test('metrics.medianMs exists for (1), (2) and (3): all three runs are timed', () => {
+    expect(result('pipeline-mongo-explain').metrics.medianMs).toBeGreaterThan(0);
+    expect(result('pipeline-mongo-explain').metrics.runsMs).toHaveLength(SOURCE_RUNS.runs);
     expect(result('pipeline-oracle').metrics.medianMs).toBeGreaterThan(0);
     expect(result('pipeline-oracle').metrics.runsMs).toHaveLength(PIPELINE_RUNS.runs);
     expect(result('sql-stage').metrics.runsMs).toHaveLength(7);
     expect(result('sql-stage').metrics.medianMs).toBeGreaterThan(0);
-    for (const id of ['setup', 'pipeline-mongo-explain', 'equal', 'plans']) {
+    for (const id of ['setup', 'equal', 'plans']) {
       expect(result(id).metrics?.medianMs, id).toBeUndefined();
     }
-    expect(JSON.stringify(result('pipeline-mongo-explain').metrics ?? {})).not.toMatch(/ms/i);
   });
 
-  test('no timing appears in a summary before the equal step', () => {
+  test('no timing appears in a summary before the equal step, except (2) against (1) once their rows match', () => {
     const before = d6.steps.findIndex((s) => s.id === 'equal');
-    for (const r of results.slice(0, before)) expect(r.summary).not.toMatch(/\d\s*(ms|s)\b(?! of)/);
+    d6.steps.slice(0, before).forEach((st, i) => {
+      if (st.id === 'pipeline-oracle') expect(results[i].summary).toMatch(/same 160 rows as MongoDB: [\d.]+ s here .* against [\d.]+ s on MongoDB .*x slower/);
+      else expect(results[i].summary, st.id).not.toMatch(/\d\s*(ms|s)\b(?! of)/);
+    });
   });
 
   test('the MongoDB explain shows the stage tree with the three $lookup stages', () => {
@@ -110,14 +114,18 @@ describe('D6 pipeline vs $sql', () => {
     expect(plan).toMatch(/WINDOW SORT PUSHED RANK|WINDOW NOSORT/);
     expect(planChecks.sql(plan)).toBe(true);
     expect(result('plans').plan.left).toMatch(/orders/);
-    // The plan of the cursor the MongoDB API ran, not a re-run in a direct session.
-    expect(result('plans').metrics.sqlPlanSource).toBe('the cursor the MongoDB API ran');
+    // Both tiles: the server's plan table from explain() through the MongoDB API.
+    for (const side of ['left', 'right']) {
+      expect(result('plans').plan[side]).toMatch(/\|\s*Id\s*\|\s*Operation/);
+      expect(result('plans').query[side].sql).toMatch(/select/i);
+    }
   });
 
-  test('timing shows both medians and their ratio, after equality', () => {
+  test('timing shows all three medians and both ratios, after equality', () => {
     const m = result('timing').metrics;
-    expect(m).toEqual({ pipelineMs: expect.any(Number), sqlMs: expect.any(Number), ratio: expect.any(Number) });
+    expect(m).toEqual({ mongoMs: expect.any(Number), pipelineMs: expect.any(Number), sqlMs: expect.any(Number), ratio: expect.any(Number), vsMongo: expect.any(Number) });
     expect(m.ratio).toBeCloseTo(m.pipelineMs / m.sqlMs, 0);
+    expect(m.vsMongo).toBeCloseTo(m.mongoMs / m.sqlMs, 0);
     expect(result('timing').summary).toMatch(/laptop/i);
   });
 

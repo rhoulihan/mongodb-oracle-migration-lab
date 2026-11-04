@@ -211,7 +211,7 @@ Pick a demo at the top, then work down its steps on the left.
   text `./lab.sh demo` prints.
 - **Timings wait for equal results:** in demo 5 the read times stay hidden
   until "Same document, three ways" passes (Ruling W), and in demo 6 the
-  pipeline and `$sql` times stay hidden until "Equal results" passes (Ruling T).
+  MongoDB, pipeline and `$sql` times stay hidden until "Equal results" passes (Ruling T).
   The console also never shows how long a step took, only a timer while it runs.
 - **Not ready:** while Oracle is still starting, steps answer "Oracle is still
   starting (ORDS not ready)". The dots in the header show which service is up
@@ -370,11 +370,11 @@ starting state (order service on MongoDB, the eight MIG collections empty, no
 dump). The presenter's terminal commands:
 
 ```sh
-./lab.sh exec mongo mongodump --archive=/dumps/telco.archive --gzip --db telco
+./lab.sh exec mongo mongodump --archive=/dumps/telco.archive --gzip --db telco --verbose
 ./lab.sh mongorestore-ora --archive=/dumps/telco.archive --gzip --nsFrom 'telco.*' --nsTo 'MIG.*' \
-  --numParallelCollections=4
+  --numParallelCollections=4 --verbose
 ./lab.sh app-uri oracle
-./lab.sh mongosh ora --eval 'db.orders.find({region:"R03",status:"provisioned"}).explain()'
+./lab.sh mongosh ora --quiet --eval 'const q = db.orders.find({region:"R03",status:"provisioned"}).explain().queryPlanner; print(q.generatedSql); print(q.winningPlan)'
 ```
 
 The restore runs as `MIG` into the pre-created collections ("restoring to
@@ -432,8 +432,12 @@ runs D3's dump and restore first. Setup then builds the converged tables
 (`oracle/sql/d5-converged.sql`: `region`, `device`, `device_sales`, the
 `device_sales_topn` index, the duality view `region_top_devices_dv` and the
 read-only JSON view `region_top_devices_v`) from the restored orders, and
-resets `regionTopDevices` to the same Top 10, so all three variants start
-from the same truth. Each write step removes the previous D5 orders, places
+resets `regionTopDevices` and the (b) counter documents (`deviceSales`, one
+per region and device) to the same counts, so all three variants start from
+the same truth: (a) keeps every device's count in one document per region
+(`regionDeviceCounts`; one `$inc` per order, the client sorts), (b) keeps `$inc` counters
+read by the app's own pipeline, (c) keeps counter rows read as one document
+from the view, so the query is SQL the database owns. Each write step removes the previous D5 orders, places
 the same 200 seeded orders through its variant and measures redo per order
 (instance-wide `v$sysstat`, median of batches; laptop numbers are relative).
 The presenter's terminal command:

@@ -302,16 +302,18 @@ def d5_topn():
             "The same dashboard document from three designs. Watch what each order writes and what each read costs.")
     xs, cw, y, h = [28, 338, 648], 284, 80, 214
     cols = [
-        ("(a) Embedded Top-N document", RED,
-         [("Each order", "rewrites the whole Top-N"), ("", "document (about 800 bytes)"),
-          ("Each read", "one document fetch"), ("Redo per order", "2,600 to 3,500 bytes"), ("Read", "0.3 to 0.8 ms")]),
-        ("(b) $lookup pipeline", AMBER,
-         [("Each order", "nothing extra to write"), ("", ""),
-          ("Each read", "re-aggregates all the orders"), ("Redo per order", "no counter"), ("Read", "234 to 262 ms")]),
+        ("(a) Embedded counter document", RED,
+         [("Each order", "one $inc rewrites the"), ("", "whole 9.5 KB document"),
+          ("Each read", "the whole document;"), ("", "the client sorts, keeps 10"), ("Redo per order", "about 17 KB"),
+          ("Read", "about 0.6 ms")]),
+        ("(b) Counter documents, $lookup", AMBER,
+         [("Each order", "$inc one counter document"), ("", ""),
+          ("Each read", "the app's own pipeline:"), ("", "sort, limit 10, $lookup"), ("Redo per order", "about 5 KB"),
+          ("Read", "0.6 to 0.7 ms")]),
         ("(c) Converged counter", GREEN,
          [("Each order", "adds 1 to one counter row"), ("", ""),
-          ("Each read", "range scan on a pre-sorted"), ("", "index, stops at 10 rows"), ("Redo per order", "870 to 950 bytes"),
-          ("Read", "0.6 to 0.9 ms")]),
+          ("Each read", "one document from a view,"), ("", "SQL owned by the database"), ("Redo per order", "about 3.5 KB"),
+          ("Read", "about 0.4 ms")]),
     ]
     for x, (title, color, rows) in zip(xs, cols):
         f.box(x, y, cw, h, stroke=color, accent=color)
@@ -326,7 +328,7 @@ def d5_topn():
             yy += 24 if k or v else 0
     f.box(28, 316, 904, 58, stroke=GREEN, fill=GREENSOFT, accent=GREEN)
     f.text(46, 339, "Proof first: all 8 region dashboards are identical across the three, and only then do the times appear.", 12, INK, w=700)
-    f.text(46, 359, "Measured on the Linux lab host: relative numbers, not a benchmark.", 11, MUTE)
+    f.text(46, 359, "Redo includes the order itself. Measured on the Mac: relative numbers, not a benchmark.", 11, MUTE)
     f.save()
 
 

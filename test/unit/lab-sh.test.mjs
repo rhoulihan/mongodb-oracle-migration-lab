@@ -22,6 +22,8 @@ beforeAll(() => {
   const fake = [
     '#!/bin/sh',
     'echo "ENGINE $*"',
+    // compose reads the runner's password from the environment (compose.yml)
+    'if [ "$1" = compose ]; then echo "ENV MIG_PASSWORD=$MIG_PASSWORD"; fi',
   ].join('\n');
   for (const name of ['podman', 'docker']) {
     writeFileSync(join(fakeBin, name), fake + '\n');
@@ -48,7 +50,7 @@ describe('lab.sh bake-recordings (Ruling V)', () => {
 describe('lab.sh runs Node work in a one-off runner container (Ruling O)', () => {
   // compose run --rm --no-deps runner: a fresh container from the app image, so
   // a step that switches the order service never touches the runner itself.
-  const RUN = 'ENGINE compose -f compose.yml --profile runner run --rm --no-deps -T -e MIG_PASSWORD=MigUser2026 runner node';
+  const RUN = 'ENGINE compose -f compose.yml --profile runner run --rm --no-deps -T runner node';
 
   test('demo dN --step S', () => {
     const r = sh(['demo', 'd3', '--step', 'flip']);
@@ -79,13 +81,16 @@ describe('lab.sh runs Node work in a one-off runner container (Ruling O)', () =>
   test('migrate-entities (D2 step 1) runs the entity dump and restore in the runner, no password on the command line', () => {
     const r = sh(['migrate-entities'], { MIG_PASSWORD: 'Other2026' });
     expect(r.status).toBe(0);
-    expect(r.stdout).toContain(' -e MIG_PASSWORD=Other2026 runner node demos/d2-ageout/migrate-cli.mjs\n');
+    expect(r.stdout).toContain(`${RUN} demos/d2-ageout/migrate-cli.mjs\n`);
+    expect(r.stdout).not.toMatch(/ENGINE .*Other2026/);
     expect(sh(['migrate-entities', 'extra']).status).toBe(2);
   });
 
-  test('passes MIG_PASSWORD into the container', () => {
+  test('passes MIG_PASSWORD to compose through the environment, never on the command line', () => {
+    // podman-compose prints its command when it fails: the password must not be in it.
     const r = sh(['demo', 'd1'], { MIG_PASSWORD: 'Other2026' });
-    expect(r.stdout).toMatch(/ -e MIG_PASSWORD=Other2026 runner /);
+    expect(r.stdout).toContain('ENV MIG_PASSWORD=Other2026\n');
+    expect(r.stdout).not.toMatch(/ENGINE .*Other2026/);
   });
 });
 
@@ -344,7 +349,7 @@ describe('lab.sh repl fwd|rev|stop|status (D4 stand-in for Oracle GoldenGate)', 
 
   test('repl status runs the CLI in the runner', () => {
     const r = run(['repl', 'status']);
-    expect(r.calls).toMatch(/--profile runner run --rm --no-deps -T -e MIG_PASSWORD=MigUser2026 runner node replicator\/cli\.mjs status\n/);
+    expect(r.calls).toMatch(/--profile runner run --rm --no-deps -T runner node replicator\/cli\.mjs status\n/);
   });
 
   test('reset d4 stops the replicator before the demo reset', () => {

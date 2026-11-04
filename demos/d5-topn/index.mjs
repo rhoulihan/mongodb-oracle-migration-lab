@@ -1,9 +1,12 @@
 // D5 Top-N real-time counter: "top 10 devices selling right now, per region",
 // three ways, on Oracle after D3's restore (spec section 5.2, D5 detail).
-//   (a) embedded   every order rewrites the region's Top-N document
-//   (b) lookup     every dashboard read re-aggregates the region's orders
-//   (c) converged  one narrow counter row per order, a pre-sorted index, and a
-//                  JSON view that hands the dashboard the same document
+//   (a) embedded   one document per region with every device's count: each
+//                  order is one $inc; the client sorts it and keeps the top 10
+//   (b) lookup     counter documents kept with $inc; the read is the app's own
+//                  aggregation pipeline over them ($sort, $limit, $lookup)
+//   (c) converged  counter rows, a pre-sorted index, and a duality view that
+//                  hands the app the dashboard as one document: the query is
+//                  SQL the database owns, not code in the app tier
 //
 // Each write step starts from the same truth (restoreBaseline), places the
 // same 200 seeded orders through its variant, and measures redo per order
@@ -14,11 +17,11 @@
 // restore when MIG.orders is empty), the converged tables and views are
 // rebuilt from it, regionTopDevices matches them, and no D5 order is present.
 import { sameDocs } from '../../lib/compare.mjs';
-import { mongoExplain, sqlPlan, sysRedoBytes, timeMedian } from '../../lib/measure.mjs';
+import { mongoExplainDetail, sysRedoBytes, timeMedian } from '../../lib/measure.mjs';
 import d3 from '../d3-dump-restore/index.mjs';
 import { BSON } from 'mongodb';
 import { dropCapture } from '../../replicator/capture.mjs';
-import { buildConverged, converged, D5_ID_RANGE, dashboard, embedded, lookup, seededOrders, VARIANTS } from './variants.mjs';
+import { buildConverged, buildCounters, buildEmbedded, converged, D5_ID_RANGE, dashboard, embedded, EMBEDDED, lookup, recountDashboard, seededOrders, VARIANTS } from './variants.mjs';
 
 const ORDERS = 200, WARMUP = 20, BATCH = 20;
 const SHOW_REGION = 'R03';
@@ -63,6 +66,8 @@ async function restoreBaseline(ctx) {
   const { db, conn } = await handles(ctx);
   await db.collection('orders').deleteMany({ _id: D5_ID_RANGE });
   await buildConverged(conn);
+  await buildCounters(db, conn);
+  await buildEmbedded(db, conn);
   const r = await conn.execute('select json_serialize(data) from region_top_devices_v');
   const docs = r.rows.map(([t]) => JSON.parse(t)).map((d) => dashboard(d._id, d.top));
   const top = db.collection('regionTopDevices');
@@ -103,8 +108,8 @@ async function readAll(ctx, v) {
 
 async function readPlan(ctx, v) {
   const h = await handles(ctx);
-  const [a, b] = v.readTarget(SHOW_REGION);
-  return v.surface === 'sql' ? sqlPlan(h.conn, a, b) : mongoExplain(h.db, a, b);
+  const [coll, x] = v.readTarget(SHOW_REGION);
+  return mongoExplainDetail(h.db, coll, x);
 }
 
 /** One variant from the shared starting truth: write, read, plan. */
@@ -112,8 +117,8 @@ async function runVariant(ctx, v) {
   await restoreBaseline(ctx);
   const write = await placeAll(ctx, v);
   const read = await readAll(ctx, v);
-  const plan = await readPlan(ctx, v);
-  const res = { ...write, ...read, plan };
+  const { plan, ...query } = await readPlan(ctx, v);
+  const res = { ...write, ...read, plan, query };
   last.set(v.id, res);
   return res;
 }
@@ -133,9 +138,8 @@ export function keySteps(plan) {
 
 /** Plan text checks, shared by the steps and the tests. */
 export const planChecks = {
-  // Every refresh reads the region's orders (a full scan, or every row of
-  // the region's index range) and groups their lines.
-  lookup: (p) => /TABLE ACCESS[^\n]*orders/.test(p) && /(HASH|SORT) GROUP BY/.test(p),
+  // The pipeline reads the region's counter documents, top first, and stops at 10.
+  lookup: (p) => /deviceSales/.test(p) && /STOPKEY/.test(p) && !/TABLE ACCESS[^\n]*\borders\b/.test(p),
   converged: (p) => /INDEX RANGE SCAN[^\n]*DEVICE_SALES_TOPN/.test(p) && /STOPKEY/.test(p),
 };
 
@@ -172,7 +176,7 @@ export default {
         const convergedDocs = [], lookupDocs = [];
         for (const r of regions) {
           convergedDocs.push(await converged.readDashboard(conn, r));
-          lookupDocs.push(await lookup.readDashboard(db, r));
+          lookupDocs.push(await recountDashboard(db, r));
         }
         const same = sameDocs(convergedDocs, lookupDocs);
         const rows = Number((await conn.execute('select count(*) from device_sales')).rows[0][0]);
@@ -187,26 +191,29 @@ export default {
     },
     {
       id: 'embedded-write',
-      title: '(a) Embedded Top-N document: every order rewrites it',
+      title: '(a) Embedded counters: one document per region, sorted by the client',
       lane: 'console',
       async run(ctx) {
         const r = await runVariant(ctx, embedded);
         const { db } = await handles(ctx);
-        const doc = await db.collection('regionTopDevices').findOne({ _id: SHOW_REGION });
+        const doc = await db.collection(EMBEDDED).findOne({ _id: SHOW_REGION });
         const size = BSON.calculateObjectSize(doc);
         return {
           ok: r.redoPerOrder > 0,
-          summary: `${ORDERS} orders placed: ${r.redoPerOrder} bytes of redo per order; each order rewrites its region's Top-N document (${SHOW_REGION}: ${size} bytes), usually twice ($inc, then a re-sort)`,
+          summary: `${ORDERS} orders placed. Each order writes ${r.redoPerOrder} bytes of redo: the order plus one $inc in its region's ` +
+            `document (${SHOW_REGION}: ${doc.devices.length} devices, ${size} bytes). The read fetches the whole document; ` +
+            'the client sorts it and keeps the top 10',
           metrics: { redoPerOrder: r.redoPerOrder, batches: r.batches, docBytes: size, readMs: r.readMs },
           panes: { left: r.docs.find((d) => d._id === SHOW_REGION) },
           plan: { left: r.plan },
+          query: { left: r.query },
           detail: `redo per order, by batch of ${BATCH}: ${r.batches.join(', ')}\nread plan:\n${r.plan}`,
         };
       },
     },
     {
       id: 'lookup-read',
-      title: '(b) $lookup pipeline: every read re-aggregates the orders',
+      title: '(b) Counter documents and a $lookup pipeline the app owns',
       lane: 'console',
       async run(ctx) {
         const r = await runVariant(ctx, lookup);
@@ -215,32 +222,41 @@ export default {
           ok,
           // No word about hiding: the console marks the read time hidden while
           // it is, and after same-shape reveals it this summary must still read true.
-          summary: `${r.redoPerOrder} bytes of redo per order; every dashboard read groups each ${SHOW_REGION} order line again` +
-            (ok ? '' : '; the plan does not show a read of the orders table followed by a GROUP BY'),
+          summary: `Each order writes ${r.redoPerOrder} bytes of redo: the order plus $inc on one counter document. ` +
+            'The read is an aggregation pipeline the app owns ($match, $sort, $limit, $lookup the name): ' +
+            'change the model, and the app code changes with it' +
+            (ok ? '' : '; the plan does not show a read of the deviceSales counters'),
           metrics: { redoPerOrder: r.redoPerOrder, batches: r.batches, readMs: r.readMs },
           panes: { left: r.docs.find((d) => d._id === SHOW_REGION) },
           plan: { left: r.plan },
+          query: { left: r.query },
           detail: `read plan:\n${r.plan}`,
         };
       },
     },
     {
       id: 'converged',
-      title: '(c) Converged: one counter row per order, a pre-sorted index',
+      title: '(c) Converged: counter rows, read as one document through a JSON view',
       lane: 'console',
       async run(ctx) {
         const r = await runVariant(ctx, converged);
         const ok = planChecks.converged(r.plan);
+        // (b) keeps the same counts in documents: its redo is the comparison.
+        const base = last.get('lookup')?.redoPerOrder;
         const doc = r.docs.find((d) => d._id === SHOW_REGION);
         return {
           ok,
-          summary: `${r.redoPerOrder} bytes of redo per order; the dashboard read is an index range scan that stops after 10 rows per region ` +
-            `(the view builds all ${r.docs.length} regions, then keeps ${SHOW_REGION} by _id)` +
+          summary: `Each order writes ${r.redoPerOrder} bytes of redo: the order plus one counter row` +
+            (base ? ` ((b)'s counter document: ${base}). ` : '. ') +
+            'The app reads one document from a JSON view. The join, the pre-sorted index and the stop at 10 rows ' +
+            'are SQL the database owns, with the optimizer and parallel execution behind it as the query grows' +
             (ok ? '' : '; the plan does not show INDEX RANGE SCAN DEVICE_SALES_TOPN with STOPKEY'),
           metrics: { redoPerOrder: r.redoPerOrder, batches: r.batches, readMs: r.readMs },
           panes: { left: doc },
           plan: { left: r.plan },
-          detail: `read plan:\n${r.plan}\n\ndashboard document:\n${showDoc(doc)}`,
+          query: { left: r.query },
+          detail: `the view builds all ${r.docs.length} regions, then keeps ${SHOW_REGION} by _id\n\n` +
+            `read plan:\n${r.plan}\n\ndashboard document:\n${showDoc(doc)}`,
         };
       },
     },
@@ -263,7 +279,8 @@ export default {
           summary: ok
             ? `all ${a.docs.length} region dashboards are identical in the three variants; ` +
               `redo per order ${a.redoPerOrder} / ${b.redoPerOrder} / ${c.redoPerOrder} bytes, ` +
-              `read ${a.readMs} / ${b.readMs} / ${c.readMs} ms (embedded / lookup / converged)`
+              `read ${a.readMs} / ${b.readMs} / ${c.readMs} ms (embedded / lookup / converged). ` +
+              '(b) and (c) read the same counts; (b) keeps the query in the app, (c) keeps it in the database behind a document'
             : `dashboards differ: ${ab.equal ? '' : `embedded vs lookup ${ab.diff}`} ${ac.equal ? '' : `embedded vs converged ${ac.diff}`}`.trim(),
           metrics,
           panes: { left: { embedded: pick(a), lookup: pick(b), converged: pick(c) } },

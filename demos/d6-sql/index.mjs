@@ -1,19 +1,20 @@
 // D6 Pipeline vs $sql (spec section 5.2, D6; section 6a): once the data is on
 // Oracle, a hard aggregation can be handed to the cost-based optimizer as SQL
 // without leaving the MongoDB driver. One question (queries.mjs), three runs:
-//   (1) the pipeline on the MongoDB source, for its explain (plan shape) only
+//   (1) the pipeline on the MongoDB source: its explain (plan shape), timed
 //   (2) the same pipeline on Oracle through the Oracle API for MongoDB, timed
 //   (3) the question as one $sql stage through the same API, timed
-// The comparison stays inside one engine: no MongoDB timing is collected.
-// Equal results come first; the steps before `equal` hold their times back
-// (metrics only) and `timing` refuses to show them until equality is proven.
+// All three runs are timed: the pipeline on MongoDB, the same pipeline on
+// Oracle through the MongoDB API, and $sql. Times stay hidden until equal.
+// Equal results come first: (2) shows its time beside (1)'s only after its
+// rows match MongoDB's, and $sql's time waits for `equal` (all three).
 //
 // Starting state (setup and reset): MIG holds D3's restore, with the same
 // number of orders in the 90-day window as the source (setup runs D3's dump
 // and restore when it does not), and fresh optimizer statistics on the four
 // collections the question reads (a bulk load leaves none; without them the
 // optimizer guesses row counts). Results of earlier runs are forgotten.
-import { mongoExplain, sqlPlan, timeMedian } from '../../lib/measure.mjs';
+import { mongoExplainDetail, timeMedian } from '../../lib/measure.mjs';
 import { sameDocs } from '../../lib/compare.mjs';
 import d3 from '../d3-dump-restore/index.mjs';
 import { atCents, pipeline, scaleChanged, sqlStage, sqlText, WINDOW } from './queries.mjs';
@@ -35,6 +36,9 @@ const ROWS = GROUPS * 5;
 // otherwise always be the cold one. Laptop timings are relative only.
 export const PIPELINE_RUNS = Object.freeze({ runs: Number(process.env.D6_PIPELINE_RUNS || 1), warmup: 0 });
 export const SQL_RUNS = Object.freeze({ runs: 7, warmup: 0 });
+// The pipeline on MongoDB takes about 4.4 s on the Mac: a median of 3 keeps
+// the step under 15 s. Warmed in setup like the other two.
+export const SOURCE_RUNS = Object.freeze({ runs: Number(process.env.D6_SOURCE_RUNS || 3), warmup: 0 });
 
 // Results and medians of this process's runs. The console may run steps one
 // at a time, in any order; a step that needs a missing one computes it.
@@ -91,18 +95,22 @@ async function startingState(ctx, { force = false } = {}) {
  * Returns the rows each side gave (no times: nothing is timed before equal).
  */
 async function warmUp(ctx) {
+  const sourceRows = (await (await ctx.mongoSrc()).collection('orders').aggregate(pipeline).toArray()).length;
   const ora = await ctx.oraMongo();
   const pipelineRows = (await ora.collection('orders').aggregate(pipeline).toArray()).length;
   const sqlRows = (await runSqlOnce(ctx)).length;
-  return { pipelineRows, sqlRows };
+  return { sourceRows, pipelineRows, sqlRows };
 }
 
 // --- the three runs ---------------------------------------------------------
 async function runSource(ctx) {
   if (!last.has('source')) {
     const db = await ctx.mongoSrc();
-    const docs = await db.collection('orders').aggregate(pipeline).toArray();
-    last.set('source', { docs, plan: await mongoExplain(db, 'orders', pipeline) });
+    const c = db.collection('orders');
+    let docs;
+    const t = await timeMedian(async () => { docs = await c.aggregate(pipeline).toArray(); }, SOURCE_RUNS);
+    const { plan, ...query } = await mongoExplainDetail(db, 'orders', pipeline);
+    last.set('source', { docs, plan, query, ...t });
   }
   return last.get('source');
 }
@@ -152,36 +160,6 @@ async function proveEqual(ctx) {
 const key = (d) => `${d.region}\u0000${d.tier}\u0000${String(d.rank).padStart(3, '0')}`;
 
 // --- plans ------------------------------------------------------------------
-/**
- * The plan of the $sql statement as the Oracle API ran it (the ORDS session
- * the timing measured), from its cursor in v$sql. Runs the stage once first
- * so the cursor is there. Falls back to running the same statement in a
- * direct SQL session (sqlPlan) only if the cursor has aged out; `source`
- * says which.
- */
-async function apiSqlPlan(ctx) {
-  await runSqlOnce(ctx);
-  const conn = await ctx.oraSql();
-  // sql_text holds the first 1000 characters; the statement starts with its
-  // CTE, while sqlPlan's own runs start with a /* measure:... */ tag.
-  const cur = await conn.execute(
-    `select sql_id, child_number from v$sql
-      where parsing_schema_name = 'MIG' and sql_text like :head and sql_fulltext like :marker
-      order by last_active_time desc fetch first 1 row only`,
-    { head: 'with lines as%', marker: '%json_scalar(spend as decimal)%' },
-  );
-  if (cur.rows.length) {
-    const [id, child] = cur.rows[0];
-    const plan = await conn.execute(
-      "select plan_table_output from table(dbms_xplan.display_cursor(:id, :child, 'BASIC +ROWS +PREDICATE'))", { id, child });
-    return { text: plan.rows.map((r) => r[0] ?? '').join('\n').trimEnd(), source: 'the cursor the MongoDB API ran' };
-  }
-  return {
-    text: await sqlPlan(conn, sqlText, { fromTs: WINDOW.fromTs, toTs: WINDOW.toTs }),
-    source: 'the same statement in a direct SQL session',
-  };
-}
-
 /** Plan text checks, shared by the steps and the tests. */
 export const planChecks = {
   sql: (p) => /HASH JOIN|NESTED LOOPS/.test(p) && /WINDOW SORT PUSHED RANK|WINDOW NOSORT/.test(p),
@@ -224,7 +202,7 @@ export default {
   id: 'd6',
   title: 'Pipeline vs $sql: hand the hard query to the optimizer',
   // Ruling T: the console keeps these times off screen until `equal` passes.
-  revealAfter: { step: 'equal', steps: ['pipeline-oracle', 'sql-stage'], metrics: ['medianMs', 'runsMs'] },
+  revealAfter: { step: 'equal', steps: ['sql-stage'], metrics: ['medianMs', 'runsMs'] },
   setup: startingState,
   reset: (ctx) => startingState(ctx, { force: true }),
   steps: [
@@ -237,17 +215,17 @@ export default {
       run: guarded(async (ctx) => {
         const n = await startingState(ctx);
         return {
-          ok: n.ora > 0 && n.warmed.pipelineRows === ROWS && n.warmed.sqlRows === ROWS,
+          ok: n.ora > 0 && n.warmed.sourceRows === ROWS && n.warmed.pipelineRows === ROWS && n.warmed.sqlRows === ROWS,
           summary: `${n.ora} orders in the 90-day window (${day(WINDOW.fromTs)} to ${day(WINDOW.toTs)}) on both MongoDB and Oracle; ` +
-            `optimizer statistics gathered on ${TABLES.join(', ')}; the pipeline and $sql each run once, untimed, ` +
-            'so both sides are warm before anything is timed',
+            `optimizer statistics gathered on ${TABLES.join(', ')}; the pipeline (on both sides) and $sql each run once, untimed, ` +
+            'so all three are warm before anything is timed',
           metrics: { windowOrders: n.ora, warmUpRows: n.warmed.pipelineRows },
         };
       }),
     },
     {
       id: 'pipeline-mongo-explain',
-      title: '(1) The pipeline on MongoDB: the stage tree (plan shape only, no timing)',
+      title: '(1) The pipeline on MongoDB: the stage tree, timed',
       lane: 'console',
       run: guarded(async (ctx) => {
         const r = await runSource(ctx);
@@ -255,9 +233,10 @@ export default {
         return {
           ok: lookups >= 3 && r.docs.length === ROWS,
           summary: `MongoDB runs it as ${r.plan.split('\n').length} stages, ${lookups} of them lookups (joins); ` +
-            `${r.docs.length} rows. Shown for its shape only: this demo times nothing on MongoDB`,
-          metrics: { rows: r.docs.length, stages: r.plan.split('\n').length },
+            `${r.docs.length} rows (timed over ${runs(r.runsMs.length)})`,
+          metrics: { rows: r.docs.length, stages: r.plan.split('\n').length, medianMs: r.medianMs, runsMs: r.runsMs },
           plan: { left: r.plan },
+          query: { left: r.query },
           detail: `pipeline stages:\n${pipeline.map((s) => Object.keys(s)[0]).join(' > ')}\n\nMongoDB explain:\n${r.plan}`,
         };
       }),
@@ -268,11 +247,20 @@ export default {
       lane: 'console',
       run: guarded(async (ctx) => {
         const r = await runPipelineOracle(ctx);
+        const m = await runSource(ctx);
+        // Equal before timed, for this pair: the same rows as MongoDB's (1),
+        // spend at 2 decimals, before the two times go side by side.
+        let same;
+        try { same = sameDocs(m.docs.map(atCents), r.docs.map(atCents)); } catch (err) { same = { equal: false, diff: err.message }; }
+        if (!same.equal) return fail(`the pipeline on Oracle differs from MongoDB: ${same.diff}; ${RESET}`);
+        const slower = Math.round((r.medianMs / m.medianMs) * 10) / 10;
         return {
           ok: r.docs.length === ROWS,
-          // Neutral copy: the console marks the times hidden while they are (Ruling T).
-          summary: `the unchanged pipeline returns ${r.docs.length} rows on Oracle (timed over ${runs(r.runsMs.length)})`,
-          metrics: { rows: r.docs.length, medianMs: r.medianMs, runsMs: r.runsMs },
+          summary: `the unchanged pipeline returns the same ${r.docs.length} rows as MongoDB: ` +
+            `${(r.medianMs / 1000).toFixed(1)} s here (${timed(r.runsMs.length)}) against ${(m.medianMs / 1000).toFixed(1)} s on MongoDB ` +
+            `(${timed(m.runsMs.length)}), ${slower}x slower. The API translates the pipeline stage by stage, so each $lookup ` +
+            'becomes a lookup per document and the optimizer never sees the whole question. $sql hands it the whole question',
+          metrics: { rows: r.docs.length, medianMs: r.medianMs, runsMs: r.runsMs, vsMongo: slower },
           detail: showRows(r.docs, 5),
         };
       }),
@@ -324,18 +312,28 @@ export default {
       title: 'Both Oracle plans, side by side',
       lane: 'console',
       run: guarded(async (ctx) => {
-        const left = await mongoExplain(await ctx.oraMongo(), 'orders', pipeline);
-        const { text: right, source } = await apiSqlPlan(ctx);
+        // Both plans from explain() through the MongoDB API, so both tiles
+        // show the server's DBMS_XPLAN table in the same format.
+        const db = await ctx.oraMongo();
+        const l = await mongoExplainDetail(db, 'orders', pipeline);
+        const sx = (await db.aggregate([sqlStage()]).explain('queryPlanner')).queryPlanner ?? {};
+        const left = l.table ?? l.plan;
+        const right = String(sx.winningPlan ?? '').trimEnd();
         const ok = planChecks.sql(right);
         const loops = (left.match(/NESTED LOOPS/g) ?? []).length;
         return {
           ok,
           summary: `(2) the pipeline becomes ${loops} nested loops that look up and rebuild each document one at a time; ` +
             '(3) the optimizer plans hash joins over whole tables and a rank that stops at 5 per group (WINDOW SORT PUSHED RANK)' +
-            ` (plan of ${source})` +
             (ok ? '' : '; the $sql plan does not show a join and a pushed rank'),
-          metrics: { sqlPlanSource: source },
           plan: { left, right },
+          query: {
+            left: l,
+            right: {
+              query: `db.aggregate([{ $sql: { statement: <the SQL below>, binds: ${JSON.stringify(sqlStage().$sql.binds)} } }])`,
+              sql: sx.generatedSql ?? sqlText,
+            },
+          },
           labels: { left: '(2) pipeline through the MongoDB API', right: '(3) $sql' },
           detail: sideBySide('(2) pipeline through the MongoDB API', left, '(3) $sql', right),
         };
@@ -343,26 +341,31 @@ export default {
     },
     {
       id: 'timing',
-      title: 'Relative timing: the pipeline vs $sql, same engine',
+      title: 'Relative timing: MongoDB, the pipeline on Oracle, and $sql',
       lane: 'console',
       run: guarded(async (ctx) => {
         if (!last.has('equal')) {
           const e = await proveEqual(ctx);
           if (!e.equal) return fail(`no timing without equal results: ${e.why}; ${RESET}`);
         }
-        const p = last.get('pipeline'), s = last.get('sql');
-        const pipelineMs = Math.round(p.medianMs), sqlMs = Math.round(s.medianMs);
-        const ratio = Math.round((p.medianMs / s.medianMs) * 10) / 10;
+        const m = await runSource(ctx), p = last.get('pipeline'), s = last.get('sql');
+        const mongoMs = Math.round(m.medianMs), pipelineMs = Math.round(p.medianMs), sqlMs = Math.round(s.medianMs);
+        const x = (a, b) => Math.round((a / b) * 10) / 10;
+        const ratio = x(p.medianMs, s.medianMs), vsMongo = x(m.medianMs, s.medianMs);
+        const sec = (ms, d) => (ms / 1000).toFixed(d);
         return {
           ok: ratio > 0,
-          summary: `same engine, same data, same answer: the pipeline takes ${(pipelineMs / 1000).toFixed(1)} s (${timed(p.runsMs.length)}), ` +
-            `$sql ${(sqlMs / 1000).toFixed(2)} s (${timed(s.runsMs.length)}): ${ratio}x. Laptop numbers, relative only`,
-          metrics: { pipelineMs, sqlMs, ratio },
+          summary: `same data, same answer: the pipeline takes ${sec(mongoMs, 1)} s on MongoDB (${timed(m.runsMs.length)}) and ` +
+            `${sec(pipelineMs, 1)} s on Oracle through the MongoDB API (${timed(p.runsMs.length)}); ` +
+            `$sql takes ${sec(sqlMs, 2)} s (${timed(s.runsMs.length)}): ${ratio}x faster than the same pipeline on Oracle, ` +
+            `${vsMongo}x faster than the pipeline on MongoDB. Laptop numbers, relative only`,
+          metrics: { mongoMs, pipelineMs, sqlMs, ratio, vsMongo },
           detail: [
             'run                                          ms   how measured',
+            `(1) pipeline on MongoDB               ${String(mongoMs).padStart(9)}   ${measured(m.runsMs)}`,
             `(2) pipeline through the MongoDB API  ${String(pipelineMs).padStart(9)}   ${measured(p.runsMs)}`,
             `(3) $sql through the MongoDB API      ${String(sqlMs).padStart(9)}   ${measured(s.runsMs)}`,
-            `ratio ${ratio}x (laptop, relative only; no MongoDB timing is taken)`,
+            `$sql vs (2): ${ratio}x; $sql vs (1): ${vsMongo}x (laptop, relative only)`,
           ].join('\n'),
         };
       }),

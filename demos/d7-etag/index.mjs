@@ -92,6 +92,34 @@ export async function appliedUpdates(ctx, orderId) {
 }
 
 /** The document as the console shows it: the ETag as hex, dates as ISO text. */
+// _metadata as people read it: the ETag in hex, asof as the SCN number
+// (the driver hands both over as binary, which the pane would show as base64).
+const scn = (b) => {
+  if (b == null) return 'none';
+  let n = 0n;
+  for (const x of b.buffer ?? b) n = (n << 8n) | BigInt(x);
+  return n.toString();
+};
+const paneDoc = (doc) => doc && ({ ...doc, _metadata: { etag: etagHex(doc._metadata?.etag), asof: `SCN ${scn(doc._metadata?.asof)}` } });
+/** The right pane of step 1: what each _metadata field is, with this order's values. */
+export const metadataRows = (doc) => [
+  {
+    field: '_metadata.etag',
+    value: etagHex(doc._metadata?.etag),
+    'what it is': 'Hash of the whole document, computed on every read. Sent back with a write: ' +
+      'no match, the write is rejected (ORA-42699)',
+  },
+  {
+    field: '_metadata.asof',
+    value: `SCN ${scn(doc._metadata?.asof)}`,
+    'what it is': 'The SCN (system change number) it was read at: one point in time for the order and its lines',
+  },
+  {
+    field: 'who adds it',
+    value: 'orders_dv',
+    'what it is': 'The duality view adds _metadata to every document. The app never stores or computes it',
+  },
+];
 const showDoc = (doc) => JSON.stringify({ ...doc, _metadata: { etag: etagHex(doc._metadata?.etag) } }, null, 2);
 
 const device = (doc) => doc.lines.find((l) => l.kind === 'device')?.sku;
@@ -113,7 +141,7 @@ const runAgent = (c, agent, check) => async () => {
     return fail(`${err.message}${/\.\/lab\.sh/.test(err.message) ? '' : `; ${RESET}`}`);
   }
   const problem = check?.(r);
-  return problem ? fail(`${problem}: ${RESET}`) : { ok: true, summary: r.summary, detail: r.lines.slice(1).join('\n'), panes: { left: r.doc } };
+  return problem ? fail(`${problem}: ${RESET}`) : { ok: true, summary: r.summary, detail: r.lines.slice(1).join('\n'), panes: { left: paneDoc(r.doc) } };
 };
 
 /** verify for a read: the agent holds the order's current ETag. */
@@ -159,7 +187,8 @@ export default {
             ? `orders_dv holds ${orders} R03 orders (${lines} lines in order_line); the agents will work on order ${pick.orderId}: status placed, device ${pick.fromSku}`
             : `order ${pick.orderId} did not start as placed with device ${pick.fromSku} and an empty change log: ${RESET}`,
           metrics: { orders: Number(orders), lines: Number(lines) },
-          panes: { left: now.doc },
+          panes: { left: paneDoc(now.doc), right: metadataRows(now.doc) },
+          labels: { left: 'The order, as the MongoDB API returns it', right: 'What _metadata is' },
           detail: `order document (MongoDB API, orders_dv):\n${showDoc(now.doc)}`,
         };
       },
@@ -244,7 +273,7 @@ export default {
             ? `order ${pick.orderId}: status provisioned (agent A) and device ${pick.toSku} (agent B); exactly 2 updates applied, none lost, none from the rejected write`
             : `expected provisioned, device ${pick.toSku} and 2 updates; found ${doc.status}, ${device(doc)}, ${log.length}: run the agent steps in order, or ${RESET}`,
           metrics: { updatesApplied: log.length },
-          panes: { left: doc },
+          panes: { left: paneDoc(doc) },
           detail: `${table}\n\nfinal order document:\n${showDoc(doc)}`,
         };
       },
