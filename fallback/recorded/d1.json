@@ -2,10 +2,10 @@
   "id": "d1",
   "steps": {
     "scan": {
-      "at": "2026-11-04T13:39:12.584Z",
+      "at": "2026-11-04T21:59:18.529Z",
       "result": {
         "ok": true,
-        "summary": "order service: 8 operators (0 unsupported, 0 caveat, 8 supported); demo pipelines: 24 operators (1 unsupported, 2 caveat, 21 supported)",
+        "summary": "order service: 8 operators (0 unsupported, 0 caveat, 8 supported); demo pipelines: 28 operators (1 unsupported, 2 caveat, 25 supported)",
         "panes": {
           "left": [
             {
@@ -203,6 +203,16 @@
               "date": "2026-11-01"
             },
             {
+              "op": "$inc",
+              "files": [
+                "demos/d5-topn/variants.mjs"
+              ],
+              "status": "supported",
+              "note": "The order service and the Top-N counters use it in every demo.",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
               "op": "$limit",
               "files": [
                 "demos/d5-topn/variants.mjs"
@@ -255,6 +265,16 @@
               "date": "2026-11-01"
             },
             {
+              "op": "$ne",
+              "files": [
+                "demos/d5-topn/variants.mjs"
+              ],
+              "status": "supported",
+              "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
               "op": "$project",
               "files": [
                 "demos/d5-topn/variants.mjs",
@@ -262,6 +282,16 @@
               ],
               "status": "supported",
               "note": "",
+              "source": "measured in this lab",
+              "date": "2026-11-01"
+            },
+            {
+              "op": "$push",
+              "files": [
+                "demos/d5-topn/variants.mjs"
+              ],
+              "status": "supported",
+              "note": "With $each, $sort and $slice (the Top-N array).",
               "source": "measured in this lab",
               "date": "2026-11-01"
             },
@@ -274,6 +304,15 @@
               "note": "The order service's update and the D6 pipeline stage both run.",
               "source": "measured in this lab",
               "date": "2026-11-01"
+            },
+            {
+              "op": "$setOnInsert",
+              "files": [
+                "demos/d5-topn/variants.mjs"
+              ],
+              "status": "supported",
+              "note": "Not in the matrix (it says full CRUD and most stages work): prove it on the target.",
+              "source": "not listed"
             },
             {
               "op": "$sort",
@@ -352,14 +391,14 @@
           "demo": {
             "unsupported": 1,
             "caveat": 2,
-            "supported": 21
+            "supported": 25
           }
         },
-        "detail": "Scripted operator scan (built for this lab): the order service (app/**/*.mjs)\nMatrix: oracle-ai-dev-marketplace/skills/mongodb-api-dev/references/compat-matrix.md, copied 2026-11-01, plus findings measured in this lab\noperator  on Oracle  basis                 used in        note\n--------  ---------  --------------------  -------------  ----\n$each     supported  measured in this lab  app/store.mjs  Inside $push.\n$in       supported  measured in this lab  app/store.mjs\n$inc      supported  measured in this lab  app/store.mjs  The order service and the Top-N counters use it in every demo.\n$ne       supported  measured in this lab  app/store.mjs\n$push     supported  measured in this lab  app/store.mjs  With $each, $sort and $slice (the Top-N array).\n$set      supported  measured in this lab  app/store.mjs  The order service's update and the D6 pipeline stage both run.\n$slice    supported  measured in this lab  app/store.mjs  Inside $push: keeps the Top 10.\n$sort     supported  measured in this lab  app/store.mjs  As a $push modifier and as a pipeline stage.\n\nThe demo pipelines you will see in D5 and D6 (demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs)\noperator          on Oracle    basis                 used in                                               note\n----------------  -----------  --------------------  ----------------------------------------------------  ----\n$setWindowFields  unsupported  measured in this lab  demos/d6-sql/queries.mjs                              \"Aggregate stage $setWindowFields not supported\". D6 ranks with $group + $topN instead.\n$lookup           caveat       compat-matrix.md      demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  The let field raises an error; a localField that is missing from an input document or holds an array raises an error.\n$rank             caveat       measured in this lab  demos/d6-sql/queries.mjs                              Only runs inside $setWindowFields, which is not supported. MongoDB's $rank also takes one sort key only.\n$add              supported    measured in this lab  demos/d6-sql/queries.mjs\n$arrayElemAt      supported    measured in this lab  demos/d5-topn/variants.mjs\n$cond             supported    measured in this lab  demos/d6-sql/queries.mjs\n$eq               supported    measured in this lab  demos/d6-sql/queries.mjs\n$first            supported    measured in this lab  demos/d6-sql/queries.mjs\n$group            supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$gte              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$in               supported    measured in this lab  demos/d5-topn/variants.mjs\n$limit            supported    measured in this lab  demos/d5-topn/variants.mjs\n$lt               supported    measured in this lab  demos/d6-sql/queries.mjs\n$lte              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$match            supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$multiply         supported    measured in this lab  demos/d6-sql/queries.mjs\n$project          supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$set              supported    measured in this lab  demos/d6-sql/queries.mjs                              The order service's update and the D6 pipeline stage both run.\n$sort             supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  As a $push modifier and as a pipeline stage.\n$sql              supported    compat-matrix.md      demos/d6-sql/queries.mjs                              Oracle-only stage: SQL inside the pipeline (MongoDB itself has no such stage).\n$sum              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$top              supported    measured in this lab  demos/d6-sql/queries.mjs\n$topN             supported    measured in this lab  demos/d6-sql/queries.mjs                              The portable rank in D6.\n$unwind           supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  Including includeArrayIndex."
+        "detail": "Scripted operator scan (built for this lab): the order service (app/**/*.mjs)\nMatrix: oracle-ai-dev-marketplace/skills/mongodb-api-dev/references/compat-matrix.md, copied 2026-11-01, plus findings measured in this lab\noperator  on Oracle  basis                 used in        note\n--------  ---------  --------------------  -------------  ----\n$each     supported  measured in this lab  app/store.mjs  Inside $push.\n$in       supported  measured in this lab  app/store.mjs\n$inc      supported  measured in this lab  app/store.mjs  The order service and the Top-N counters use it in every demo.\n$ne       supported  measured in this lab  app/store.mjs\n$push     supported  measured in this lab  app/store.mjs  With $each, $sort and $slice (the Top-N array).\n$set      supported  measured in this lab  app/store.mjs  The order service's update and the D6 pipeline stage both run.\n$slice    supported  measured in this lab  app/store.mjs  Inside $push: keeps the Top 10.\n$sort     supported  measured in this lab  app/store.mjs  As a $push modifier and as a pipeline stage.\n\nThe demo pipelines you will see in D5 and D6 (demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs)\noperator          on Oracle    basis                 used in                                               note\n----------------  -----------  --------------------  ----------------------------------------------------  ----\n$setWindowFields  unsupported  measured in this lab  demos/d6-sql/queries.mjs                              \"Aggregate stage $setWindowFields not supported\". D6 ranks with $group + $topN instead.\n$lookup           caveat       compat-matrix.md      demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  The let field raises an error; a localField that is missing from an input document or holds an array raises an error.\n$rank             caveat       measured in this lab  demos/d6-sql/queries.mjs                              Only runs inside $setWindowFields, which is not supported. MongoDB's $rank also takes one sort key only.\n$add              supported    measured in this lab  demos/d6-sql/queries.mjs\n$arrayElemAt      supported    measured in this lab  demos/d5-topn/variants.mjs\n$cond             supported    measured in this lab  demos/d6-sql/queries.mjs\n$eq               supported    measured in this lab  demos/d6-sql/queries.mjs\n$first            supported    measured in this lab  demos/d6-sql/queries.mjs\n$group            supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$gte              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$in               supported    measured in this lab  demos/d5-topn/variants.mjs\n$inc              supported    measured in this lab  demos/d5-topn/variants.mjs                            The order service and the Top-N counters use it in every demo.\n$limit            supported    measured in this lab  demos/d5-topn/variants.mjs\n$lt               supported    measured in this lab  demos/d6-sql/queries.mjs\n$lte              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$match            supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$multiply         supported    measured in this lab  demos/d6-sql/queries.mjs\n$ne               supported    measured in this lab  demos/d5-topn/variants.mjs\n$project          supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$push             supported    measured in this lab  demos/d5-topn/variants.mjs                            With $each, $sort and $slice (the Top-N array).\n$set              supported    measured in this lab  demos/d6-sql/queries.mjs                              The order service's update and the D6 pipeline stage both run.\n$setOnInsert      supported    not listed            demos/d5-topn/variants.mjs                            Not in the matrix (it says full CRUD and most stages work): prove it on the target.\n$sort             supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  As a $push modifier and as a pipeline stage.\n$sql              supported    compat-matrix.md      demos/d6-sql/queries.mjs                              Oracle-only stage: SQL inside the pipeline (MongoDB itself has no such stage).\n$sum              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$top              supported    measured in this lab  demos/d6-sql/queries.mjs\n$topN             supported    measured in this lab  demos/d6-sql/queries.mjs                              The portable rank in D6.\n$unwind           supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  Including includeArrayIndex."
       }
     },
     "census": {
-      "at": "2026-11-04T13:39:17.214Z",
+      "at": "2026-11-04T21:59:23.158Z",
       "result": {
         "ok": true,
         "summary": "60 fields in 8 collections, 8 landmines: catalog.price, catalog.skuPattern, orders.lines, orders.lines.price, orders.total, carts.items, orderEvents.ts, regionTopDevices.top",

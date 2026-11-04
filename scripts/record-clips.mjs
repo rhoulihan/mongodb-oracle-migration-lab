@@ -151,7 +151,8 @@ async function makeRecorder(page) {
 // ---- one demo through the console ----------------------------------------
 async function runDemoInConsole(page, id) {
   const demo = (await page.evaluate(async () => (await fetch('/api/demos')).json())).find((d) => d.id === id);
-  await page.goto(`${values.url}?theme=${values.theme}#${id}/${demo.steps[0].id}`, { waitUntil: 'networkidle0' });
+  // networkidle2, not 0: the page keeps one long poll open for ./lab.sh drive.
+  await page.goto(`${values.url}?theme=${values.theme}#${id}/${demo.steps[0].id}`, { waitUntil: 'networkidle2' });
   await page.evaluate(() => document.fonts.ready);
   await sleep(1500);
   const results = [];

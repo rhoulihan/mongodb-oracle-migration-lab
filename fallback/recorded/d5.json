@@ -2,7 +2,7 @@
   "id": "d5",
   "steps": {
     "setup": {
-      "at": "2026-11-04T13:42:14.244Z",
+      "at": "2026-11-04T22:02:54.965Z",
       "result": {
         "ok": true,
         "summary": "8 regions; 960 counter rows built from the restored orders; their Top 10 matches a fresh count of the orders",
@@ -13,25 +13,25 @@
       }
     },
     "embedded-write": {
-      "at": "2026-11-04T13:42:19.983Z",
+      "at": "2026-11-04T22:03:00.323Z",
       "result": {
         "ok": true,
-        "summary": "200 orders placed: 5660 bytes of redo per order; each order rewrites its region's Top-N document (R03: 801 bytes), usually twice ($inc, then a re-sort)",
+        "summary": "200 orders placed. Each order writes 17342 bytes of redo: the order plus one $inc in its region's document (R03: 120 devices, 9509 bytes). The read fetches the whole document; the client sorts it and keeps the top 10",
         "metrics": {
-          "redoPerOrder": 5660,
+          "redoPerOrder": 17342,
           "batches": [
-            6482,
-            5814,
-            6022,
-            4888,
-            4891,
-            5789,
-            5169,
-            5660,
-            4913
+            17310,
+            17270,
+            17399,
+            17302,
+            17342,
+            17341,
+            17351,
+            18254,
+            17357
           ],
-          "docBytes": 801,
-          "readMs": 0.4
+          "docBytes": 9509,
+          "readMs": 0.6
         },
         "panes": {
           "left": {
@@ -91,30 +91,38 @@
           }
         },
         "plan": {
-          "left": "SELECT STATEMENT\n  TABLE ACCESS BY INDEX ROWID regionTopDevices\n    INDEX UNIQUE SCAN SYS_C009070"
+          "left": "SELECT STATEMENT\n  TABLE ACCESS BY INDEX ROWID regionDeviceCounts\n    INDEX UNIQUE SCAN SYS_C009105"
         },
-        "detail": "redo per order, by batch of 20: 6482, 5814, 6022, 4888, 4891, 5789, 5169, 5660, 4913\nread plan:\nSELECT STATEMENT\n  TABLE ACCESS BY INDEX ROWID regionTopDevices\n    INDEX UNIQUE SCAN SYS_C009070"
+        "query": {
+          "left": {
+            "table": " Plan Hash Value  : 243923510 \n\n---------------------------------------------------------------------------------------------\n| Id  | Operation                     | Name               | Rows | Bytes | Cost | Time     |\n---------------------------------------------------------------------------------------------\n|   0 | SELECT STATEMENT              |                    |    1 |  5114 |    1 | 00:00:01 |\n|   1 |   TABLE ACCESS BY INDEX ROWID | regionDeviceCounts |    1 |  5114 |    1 | 00:00:01 |\n| * 2 |    INDEX UNIQUE SCAN          | SYS_C009105        |    1 |       |    1 | 00:00:01 |\n---------------------------------------------------------------------------------------------\n\nPredicate Information (identified by operation id):\n------------------------------------------\n* 2 - access(JSON_VALUE(\"DATA\" /*+ LOB_BY_VALUE */ FORMAT OSON , '$._id' RETURNING ANY ORA_RAWCOMPARE(2000) NO ARRAY ERROR ON ERROR TYPE(LAX) )=SYS_CONS_ANY_SCALAR(:1, 4))",
+            "query": "db.regionDeviceCounts.find({\n  \"_id\": \"R03\"\n})",
+            "sql": "select \"DATA\",rawtohex(\"RESID\"),\"ETAG\" from \"MIG\".\"regionDeviceCounts\" where JSON_EXISTS(\"DATA\",'$?(@._id.stringOnly() == $B0)' passing ? as \"B0\" type(strict))",
+            "explain": null
+          }
+        },
+        "detail": "redo per order, by batch of 20: 17310, 17270, 17399, 17302, 17342, 17341, 17351, 18254, 17357\nread plan:\nSELECT STATEMENT\n  TABLE ACCESS BY INDEX ROWID regionDeviceCounts\n    INDEX UNIQUE SCAN SYS_C009105"
       }
     },
     "lookup-read": {
-      "at": "2026-11-04T13:42:27.606Z",
+      "at": "2026-11-04T22:03:05.432Z",
       "result": {
         "ok": true,
-        "summary": "2601 bytes of redo per order; every dashboard read groups each R03 order line again",
+        "summary": "Each order writes 4857 bytes of redo: the order plus $inc on one counter document. The read is an aggregation pipeline the app owns ($match, $sort, $limit, $lookup the name): change the model, and the app code changes with it",
         "metrics": {
-          "redoPerOrder": 2601,
+          "redoPerOrder": 4857,
           "batches": [
-            2712,
-            2519,
-            2640,
-            2600,
-            2601,
-            2590,
-            2647,
-            2676,
-            2584
+            4954,
+            4827,
+            4891,
+            4868,
+            4857,
+            4842,
+            4846,
+            4852,
+            4867
           ],
-          "readMs": 159.3
+          "readMs": 1.1
         },
         "panes": {
           "left": {
@@ -174,30 +182,38 @@
           }
         },
         "plan": {
-          "left": "SELECT STATEMENT\n  SORT GROUP BY\n    TABLE ACCESS BY INDEX ROWID catalog\n      INDEX UNIQUE SCAN SYS_C009064\n  VIEW\n    COUNT STOPKEY\n      VIEW\n        SORT ORDER BY STOPKEY\n          VIEW\n            SORT GROUP BY\n              NESTED LOOPS\n                TABLE ACCESS BY INDEX ROWID BATCHED orders\n                  HASH UNIQUE\n                    INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1\n                JSON EXPAND ARRAY EVALUATION"
+          "left": "SELECT STATEMENT\n  SORT GROUP BY\n    TABLE ACCESS BY INDEX ROWID catalog\n      INDEX UNIQUE SCAN SYS_C009065\n  VIEW\n    COUNT STOPKEY\n      VIEW\n        TABLE ACCESS BY INDEX ROWID deviceSales\n          INDEX RANGE SCAN (MULTI VALUE) $ora:deviceSales.region_1_units_-1_sku_1"
         },
-        "detail": "read plan:\nSELECT STATEMENT\n  SORT GROUP BY\n    TABLE ACCESS BY INDEX ROWID catalog\n      INDEX UNIQUE SCAN SYS_C009064\n  VIEW\n    COUNT STOPKEY\n      VIEW\n        SORT ORDER BY STOPKEY\n          VIEW\n            SORT GROUP BY\n              NESTED LOOPS\n                TABLE ACCESS BY INDEX ROWID BATCHED orders\n                  HASH UNIQUE\n                    INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1\n                JSON EXPAND ARRAY EVALUATION"
+        "query": {
+          "left": {
+            "table": " Plan Hash Value  : \n\n--------------------------------------------------------------------------------------------------------------------------\n| Id  | Operation                            | Name                                     | Rows | Bytes | Cost | Time     |\n--------------------------------------------------------------------------------------------------------------------------\n|   0 | SELECT STATEMENT                     |                                          |   10 | 41020 |   26 | 00:00:01 |\n|   1 |   SORT GROUP BY                      |                                          |    1 |  5104 |      |          |\n|   2 |    TABLE ACCESS BY INDEX ROWID       | catalog                                  |    1 |  5104 |    2 | 00:00:01 |\n| * 3 |     INDEX UNIQUE SCAN                | SYS_C009065                              |    1 |       |    1 | 00:00:01 |\n|   4 |   VIEW                               |                                          |   10 | 41020 |    6 | 00:00:01 |\n| * 5 |    COUNT STOPKEY                     |                                          |      |       |      |          |\n|   6 |     VIEW                             |                                          |   10 | 41020 |    6 | 00:00:01 |\n|   7 |      TABLE ACCESS BY INDEX ROWID     | deviceSales                              |   10 | 81060 |    6 | 00:00:01 |\n| * 8 |       INDEX RANGE SCAN (MULTI VALUE) | $ora:deviceSales.region_1_units_-1_sku_1 |    4 |       |    2 | 00:00:01 |\n--------------------------------------------------------------------------------------------------------------------------\n\nPredicate Information (identified by operation id):\n------------------------------------------\n* 3 - access(JSON_VALUE(\"DATA\" FORMAT OSON , '$._id' RETURNING ANY ORA_RAWCOMPARE(2000) NO ARRAY ERROR ON ERROR TYPE(LAX) )=SYS_CONS_ANY_SCALAR(JSON_QUERY(:B1 FORMAT OSON , '$.\"sku\"' RETURNING JSON\n  WITHOUT ARRAY WRAPPER ERROR ON ERROR DISALLOW ARRAY TYPE(LAX) ), 0))\n* 5 - filter(ROWNUM<=10)\n* 8 - access(JSON_QUERY(\"DATA\" /*+ LOB_BY_VALUE */ FORMAT OSON , '$.\"region\"[*]' RETURNING ANY ORA_RAWCOMPARE ASIS WITHOUT ARRAY WRAPPER ERROR ON ERROR PRESENT ON EMPTY NULL ON MISMATCH TYPE(LAX)\n  MULTIVALUE)=SYS_CONS_ANY_SCALAR(:1, 4))",
+            "query": "db.deviceSales.aggregate([\n  {\n    \"$match\": {\n      \"region\": \"R03\"\n    }\n  },\n  {\n    \"$sort\": {\n      \"units\": -1,\n      \"sku\": 1\n    }\n  },\n  {\n    \"$limit\": 10\n  },\n  {\n    \"$lookup\": {\n      \"from\": \"catalog\",\n      \"localField\": \"sku\",\n      \"foreignField\": \"_id\",\n      \"as\": \"device\"\n    }\n  },\n  {\n    \"$project\": {\n      \"_id\": 0,\n      \"sku\": 1,\n      \"name\": {\n        \"$arrayElemAt\": [\n          \"$device.name\",\n          0\n        ]\n      },\n      \"units\": 1\n    }\n  }\n])",
+            "sql": "with \n\"Q1\" (\"ID\", \"DATA\") as (select \"RESID\", \"DATA\" from \"MIG\".\"deviceSales\"), \n\"Q2\" (\"DATA\") as (\n  select \"DATA\"\n  from \"Q1\" q\n  where JSON_EXISTS(\"DATA\",'$?(@.region.stringOnly() == $B0)' passing ? as \"B0\" type(strict))\n), \n\"Q3\" (\"DATA\") as (\n  select \"DATA\"\n  from \"Q2\" q\n  order by JSON_QUERY(\"DATA\", '$.units[*].max()') desc nulls last, JSON_QUERY(\"DATA\", '$.sku[*].min()') asc nulls first\n), \n\"Q4\" (\"DATA\") as (\n  select \"DATA\"\n  from \"Q3\" q fetch first 10 rows only\n), \n\"Q5\" (\"ID\", \"DATA\") as (select \"RESID\", \"DATA\" from \"MIG\".\"catalog\"), \n\"Q6\" (\"DATA\", \"SOURCE\") as (\n  select json_transform(r.\"DATA\",\n    assign '$.\"device\"' = json [\n      select f.\"DATA\"\n      from \"Q5\" f \n      where \n        json_exists(f.\"DATA\", '$?(@.\"_id\" == $x)' passing\n          json_query(r.\"DATA\", '$.\"sku\"' error on error disallow array) as \"x\" type(strict)\n        )\n    ]\n    type(strict)\n  ),r.\"DATA\"\n  from \"Q4\" r\n), \n\"Q7\" (\"DATA\") as (\n  select json_transform(\n    \"DATA\",\n    set '$tmp1' = PATH '$.\"device\".\"name\".arrayagg(\"wrap\")' ignore on empty,\n    set '$tmp2' = PATH '$.\"device\".\"name\".arrayagg(\"wrap\")' ignore on empty,\n    set '$tmp3' = PATH '$b1',\n    set '$tmp4' = PATH '$tmp2.type()',\n    case when '$tmp4 != \"array\" && $tmp4 != null && $tmp3 == 0'\n    then ( set '$tmp' = PATH '$tmp2' )\n    else ( set '$tmp' = PATH 'elementAt($tmp2, $tmp3)' ignore on empty ) end,\n    set '$tmpP0' = PATH '$tmp' ignore on empty,\n    assign '$.\"name\"' = PATH '$tmpP0' ignore on empty,\n    keep \n      '$.\"sku\"',\n      '$.\"name\"',\n      '$.\"units\"', remove '$.\"_id\"'\n    passing json_scalar(0 as int) as \"b1\"\n  )\n  from \"Q6\" q\n)\nselect \"DATA\" from \"Q7\"",
+            "explain": null
+          }
+        },
+        "detail": "read plan:\nSELECT STATEMENT\n  SORT GROUP BY\n    TABLE ACCESS BY INDEX ROWID catalog\n      INDEX UNIQUE SCAN SYS_C009065\n  VIEW\n    COUNT STOPKEY\n      VIEW\n        TABLE ACCESS BY INDEX ROWID deviceSales\n          INDEX RANGE SCAN (MULTI VALUE) $ora:deviceSales.region_1_units_-1_sku_1"
       }
     },
     "converged": {
-      "at": "2026-11-04T13:42:32.660Z",
+      "at": "2026-11-04T22:03:10.424Z",
       "result": {
         "ok": true,
-        "summary": "3490 bytes of redo per order; the dashboard read is an index range scan that stops after 10 rows per region (the view builds all 8 regions, then keeps R03 by _id)",
+        "summary": "Each order writes 3484 bytes of redo: the order plus one counter row ((b)'s counter document: 4857). The app reads one document from a JSON view. The join, the pre-sorted index and the stop at 10 rows are SQL the database owns, with the optimizer and parallel execution behind it as the query grows",
         "metrics": {
-          "redoPerOrder": 3490,
+          "redoPerOrder": 3484,
           "batches": [
-            3546,
-            3410,
-            3556,
-            3499,
-            3493,
-            3485,
-            3475,
-            3490,
-            3471
+            3577,
+            3432,
+            3537,
+            3484,
+            3518,
+            3463,
+            3486,
+            3480,
+            3481
           ],
-          "readMs": 0.5
+          "readMs": 0.6
         },
         "panes": {
           "left": {
@@ -257,26 +273,34 @@
           }
         },
         "plan": {
-          "left": "EXPLAINED SQL STATEMENT:\n------------------------\n/* measure:61b1d5ab8b7d */ SELECT JSON_SERIALIZE(v.data) FROM \nregion_top_devices_v v WHERE v.data.\"_id\".string() = :region\n \nPlan hash value: 36573191\n \n--------------------------------------------------------------\n| Id  | Operation             | Name                 | Rows  |\n--------------------------------------------------------------\n|   0 | SELECT STATEMENT      |                      |       |\n|   1 |  SORT GROUP BY        |                      |     1 |\n|*  2 |   HASH JOIN           |                      |    10 |\n|   3 |    VIEW               |                      |    10 |\n|*  4 |     COUNT STOPKEY     |                      |       |\n|   5 |      VIEW             |                      |   120 |\n|*  6 |       INDEX RANGE SCAN| DEVICE_SALES_TOPN    |   120 |\n|   7 |    TABLE ACCESS FULL  | DEVICE               |   120 |\n|*  8 |  VIEW                 | REGION_TOP_DEVICES_V |     8 |\n|   9 |   INDEX FULL SCAN     | SYS_C009123          |     8 |\n--------------------------------------------------------------\n \nPredicate Information (identified by operation id):\n---------------------------------------------------\n \n   2 - access(\"D\".\"SKU\"=\"T\".\"SKU\")\n   4 - filter(ROWNUM<=10)\n   6 - access(\"DS\".\"REGION_ID\"=:B1)\n   8 - filter(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"V\".\"DATA\" FORMAT OSON , '$.\"_id\".string()' \n              RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) )=:REGION)"
+          "left": "SELECT STATEMENT\n  SORT GROUP BY\n    HASH JOIN\n      VIEW\n        COUNT STOPKEY\n          VIEW\n            INDEX RANGE SCAN DEVICE_SALES_TOPN\n      TABLE ACCESS FULL DEVICE\n  VIEW REGION_TOP_DEVICES_V\n    INDEX FULL SCAN SYS_C009127"
         },
-        "detail": "read plan:\nEXPLAINED SQL STATEMENT:\n------------------------\n/* measure:61b1d5ab8b7d */ SELECT JSON_SERIALIZE(v.data) FROM \nregion_top_devices_v v WHERE v.data.\"_id\".string() = :region\n \nPlan hash value: 36573191\n \n--------------------------------------------------------------\n| Id  | Operation             | Name                 | Rows  |\n--------------------------------------------------------------\n|   0 | SELECT STATEMENT      |                      |       |\n|   1 |  SORT GROUP BY        |                      |     1 |\n|*  2 |   HASH JOIN           |                      |    10 |\n|   3 |    VIEW               |                      |    10 |\n|*  4 |     COUNT STOPKEY     |                      |       |\n|   5 |      VIEW             |                      |   120 |\n|*  6 |       INDEX RANGE SCAN| DEVICE_SALES_TOPN    |   120 |\n|   7 |    TABLE ACCESS FULL  | DEVICE               |   120 |\n|*  8 |  VIEW                 | REGION_TOP_DEVICES_V |     8 |\n|   9 |   INDEX FULL SCAN     | SYS_C009123          |     8 |\n--------------------------------------------------------------\n \nPredicate Information (identified by operation id):\n---------------------------------------------------\n \n   2 - access(\"D\".\"SKU\"=\"T\".\"SKU\")\n   4 - filter(ROWNUM<=10)\n   6 - access(\"DS\".\"REGION_ID\"=:B1)\n   8 - filter(JSON_VALUE( /*+ QJSNMD_CUR_PER_HP */  /*+ \n              QJSNMD_USE_SHR_XCTX */ \"V\".\"DATA\" FORMAT OSON , '$.\"_id\".string()' \n              RETURNING VARCHAR2(4000) NULL ON ERROR TYPE(LAX) )=:REGION)\n\ndashboard document:\n{\n  \"_id\": \"R03\",\n  \"top\": [\n    {\n      \"sku\": \"SKU-DEV-0015\",\n      \"name\": \"Google Pixel 10 Pro 256GB Black\",\n      \"units\": 3496\n    },\n    {\n      \"sku\": \"SKU-DEV-0016\",\n      \"name\": \"Motorola Razr 64GB Silver\",\n      \"units\": 1884\n    },\n    {\n      \"sku\": \"SKU-DEV-0017\",\n      \"name\": \"OnePlus Nord 128GB Blue\",\n      \"units\": 1263\n    },\n    {\n      \"sku\": \"SKU-DEV-0018\",\n      \"name\": \"Nokia XR21 64GB Blue\",\n      \"units\": 1029\n    },\n    {\n      \"sku\": \"SKU-DEV-0019\",\n      \"name\": \"Apple iPad Air 512GB Black\",\n      \"units\": 820\n    },\n    {\n      \"sku\": \"SKU-DEV-0020\",\n      \"name\": \"Samsung Galaxy Z Fold 64GB Blue\",\n      \"units\": 704\n    },\n    {\n      \"sku\": \"SKU-DEV-0021\",\n      \"name\": \"Google Pixel 10 128GB Blue\",\n      \"units\": 655\n    },\n    {\n      \"sku\": \"SKU-DEV-0022\",\n      \"name\": \"Motorola Moto G 64GB Green\",\n      \"units\": 579\n    },\n    {\n      \"sku\": \"SKU-DEV-0023\",\n      \"name\": \"OnePlus Nord 256GB Blue\",\n      \"units\": 466\n    },\n    {\n      \"sku\": \"SKU-DEV-0024\",\n      \"name\": \"Nokia XR21 128GB Green\",\n      \"units\": 465\n    }\n  ]\n}"
+        "query": {
+          "left": {
+            "table": " Plan Hash Value  : \n\n------------------------------------------------------------------------------------------\n| Id  | Operation               | Name                 | Rows | Bytes  | Cost | Time     |\n------------------------------------------------------------------------------------------\n|   0 | SELECT STATEMENT        |                      |    8 | 162448 |   26 | 00:00:01 |\n|   1 |   SORT GROUP BY         |                      |    1 |     57 |      |          |\n| * 2 |    HASH JOIN            |                      |   10 |    570 |    5 | 00:00:01 |\n|   3 |     VIEW                |                      |   10 |    170 |    2 | 00:00:01 |\n| * 4 |      COUNT STOPKEY      |                      |      |        |      |          |\n|   5 |       VIEW              |                      |  120 |   2040 |    2 | 00:00:01 |\n| * 6 |        INDEX RANGE SCAN | DEVICE_SALES_TOPN    |  120 |   2520 |    2 | 00:00:01 |\n|   7 |     TABLE ACCESS FULL   | DEVICE               |  120 |   4800 |    3 | 00:00:01 |\n| * 8 |   VIEW                  | REGION_TOP_DEVICES_V |    8 | 162448 |   26 | 00:00:01 |\n|   9 |    INDEX FULL SCAN      | SYS_C009127          |    8 |     32 |    1 | 00:00:01 |\n------------------------------------------------------------------------------------------\n\nPredicate Information (identified by operation id):\n------------------------------------------\n* 2 - access(\"D\".\"SKU\"=\"T\".\"SKU\")\n* 4 - filter(ROWNUM<=10)\n* 6 - access(\"DS\".\"REGION_ID\"=:B1)\n* 8 - filter(JSON_EXISTS2(\"DATA\" FORMAT OSON , '$?(@._id.stringOnly() == $B0)' /* json_path_str $?(@._id.stringOnly() == $B0) */ PASSING :1 AS \"B0\" FALSE ON ERROR TYPE(STRICT) )=1)",
+            "query": "db.region_top_devices_v.find({\n  \"_id\": \"R03\"\n})",
+            "sql": "select \"DATA\",rawtohex(\"RESID\"),\"ETAG\" from \"MIG\".\"REGION_TOP_DEVICES_V\" where JSON_EXISTS(\"DATA\",'$?(@._id.stringOnly() == $B0)' passing ? as \"B0\" type(strict))",
+            "explain": null
+          }
+        },
+        "detail": "the view builds all 8 regions, then keeps R03 by _id\n\nread plan:\nSELECT STATEMENT\n  SORT GROUP BY\n    HASH JOIN\n      VIEW\n        COUNT STOPKEY\n          VIEW\n            INDEX RANGE SCAN DEVICE_SALES_TOPN\n      TABLE ACCESS FULL DEVICE\n  VIEW REGION_TOP_DEVICES_V\n    INDEX FULL SCAN SYS_C009127\n\ndashboard document:\n{\n  \"_id\": \"R03\",\n  \"top\": [\n    {\n      \"sku\": \"SKU-DEV-0015\",\n      \"name\": \"Google Pixel 10 Pro 256GB Black\",\n      \"units\": 3496\n    },\n    {\n      \"sku\": \"SKU-DEV-0016\",\n      \"name\": \"Motorola Razr 64GB Silver\",\n      \"units\": 1884\n    },\n    {\n      \"sku\": \"SKU-DEV-0017\",\n      \"name\": \"OnePlus Nord 128GB Blue\",\n      \"units\": 1263\n    },\n    {\n      \"sku\": \"SKU-DEV-0018\",\n      \"name\": \"Nokia XR21 64GB Blue\",\n      \"units\": 1029\n    },\n    {\n      \"sku\": \"SKU-DEV-0019\",\n      \"name\": \"Apple iPad Air 512GB Black\",\n      \"units\": 820\n    },\n    {\n      \"sku\": \"SKU-DEV-0020\",\n      \"name\": \"Samsung Galaxy Z Fold 64GB Blue\",\n      \"units\": 704\n    },\n    {\n      \"sku\": \"SKU-DEV-0021\",\n      \"name\": \"Google Pixel 10 128GB Blue\",\n      \"units\": 655\n    },\n    {\n      \"sku\": \"SKU-DEV-0022\",\n      \"name\": \"Motorola Moto G 64GB Green\",\n      \"units\": 579\n    },\n    {\n      \"sku\": \"SKU-DEV-0023\",\n      \"name\": \"OnePlus Nord 256GB Blue\",\n      \"units\": 466\n    },\n    {\n      \"sku\": \"SKU-DEV-0024\",\n      \"name\": \"Nokia XR21 128GB Green\",\n      \"units\": 465\n    }\n  ]\n}"
       }
     },
     "same-shape": {
-      "at": "2026-11-04T13:42:37.111Z",
+      "at": "2026-11-04T22:03:14.833Z",
       "result": {
         "ok": true,
-        "summary": "all 8 region dashboards are identical in the three variants; redo per order 5660 / 2601 / 3490 bytes, read 0.4 / 159.3 / 0.5 ms (embedded / lookup / converged)",
+        "summary": "all 8 region dashboards are identical in the three variants; redo per order 17342 / 4857 / 3484 bytes, read 0.6 / 1.1 / 0.6 ms (embedded / lookup / converged). (b) and (c) read the same counts; (b) keeps the query in the app, (c) keeps it in the database behind a document",
         "metrics": {
           "redoPerOrder": {
-            "embedded": 5660,
-            "lookup": 2601,
-            "converged": 3490
+            "embedded": 17342,
+            "lookup": 4857,
+            "converged": 3484
           },
           "readMs": {
-            "embedded": 0.4,
-            "lookup": 159.3,
-            "converged": 0.5
+            "embedded": 0.6,
+            "lookup": 1.1,
+            "converged": 0.6
           }
         },
         "panes": {
@@ -448,11 +472,11 @@
             }
           }
         },
-        "detail": "variant     redo/order  read ms  plan\nembedded          5660      0.4  TABLE ACCESS BY INDEX ROWID regionTopDevices > INDEX UNIQUE SCAN SYS_C009070\nlookup            2601    159.3  SORT GROUP BY > TABLE ACCESS BY INDEX ROWID catalog > INDEX UNIQUE SCAN SYS_C009064 > COUNT STOPKEY > SORT ORDER BY STOPKEY > SORT GROUP BY > TABLE ACCESS BY INDEX ROWID BATCHED orders > INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1 > JSON EXPAND ARRAY EVALUATION\nconverged         3490      0.5  SORT GROUP BY > HASH JOIN > COUNT STOPKEY > INDEX RANGE SCAN DEVICE_SALES_TOPN > TABLE ACCESS FULL DEVICE > INDEX FULL SCAN SYS_C009123\n\nR03 top 3: SKU-DEV-0015 3496, SKU-DEV-0016 1884, SKU-DEV-0017 1263"
+        "detail": "variant     redo/order  read ms  plan\nembedded         17342      0.6  TABLE ACCESS BY INDEX ROWID regionDeviceCounts > INDEX UNIQUE SCAN SYS_C009105\nlookup            4857      1.1  SORT GROUP BY > TABLE ACCESS BY INDEX ROWID catalog > INDEX UNIQUE SCAN SYS_C009065 > COUNT STOPKEY > TABLE ACCESS BY INDEX ROWID deviceSales > INDEX RANGE SCAN (MULTI VALUE) $ora:deviceSales.region_1_units_-1_sku_1\nconverged         3484      0.6  SORT GROUP BY > HASH JOIN > COUNT STOPKEY > INDEX RANGE SCAN DEVICE_SALES_TOPN > TABLE ACCESS FULL DEVICE > INDEX FULL SCAN SYS_C009127\n\nR03 top 3: SKU-DEV-0015 3496, SKU-DEV-0016 1884, SKU-DEV-0017 1263"
       }
     },
     "mongosh-read": {
-      "at": "2026-11-04T13:42:42.134Z",
+      "at": "2026-11-04T22:03:19.840Z",
       "result": {
         "ok": true,
         "summary": "region_top_devices_v is readable through the MongoDB API: R03 has 10 devices, sorted"

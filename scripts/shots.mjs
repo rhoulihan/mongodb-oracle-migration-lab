@@ -48,10 +48,10 @@ try {
   page.on('request', (r) => { if (!/^(http:\/\/127\.0\.0\.1[:/]|data:|blob:)/.test(r.url())) offsite.push(r.url()); });
 
   if (values.run) {
-    await page.goto(`${values.url}#${values.run}`, { waitUntil: 'networkidle0' });
+    await page.goto(`${values.url}#${values.run}`, { waitUntil: 'networkidle2' });
     const ids = await page.evaluate(async (id) => (await (await fetch('/api/demos')).json()).find((d) => d.id === id).steps.map((s) => s.id), values.run);
     for (const step of ids) {
-      await page.goto(`${values.url}?n=${Date.now()}#${values.run}/${step}`, { waitUntil: 'networkidle0' });
+      await page.goto(`${values.url}?n=${Date.now()}#${values.run}/${step}`, { waitUntil: 'networkidle2' });
       await page.waitForSelector('.step-bar .btn.primary, .step-bar .btn.done');
       const t0 = Date.now();
       await page.click('.step-bar .btn.primary, .step-bar .btn.done');
@@ -65,7 +65,7 @@ try {
 
   for (const theme of ['light', 'dark']) {
     for (const [stem, hash] of wanted) {
-      await page.goto(`${values.url}?theme=${theme}#${hash}`, { waitUntil: 'networkidle0' });
+      await page.goto(`${values.url}?theme=${theme}#${hash}`, { waitUntil: 'networkidle2' });
       await page.evaluate(() => document.fonts.ready);
       const file = `${stem}${values.suffix}-${theme}.png`;
       await page.screenshot({ path: OUT + file });

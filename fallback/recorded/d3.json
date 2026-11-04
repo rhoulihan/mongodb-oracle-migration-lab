@@ -2,21 +2,21 @@
   "id": "d3",
   "steps": {
     "dump": {
-      "at": "2026-11-04T13:39:55.655Z",
+      "at": "2026-11-04T22:00:05.559Z",
       "result": {
         "ok": true,
         "summary": "/dumps/telco.archive holds 8 collections, 555280 documents"
       }
     },
     "restore": {
-      "at": "2026-11-04T13:40:13.832Z",
+      "at": "2026-11-04T22:00:25.116Z",
       "result": {
         "ok": true,
         "summary": "MIG holds the 8 pre-created collections; orders has 200000 documents, as dumped"
       }
     },
     "counts": {
-      "at": "2026-11-04T13:40:19.233Z",
+      "at": "2026-11-04T22:00:30.360Z",
       "result": {
         "ok": true,
         "summary": "all 8 collections match the dump",
@@ -66,20 +66,20 @@
               "coll": "carts",
               "archive": 4986,
               "restored": null,
-              "oracle": 4978,
+              "oracle": 4986,
               "smokeExcluded": 0,
               "ttl": "updatedAt + 120s",
-              "unexpired": 4977,
+              "unexpired": 4976,
               "ok": true
             },
             {
               "coll": "orderEvents",
               "archive": 299978,
               "restored": null,
-              "oracle": 299972,
+              "oracle": 299978,
               "smokeExcluded": 0,
               "ttl": "createdAt + 604800s",
-              "unexpired": 299968,
+              "unexpired": 299967,
               "ok": true
             },
             {
@@ -92,185 +92,144 @@
             }
           ]
         },
-        "detail": "collection        in the dump  restored  on Oracle now  note\n----------------  -----------  --------  -------------  --------------------------------------------------------------------------\nregions           8            -         8\ncatalog           300          -         300\naccounts          20000        -         20000\nsubscribers       30000        -         30000\norders            200000       -         200000\ncarts             4986         -         4978           TTL updatedAt + 120s: 8 expired since the dump (4977 still unexpired)\norderEvents       299978       -         299972         TTL createdAt + 604800s: 6 expired since the dump (299968 still unexpired)\nregionTopDevices  8            -         8"
+        "detail": "collection        in the dump  restored  on Oracle now  note\n----------------  -----------  --------  -------------  --------------------------------------------------------------------------\nregions           8            -         8\ncatalog           300          -         300\naccounts          20000        -         20000\nsubscribers       30000        -         30000\norders            200000       -         200000\ncarts             4986         -         4986           TTL updatedAt + 120s: 0 expired since the dump (4976 still unexpired)\norderEvents       299978       -         299978         TTL createdAt + 604800s: 0 expired since the dump (299967 still unexpired)\nregionTopDevices  8            -         8"
       }
     },
     "typediff": {
-      "at": "2026-11-04T13:40:27.823Z",
+      "at": "2026-11-04T22:00:39.153Z",
       "result": {
         "ok": true,
-        "summary": "5 fields with a type or $type difference, 3 value checks that changed",
+        "summary": "5 fields with a type or $type difference, 3 value checks that changed; each has a fix, 5 rewritten queries count the same on both sides",
         "panes": {
           "left": [
             {
-              "kind": "value",
-              "coll": "catalog",
-              "path": "price",
-              "check": "decimal scale",
-              "ok": false,
-              "changed": 60,
-              "of": 300,
-              "example": {
-                "src": "93.00",
-                "dst": "93"
-              }
+              "field": "catalog.price",
+              "MongoDB": "93.00",
+              "Oracle": "93",
+              "test": "decimal scale",
+              "result": "60 of 300 changed"
             },
             {
-              "kind": "type",
-              "coll": "catalog",
-              "path": "skuPattern",
-              "srcTypes": [
-                "regex"
-              ],
-              "dstTypes": [
-                "object"
-              ],
-              "queryCheck": {
-                "filter": {
-                  "skuPattern": {
-                    "$type": "regex"
-                  }
-                },
-                "srcCount": 300,
-                "dstCount": "rejected"
-              }
+              "field": "catalog.skuPattern",
+              "MongoDB": "regex",
+              "Oracle": "object",
+              "test": "{skuPattern:{$type:\"regex\"}}",
+              "result": "300 vs rejected"
             },
             {
-              "kind": "type",
-              "coll": "orders",
-              "path": "lines",
-              "srcTypes": [
-                "array",
-                "object"
-              ],
-              "dstTypes": [
-                "array",
-                "object"
-              ],
-              "queryCheck": {
-                "filter": {
-                  "lines": {
-                    "$type": "object"
-                  }
-                },
-                "srcCount": 2000,
-                "dstCount": 0
-              }
+              "field": "orders.lines",
+              "MongoDB": "array, object",
+              "Oracle": "array, object",
+              "test": "{lines:{$type:\"object\"}}",
+              "result": "2000 vs 0"
             },
             {
-              "kind": "value",
-              "coll": "orders",
-              "path": "lines.price",
-              "check": "decimal scale",
-              "ok": false,
-              "changed": 1280,
-              "of": 4722,
-              "example": {
-                "src": "19.00",
-                "dst": "19"
-              }
+              "field": "orders.lines.price",
+              "MongoDB": "19.00",
+              "Oracle": "19",
+              "test": "decimal scale",
+              "result": "1280 of 4722 changed"
             },
             {
-              "kind": "value",
-              "coll": "orders",
-              "path": "total",
-              "check": "decimal scale",
-              "ok": false,
-              "changed": 176,
-              "of": 2000,
-              "example": {
-                "src": "19.00",
-                "dst": "19"
-              }
+              "field": "orders.total",
+              "MongoDB": "19.00",
+              "Oracle": "19",
+              "test": "decimal scale",
+              "result": "176 of 2000 changed"
             },
             {
-              "kind": "value",
-              "coll": "orders",
-              "path": "version",
-              "check": "Int64 above 2^53",
-              "ok": true,
-              "src": "9007199254740993",
-              "dst": "9007199254740993",
-              "exact": true
+              "field": "orders.version",
+              "MongoDB": "9007199254740993",
+              "Oracle": "9007199254740993",
+              "test": "Int64 above 2^53",
+              "result": "exact"
             },
             {
-              "kind": "type",
-              "coll": "carts",
-              "path": "items",
-              "srcTypes": [
-                "array",
-                "object"
-              ],
-              "dstTypes": [
-                "array",
-                "object"
-              ],
-              "queryCheck": {
-                "filter": {
-                  "items": {
-                    "$type": "object"
-                  }
-                },
-                "srcCount": 2000,
-                "dstCount": 0
-              }
+              "field": "carts.items",
+              "MongoDB": "array, object",
+              "Oracle": "array, object",
+              "test": "{items:{$type:\"object\"}}",
+              "result": "2000 vs 0"
             },
             {
-              "kind": "type",
-              "coll": "orderEvents",
-              "path": "ts",
-              "srcTypes": [
-                "timestamp"
-              ],
-              "dstTypes": [
-                "object"
-              ],
-              "queryCheck": {
-                "filter": {
-                  "ts": {
-                    "$type": "timestamp"
-                  }
-                },
-                "srcCount": 2000,
-                "dstCount": "rejected"
-              }
+              "field": "orderEvents.ts",
+              "MongoDB": "timestamp",
+              "Oracle": "object",
+              "test": "{ts:{$type:\"timestamp\"}}",
+              "result": "2000 vs rejected"
             },
             {
-              "kind": "type",
-              "coll": "regionTopDevices",
-              "path": "top",
-              "srcTypes": [
-                "array",
-                "object"
-              ],
-              "dstTypes": [
-                "array",
-                "object"
-              ],
-              "queryCheck": {
-                "filter": {
-                  "top": {
-                    "$type": "object"
-                  }
-                },
-                "srcCount": 8,
-                "dstCount": 0
-              }
+              "field": "regionTopDevices.top",
+              "MongoDB": "array, object",
+              "Oracle": "array, object",
+              "test": "{top:{$type:\"object\"}}",
+              "result": "8 vs 0"
+            }
+          ],
+          "right": [
+            {
+              "field": "catalog.price",
+              "how to handle it": "same value: compare as numbers, format the scale at display",
+              "proof, both sides": "300 of 300 equal as numbers"
+            },
+            {
+              "field": "catalog.skuPattern",
+              "how to handle it": "read: rebuild with new RegExp(pattern, options); query: $exists, not $type",
+              "proof, both sides": "{skuPattern:{$exists:true}}: 300 vs 300"
+            },
+            {
+              "field": "orders.lines",
+              "how to handle it": "query element types with $elemMatch",
+              "proof, both sides": "{lines:{$elemMatch:{$type:\"object\"}}}: 2000 vs 2000"
+            },
+            {
+              "field": "orders.lines.price",
+              "how to handle it": "same value: compare as numbers, format the scale at display",
+              "proof, both sides": "4722 of 4722 equal as numbers"
+            },
+            {
+              "field": "orders.total",
+              "how to handle it": "same value: compare as numbers, format the scale at display",
+              "proof, both sides": "2000 of 2000 equal as numbers"
+            },
+            {
+              "field": "orders.version",
+              "how to handle it": "nothing to do",
+              "proof, both sides": "exact"
+            },
+            {
+              "field": "carts.items",
+              "how to handle it": "query element types with $elemMatch",
+              "proof, both sides": "{items:{$elemMatch:{$type:\"object\"}}}: 2000 vs 2000"
+            },
+            {
+              "field": "orderEvents.ts",
+              "how to handle it": "query and sort on createdAt (a Date); query: $exists, not $type",
+              "proof, both sides": "{ts:{$exists:true}}: 2000 vs 2000"
+            },
+            {
+              "field": "regionTopDevices.top",
+              "how to handle it": "query element types with $elemMatch",
+              "proof, both sides": "{top:{$elemMatch:{$type:\"object\"}}}: 8 vs 8"
             }
           ]
         },
-        "detail": "Type differences (sampled documents, same _ids on both sides)\ncollection        path        MongoDB       Oracle        $type query                   MongoDB  Oracle\n----------------  ----------  ------------  ------------  ----------------------------  -------  --------\ncatalog           skuPattern  regex         object        {skuPattern:{$type:\"regex\"}}  300      rejected\norders            lines       array,object  array,object  {lines:{$type:\"object\"}}      2000     0\ncarts             items       array,object  array,object  {items:{$type:\"object\"}}      2000     0\norderEvents       ts          timestamp     object        {ts:{$type:\"timestamp\"}}      2000     rejected\nregionTopDevices  top         array,object  array,object  {top:{$type:\"object\"}}        8        0\n\nValue checks\ncollection  path         check             result\n----------  -----------  ----------------  -------------------------------------------------------\ncatalog     price        decimal scale     60 of 300 values changed (93.00 reads back as 93)\norders      lines.price  decimal scale     1280 of 4722 values changed (19.00 reads back as 19)\norders      total        decimal scale     176 of 2000 values changed (19.00 reads back as 19)\norders      version      Int64 above 2^53  source 9007199254740993, Oracle 9007199254740993: exact"
+        "labels": {
+          "left": "What differs",
+          "right": "How to handle it"
+        },
+        "detail": "Type differences (sampled documents, same _ids on both sides)\ncollection        path        MongoDB       Oracle        $type query                   MongoDB  Oracle\n----------------  ----------  ------------  ------------  ----------------------------  -------  --------\ncatalog           skuPattern  regex         object        {skuPattern:{$type:\"regex\"}}  300      rejected\norders            lines       array,object  array,object  {lines:{$type:\"object\"}}      2000     0\ncarts             items       array,object  array,object  {items:{$type:\"object\"}}      2000     0\norderEvents       ts          timestamp     object        {ts:{$type:\"timestamp\"}}      2000     rejected\nregionTopDevices  top         array,object  array,object  {top:{$type:\"object\"}}        8        0\n\nValue checks\ncollection  path         check             result\n----------  -----------  ----------------  -------------------------------------------------------\ncatalog     price        decimal scale     60 of 300 values changed (93.00 reads back as 93)\norders      lines.price  decimal scale     1280 of 4722 values changed (19.00 reads back as 19)\norders      total        decimal scale     176 of 2000 values changed (19.00 reads back as 19)\norders      version      Int64 above 2^53  source 9007199254740993, Oracle 9007199254740993: exact\n\nHow to handle each one (the proof query runs on both sides)\nfield                 how to handle it                                                            proof: MongoDB vs Oracle\n--------------------  --------------------------------------------------------------------------  ---------------------------------------------------\ncatalog.price         same value: compare as numbers, format the scale at display                 300 of 300 equal as numbers\ncatalog.skuPattern    read: rebuild with new RegExp(pattern, options); query: $exists, not $type  {skuPattern:{$exists:true}}: 300 vs 300\norders.lines          query element types with $elemMatch                                         {lines:{$elemMatch:{$type:\"object\"}}}: 2000 vs 2000\norders.lines.price    same value: compare as numbers, format the scale at display                 4722 of 4722 equal as numbers\norders.total          same value: compare as numbers, format the scale at display                 2000 of 2000 equal as numbers\norders.version        nothing to do                                                               exact\ncarts.items           query element types with $elemMatch                                         {items:{$elemMatch:{$type:\"object\"}}}: 2000 vs 2000\norderEvents.ts        query and sort on createdAt (a Date); query: $exists, not $type             {ts:{$exists:true}}: 2000 vs 2000\nregionTopDevices.top  query element types with $elemMatch                                         {top:{$elemMatch:{$type:\"object\"}}}: 8 vs 8"
       }
     },
     "flip": {
-      "at": "2026-11-04T13:40:32.467Z",
+      "at": "2026-11-04T22:00:44.001Z",
       "result": {
         "ok": true,
         "summary": "order service reports backend oracle (26.3.0.r2721811)"
       }
     },
     "smoke": {
-      "at": "2026-11-04T13:40:37.206Z",
+      "at": "2026-11-04T22:00:48.659Z",
       "result": {
         "ok": true,
         "summary": "6 app calls passed on Oracle, app code unchanged",
@@ -314,7 +273,7 @@
       }
     },
     "explain": {
-      "at": "2026-11-04T13:40:42.136Z",
+      "at": "2026-11-04T22:00:53.619Z",
       "result": {
         "ok": true,
         "summary": "Oracle plan: SELECT STATEMENT > TABLE ACCESS BY INDEX ROWID BATCHED orders > HASH UNIQUE > INDEX RANGE SCAN (MULTI VALUE) $ora:orders.region_1_placedAt_-1"

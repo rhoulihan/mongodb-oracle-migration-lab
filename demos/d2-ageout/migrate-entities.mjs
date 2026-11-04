@@ -12,6 +12,7 @@
 // restored documents is an error here.
 import { config } from '../../lib/config.mjs';
 import { runTool } from '../../lib/tools.mjs';
+import { prepareTarget } from '../../oracle/prep.mjs';
 
 export const ENTITIES = ['regions', 'catalog', 'accounts', 'subscribers'];
 /** What stays in MongoDB: the order archive, short-lived data, the order-derived Top-N. */
@@ -42,6 +43,10 @@ const tail = (s, n = 3) => s.trim().split('\n').slice(-n).join(' | ');
  * @returns {Promise<{coll:string, count:number}[]>} restored documents per entity, in ENTITIES order
  */
 export async function migrateEntities({ verbose = false, onStderr, onCommand, pauseMs = 0 } = {}) {
+  // Create any missing target in SQL first (IF NOT EXISTS: what a D2 reset
+  // pre-created stays as it is). After a full reset nothing has run D2's
+  // reset yet, and the restore must never create a collection itself.
+  await prepareTarget();
   const v = verbose ? ['--verbose'] : [];
   const dump = [...dumpArgs(), ...v], restore = [...restoreArgs(), ...v];
   onCommand?.(dump);

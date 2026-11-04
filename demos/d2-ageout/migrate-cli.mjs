@@ -2,6 +2,7 @@
 // entity-only dump and restore the step runs in-process (migrate-entities.mjs),
 // in the runner container, with the MIG password from MIG_PASSWORD. It
 // restores into the collections the D2 reset pre-created.
+import { closeAll } from '../../lib/db.mjs';
 import { migrateEntities, STAY } from './migrate-entities.mjs';
 
 // The audience watches mongodump and mongorestore work: each command, then its
@@ -29,5 +30,7 @@ try {
   console.log(`left in MongoDB: ${STAY.join(', ')}`);
 } catch (err) {
   console.error(`migrate-entities: ${err.message} (run ./lab.sh reset d2, then try again)`);
-  process.exit(1);
+  process.exitCode = 1;
+} finally {
+  await closeAll();
 }

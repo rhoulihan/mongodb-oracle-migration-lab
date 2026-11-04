@@ -2,7 +2,7 @@
   "id": "d7",
   "steps": {
     "setup": {
-      "at": "2026-11-04T13:44:51.123Z",
+      "at": "2026-11-04T22:05:43.959Z",
       "result": {
         "ok": true,
         "summary": "orders_dv holds 25629 R03 orders (61046 lines in order_line); the agents will work on order 69d0558abbd818e800004c01: status placed, device SKU-DEV-0025",
@@ -36,61 +36,72 @@
               }
             ],
             "_metadata": {
-              "etag": {
-                "$binary": {
-                  "base64": "M6ez2oAu7WWT1CbObHjBFA==",
-                  "subType": "00"
-                }
-              },
-              "asof": {
-                "$binary": {
-                  "base64": "AAAAAAAg0So=",
-                  "subType": "00"
-                }
-              }
+              "etag": "33A7B3DA802EED6593D426CE6C78C114",
+              "asof": "SCN 2200399"
             }
-          }
+          },
+          "right": [
+            {
+              "field": "_metadata.etag",
+              "value": "33A7B3DA802EED6593D426CE6C78C114",
+              "what it is": "Hash of the whole document, computed on every read. Sent back with a write: no match, the write is rejected (ORA-42699)"
+            },
+            {
+              "field": "_metadata.asof",
+              "value": "SCN 2200399",
+              "what it is": "The SCN (system change number) it was read at: one point in time for the order and its lines"
+            },
+            {
+              "field": "who adds it",
+              "value": "orders_dv",
+              "what it is": "The duality view adds _metadata to every document. The app never stores or computes it"
+            }
+          ]
+        },
+        "labels": {
+          "left": "The order, as the MongoDB API returns it",
+          "right": "What _metadata is"
         },
         "detail": "order document (MongoDB API, orders_dv):\n{\n  \"_id\": \"69d0558abbd818e800004c01\",\n  \"region\": \"R03\",\n  \"subscriber\": \"S020499\",\n  \"status\": \"placed\",\n  \"placedAt\": \"2026-04-04T00:04:26.359Z\",\n  \"lines\": [\n    {\n      \"lineId\": 1,\n      \"lineNo\": 1,\n      \"sku\": \"SKU-DEV-0025\",\n      \"kind\": \"device\",\n      \"qty\": 1,\n      \"price\": 517.99\n    },\n    {\n      \"lineId\": 2,\n      \"lineNo\": 2,\n      \"sku\": \"SKU-PLN-0035\",\n      \"kind\": \"plan\",\n      \"qty\": 1,\n      \"price\": 19\n    }\n  ],\n  \"_metadata\": {\n    \"etag\": \"33A7B3DA802EED6593D426CE6C78C114\"\n  }\n}"
       }
     },
     "agent-a-read": {
-      "at": "2026-11-04T13:44:56.942Z",
+      "at": "2026-11-04T22:05:49.611Z",
       "result": {
         "ok": true,
         "summary": "agent A holds order 69d0558abbd818e800004c01 with its current ETag 33A7B3DA802EED6593D426CE6C78C114"
       }
     },
     "agent-b-read": {
-      "at": "2026-11-04T13:45:02.527Z",
+      "at": "2026-11-04T22:05:55.249Z",
       "result": {
         "ok": true,
         "summary": "agent B holds order 69d0558abbd818e800004c01 with its current ETag 33A7B3DA802EED6593D426CE6C78C114; both agents hold the same ETag"
       }
     },
     "agent-a-write": {
-      "at": "2026-11-04T13:45:08.149Z",
+      "at": "2026-11-04T22:06:00.887Z",
       "result": {
         "ok": true,
         "summary": "order 69d0558abbd818e800004c01 is provisioned; 1 update applied (status placed -> provisioned)"
       }
     },
     "agent-b-write-stale": {
-      "at": "2026-11-04T13:45:13.803Z",
+      "at": "2026-11-04T22:06:06.498Z",
       "result": {
         "ok": true,
         "summary": "agent B's write was rejected (ORA-42699): order 69d0558abbd818e800004c01 still has A's status and device SKU-DEV-0025; still 1 update applied"
       }
     },
     "agent-b-retry": {
-      "at": "2026-11-04T13:45:19.423Z",
+      "at": "2026-11-04T22:06:12.095Z",
       "result": {
         "ok": true,
         "summary": "order 69d0558abbd818e800004c01 has both changes: provisioned, device SKU-DEV-0026; 2 updates applied"
       }
     },
     "final": {
-      "at": "2026-11-04T13:45:23.935Z",
+      "at": "2026-11-04T22:06:16.557Z",
       "result": {
         "ok": true,
         "summary": "order 69d0558abbd818e800004c01: status provisioned (agent A) and device SKU-DEV-0026 (agent B); exactly 2 updates applied, none lost, none from the rejected write",
@@ -123,18 +134,8 @@
               }
             ],
             "_metadata": {
-              "etag": {
-                "$binary": {
-                  "base64": "MTSXMyumRwUzBYXw+0oljA==",
-                  "subType": "00"
-                }
-              },
-              "asof": {
-                "$binary": {
-                  "base64": "AAAAAAAg0eU=",
-                  "subType": "00"
-                }
-              }
+              "etag": "313497332BA64705330585F0FB4A258C",
+              "asof": "SCN 2200624"
             }
           }
         },

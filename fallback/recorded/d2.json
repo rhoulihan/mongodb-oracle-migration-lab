@@ -2,31 +2,31 @@
   "id": "d2",
   "steps": {
     "migrate-entities": {
-      "at": "2026-11-04T13:39:26.318Z",
+      "at": "2026-11-04T21:59:35.180Z",
       "result": {
         "ok": true,
         "summary": "Oracle has regions 8, catalog 300, accounts 20000, subscribers 30000, as on the source, and no old orders, carts or events"
       }
     },
     "set-cutoff": {
-      "at": "2026-11-04T13:39:31.019Z",
+      "at": "2026-11-04T21:59:39.927Z",
       "result": {
         "ok": true,
         "summary": "age-out mode: before 2026-09-30T23:58:48.725Z from MongoDB (archive), from then on Oracle"
       }
     },
     "new-order": {
-      "at": "2026-11-04T13:39:35.679Z",
+      "at": "2026-11-04T21:59:44.488Z",
       "result": {
         "ok": true,
-        "summary": "order 6aeb3597ed36f08f986f9d04 for S000001 is on Oracle and not on MongoDB; placed 2026-11-04T13:39:35.572Z, after the cutoff; the subscriber and products it used came over with the entities",
+        "summary": "order 6aebaad057abfa9cc3d15bb0 for S000001 is on Oracle and not on MongoDB; placed 2026-11-04T21:59:44.402Z, after the cutoff; the subscriber and products it used came over with the entities",
         "panes": {
           "left": {
             "mongodb": "not found"
           },
           "right": {
-            "_id": "6aeb3597ed36f08f986f9d04",
-            "placedAt": "2026-11-04T13:39:35.572Z",
+            "_id": "6aebaad057abfa9cc3d15bb0",
+            "placedAt": "2026-11-04T21:59:44.402Z",
             "status": "placed",
             "total": "546.99",
             "from": "Oracle"
@@ -37,7 +37,7 @@
           "right": "Oracle"
         },
         "metrics": {
-          "orderId": "6aeb3597ed36f08f986f9d04",
+          "orderId": "6aebaad057abfa9cc3d15bb0",
           "subscriberId": "S000001",
           "onOracle": true,
           "onMongo": 0
@@ -45,7 +45,7 @@
       }
     },
     "cross-cutoff-read": {
-      "at": "2026-11-04T13:39:40.011Z",
+      "at": "2026-11-04T21:59:48.885Z",
       "result": {
         "ok": true,
         "summary": "S000001: 10 orders from MongoDB (before the cutoff) + 1 from Oracle = 11 in one merged read, newest first, same set as both sides by _id",
@@ -124,8 +124,8 @@
           ],
           "right": [
             {
-              "_id": "6aeb3597ed36f08f986f9d04",
-              "placedAt": "2026-11-04T13:39:35.572Z",
+              "_id": "6aebaad057abfa9cc3d15bb0",
+              "placedAt": "2026-11-04T21:59:44.402Z",
               "status": "placed",
               "total": "546.99",
               "from": "Oracle"
@@ -143,14 +143,14 @@
           "oracle": 1,
           "merged": 11
         },
-        "detail": "placedAt (UTC)       read from  status       total    _id\n2026-11-04 13:39:35  Oracle     placed        546.99  6aeb3597ed36f08f986f9d04\n---- cutoff 2026-09-30 23:58:48 ----\n2026-09-29 12:41:05  MongoDB    placed         48.97  6abbb1e15a3838b600009bc9\n2026-09-21 09:38:59  MongoDB    placed       1071.99  6ab0fb331bcee05800021980\n2026-09-16 01:42:01  MongoDB    placed       1079.98  6aa9f3e9c1cf8851000139d7\n2026-09-12 21:01:05  MongoDB    placed       1511.97  6aa5bd9117557fb300019edb\n2026-08-16 19:29:19  MongoDB    placed         33.97  6a820f8fbc870d72000031c5\n2026-07-27 06:16:22  MongoDB    placed       4286.97  6a66f7b6685b913f0002a2bc\n2026-07-25 01:11:49  MongoDB    placed       1618.96  6a640d5556f20ba7000243a7\n2026-05-21 15:18:16  MongoDB    provisioned    23.98  6a0f22382cc4a39d00022fee\n2026-04-30 06:51:26  MongoDB    provisioned  1372.96  69f2fbeeb9930801000238e7\n2026-04-14 21:49:41  MongoDB    provisioned  1515.97  69deb675ad92af1900006fb4"
+        "detail": "placedAt (UTC)       read from  status       total    _id\n2026-11-04 21:59:44  Oracle     placed        546.99  6aebaad057abfa9cc3d15bb0\n---- cutoff 2026-09-30 23:58:48 ----\n2026-09-29 12:41:05  MongoDB    placed         48.97  6abbb1e15a3838b600009bc9\n2026-09-21 09:38:59  MongoDB    placed       1071.99  6ab0fb331bcee05800021980\n2026-09-16 01:42:01  MongoDB    placed       1079.98  6aa9f3e9c1cf8851000139d7\n2026-09-12 21:01:05  MongoDB    placed       1511.97  6aa5bd9117557fb300019edb\n2026-08-16 19:29:19  MongoDB    placed         33.97  6a820f8fbc870d72000031c5\n2026-07-27 06:16:22  MongoDB    placed       4286.97  6a66f7b6685b913f0002a2bc\n2026-07-25 01:11:49  MongoDB    placed       1618.96  6a640d5556f20ba7000243a7\n2026-05-21 15:18:16  MongoDB    provisioned    23.98  6a0f22382cc4a39d00022fee\n2026-04-30 06:51:26  MongoDB    provisioned  1372.96  69f2fbeeb9930801000238e7\n2026-04-14 21:49:41  MongoDB    provisioned  1515.97  69deb675ad92af1900006fb4"
       }
     },
     "ttl-expiry": {
-      "at": "2026-11-04T13:39:45.539Z",
+      "at": "2026-11-04T21:59:55.412Z",
       "result": {
         "ok": true,
-        "summary": "MongoDB carts 4992 -> 4989 in 1 s, deleted by the TTL index (120 s after updatedAt), including a cart abandoned 125 s ago; the last one expires in 3 h 59 min; Oracle has 0 carts: nothing short-lived was moved",
+        "summary": "MongoDB carts 4992 -> 4988 in 2 s, deleted by the TTL index (120 s after updatedAt), including a cart abandoned 125 s ago; the last one expires in 3 h 59 min; Oracle has 0 carts: nothing short-lived was moved",
         "panes": {
           "left": [
             {
@@ -159,18 +159,22 @@
             },
             {
               "t": 1002,
-              "carts": 4989
+              "carts": 4992
+            },
+            {
+              "t": 2006,
+              "carts": 4988
             }
           ]
         },
         "metrics": {
           "before": 4992,
-          "after": 4989,
+          "after": 4988,
           "oracleCarts": 0,
-          "expired": 3,
-          "lastExpiresInMs": 14351627
+          "expired": 4,
+          "lastExpiresInMs": 14350704
         },
-        "detail": "carts on MongoDB: 0s 4992, 1s 4989"
+        "detail": "carts on MongoDB: 0s 4992, 1s 4992, 2s 4988"
       }
     }
   }
