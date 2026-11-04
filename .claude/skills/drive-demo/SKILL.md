@@ -44,7 +44,7 @@ Give every drive command a 600000 ms Bash timeout. Some steps run 1 to 3 minutes
 - **D3, terminal step 2:** read the `restore took N s` number to the presenter so they can say it live.
 - **D4:** before step 1, remind the presenter to say it's a **stand-in for Oracle GoldenGate**.
 - **D5, then D6:** after D5's last step, offer to start D6 step 1 with `--nowait` while the presenter talks slides 35 to 37. When they return to D6, run `drive wait SEQ` before step 2.
-- **D6 step 3** runs about 80 to 90 s. Say "running, about 90 s" once, then wait.
+- **D6 step 3** runs about 35 s on the Mac. Say "running, about 35 s" once, then wait.
 - **Timings stay hidden until the equality step passes** (D5 step 5, D6 step 5). This is by design. Don't report a missing time as a fault.
 
 ## Style

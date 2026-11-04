@@ -215,11 +215,11 @@ until it finishes. Measure the Mac's setup time at rehearsal (section 3).
 |---|---|---|---|
 | 1 | console | Same data on both sides, statistics gathered | **Click it right after D5's last step**, then go back to the deck for slides 35 to 37 while it runs (about 2.5 min: statistics, then one untimed warm-up run of the pipeline and of $sql). Expect: same window counts, stats gathered, both sides warmed once. Say "both sides warmed once during setup" |
 | 2 | console | (1) The pipeline on MongoDB: the stage tree (plan shape only, no timing) | COLLSCAN, three $lookups, $unwinds, $groups, $sort |
-| 3 | console | (2) The same pipeline on Oracle through the MongoDB API | **One timed run, warm, about 80 to 90 s** (81 to 91 s measured on the Linux lab). The timer runs. Narrate the plan while it runs: it is one run, not three, to keep the demo inside its 4 minutes. No time is shown yet |
+| 3 | console | (2) The same pipeline on Oracle through the MongoDB API | **One timed run, warm, about 35 s** (34 to 35 s measured on the Mac). The timer runs. Narrate the plan while it runs: it is one run, not three, to keep the demo inside its 4 minutes. No time is shown yet |
 | 4 | terminal | `./lab.sh mongosh ora demos/d6-sql/sql-stage.js` | The first 10 of 160 rows. Mark done: 160 rows, ranks 1 to 5 for 32 pairs |
 | 5 | console | Equal results, proven before any timing | 160 rows identical on all three; **now** the times appear |
 | 6 | console | Both Oracle plans, side by side | Nested loops vs hash joins + WINDOW SORT PUSHED RANK |
-| 7 | console | Relative timing: the pipeline vs $sql, same engine | The ratio, read live (Linux lab, warm against warm: about 125 to 150x; 126 to 146x measured). Laptop, relative only. Then the field number: 3 to 15x |
+| 7 | console | Relative timing: the pipeline vs $sql, same engine | The ratio, read live (Mac, warm against warm: about 85 to 90x; 87 to 89x measured). Laptop, relative only. Then the field number: 3 to 15x |
 
 If setup fails live: click **Skip to result** on each step and say it's
 the rehearsal recording. Before the segment only: `./lab.sh reset d6`. It

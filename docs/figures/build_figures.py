@@ -353,7 +353,7 @@ def d6_sql():
     f.text(gx + 18, 116, "Equal first", 14, RED, w=700)
     f.text(gx + 18, 140, ["160 rows, identical", "on all three"], 11.5, INK, dy=17)
     f.text(gx + 18, 202, "Then the timing", 12, INK, w=700)
-    f.text(gx + 18, 224, ["about 125 to 150x", "on the Linux lab,", "warm against warm"], 11.5, INK, dy=17)
+    f.text(gx + 18, 224, ["about 85 to 90x", "on the Mac,", "warm against warm"], 11.5, INK, dy=17)
     f.text(gx + 18, 300, ["In the field:", "3 to 15x"], 11.5, MUTE, dy=17)
     f.text(32, 388, "Same engine, same data, statistics gathered, both sides warmed once. Laptop times are relative.", 11, MUTE)
     f.save()

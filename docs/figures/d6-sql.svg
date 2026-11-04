@@ -47,8 +47,8 @@
 <text x="780" y="140.0" font-size="11.5" fill="#1a1a1a">160 rows, identical</text>
 <text x="780" y="157.0" font-size="11.5" fill="#1a1a1a">on all three</text>
 <text x="780" y="202.0" font-size="12" fill="#1a1a1a" font-weight="700">Then the timing</text>
-<text x="780" y="224.0" font-size="11.5" fill="#1a1a1a">about 125 to 150x</text>
-<text x="780" y="241.0" font-size="11.5" fill="#1a1a1a">on the Linux lab,</text>
+<text x="780" y="224.0" font-size="11.5" fill="#1a1a1a">about 85 to 90x</text>
+<text x="780" y="241.0" font-size="11.5" fill="#1a1a1a">on the Mac,</text>
 <text x="780" y="258.0" font-size="11.5" fill="#1a1a1a">warm against warm</text>
 <text x="780" y="300.0" font-size="11.5" fill="#5b6570">In the field:</text>
 <text x="780" y="317.0" font-size="11.5" fill="#5b6570">3 to 15x</text>
