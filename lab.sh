@@ -840,7 +840,10 @@ cmd_shutdown() {
     local tty; tty="$(lab_tty)"
     tmux kill-session -t "$TMUX_SESSION"
     if [ -n "$tty" ] && [ "$(uname)" = Darwin ]; then
-      sleep 0.5
+      # Wait for the tmux client to exit: Terminal asks before closing a
+      # window that still runs tmux, and that dialog would wait for a click.
+      local n=0
+      while ps -t "${tty#/dev/}" -o comm= 2>/dev/null | grep -q tmux && [ "$n" -lt 50 ]; do sleep 0.1; n=$((n + 1)); done
       osascript - "$tty" <<'OSA' >/dev/null 2>&1
 on run argv
   tell application "Terminal"
