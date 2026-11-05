@@ -96,6 +96,10 @@ Paste these back after the Mac rehearsal:
 | 20 min before | Chrome tab 1: the deck, `file:///.../deck/index.html`, with **S** for the speaker view. Tab 2: the console, http://127.0.0.1:3200. Two terminals side by side in the repo folder (D7 uses both). |
 | 15 min before | Glance at the console's four dots: all green |
 
+With the copilot (section 7): 30 min before, say "launch the lab" instead of
+the first three rows. It does the reset, the data load and the windows, and
+ends with a checklist. Wi-Fi stays on: Claude needs it, the lab doesn't.
+
 A full reset recreates Oracle and ORDS from scratch, and `./lab.sh check`
 waits up to 600 s for them (44 s on the Linux lab; the Mac is slower). A
 `FAIL ... (not ready after N s)` line right after a reset means the stack is
@@ -266,52 +270,58 @@ git add fallback/recorded && git commit
 
 ## 7. Let Claude drive (optional)
 
-Claude Code can run the demos for you while you talk. It tells you which
-window to share, waits for your "ready", then runs each step on the shared
-screen. The audience sees the same console timer and the same terminal
-output as when you do it yourself.
+Claude Code can run the demos for you while you talk. It brings each window
+to the front of the shared screen itself, runs each step there, and tells
+you the result and the line to say. The audience sees the same console timer
+and the same terminal output as when you do it yourself. Overview and screen
+layout: README, "Hands-off copilot".
 
 **Claude needs internet. The lab doesn't.** If the venue network drops, click
 and type the steps yourself as in section 5. Nothing else changes.
 
-**Setup (once):** `brew install tmux`, and Claude Code installed. Add this to
-`.claude/settings.local.json` in the repo, so no permission prompt appears
-on stage:
+**Setup (once):** `brew install tmux`, and Claude Code installed. Allow
+pop-ups for the deck in Chrome. Add this to `.claude/settings.local.json` in
+the repo, so no permission prompt appears on stage:
 
 ```json
-{ "permissions": { "allow": ["Bash(./lab.sh drive:*)"] } }
+{ "permissions": { "allow": ["Bash(./lab.sh drive:*)", "Bash(./lab.sh launch:*)", "Bash(./lab.sh shutdown:*)"] } }
 ```
 
-**Before the session:**
+**Before the session:** start `claude` in the repo folder, in a terminal you
+don't share, and say "launch the lab" (the `launch-lab` skill). It runs
+`./lab.sh launch`: full reset, data load, tmux session `lab` (window `main`,
+and window `agents` split into A and B for D7), the console, speaker notes
+and tmux terminal on the external display, the deck on the laptop. Check
+that the checklist it prints ends "All checks passed: ready for D1". Mind
+the 30-minute rule in section 4: if the session starts more than about 3
+hours later, run `./lab.sh generate` again.
 
-Shortcut on the Mac: in the Claude terminal, say "launch the lab" (the
-`launch-lab` skill, or `./lab.sh launch` yourself). It does steps 1 to 3
-below plus the data load, opens the deck on the laptop display and the
-speaker notes on the external one. The deck opens the notes by itself once
-Chrome allows it pop-ups (the first time, allow them from the address bar
-icon and press S).
-Then go to step 4. After the session, "shut down the lab" (the
-`shutdown-lab` skill, or `./lab.sh shutdown`) closes it all and stops the
-stack, keeping the data.
-
-1. Run `./lab.sh drive stage`. It creates the tmux session `lab`: window
-   `main`, and window `agents` split into A (left) and B (right) for D7.
-2. In the terminal window you will share, run `tmux attach -t lab`. Make
-   the font large.
-3. Open the console in Chrome, http://127.0.0.1:3200.
-4. In a **second** terminal that you don't share, start `claude` in the repo
-   folder.
-5. Ask Claude to check: `run ./lab.sh drive status`. You should see three
-   OK lines and `INFO  idle`.
+By hand instead: `./lab.sh drive stage`, `tmux attach -t lab` in the
+terminal you share (font large), the console open in Chrome, then
+`./lab.sh drive status` (three OK lines and `INFO  idle`).
 
 **During the session:** say "run demo D3" (the `drive-demo` skill).
 
-- Claude says **Share the Console** or **Share the Terminal** when the
-  window changes. Reply "ready" once it's on screen.
+- Claude switches the shared window itself (`./lab.sh drive focus console`
+  or `term`). If a switch fails, it says **Share the Console** or **Share the
+  Terminal**: switch by hand and reply "ready".
 - After each step, Claude replies with the result and the line to say. Say
   "next" or "go" to continue.
 - On a failure, Claude offers **Skip to result** (the rehearsal recording)
   and never debugs on stage.
+
+**After the session:** say "shut down the lab" (the `shutdown-lab` skill):
+the lab's windows close and the stack stops, keeping the volumes.
+
+| Command | What it does |
+|---|---|
+| `./lab.sh drive stage` | Create the tmux session `lab` |
+| `./lab.sh drive status` | Console page open, tmux attached, services ready |
+| `./lab.sh drive plan dN` | List a demo's steps |
+| `./lab.sh drive console dN STEP [--skip] [--nowait]` | Run a console step (`--skip`: the rehearsal result) |
+| `./lab.sh drive wait SEQ` | Wait for a step started with `--nowait` |
+| `./lab.sh drive term [A\|B] 'CMD'` | Type a command into the tmux pane (A and B: D7) |
+| `./lab.sh drive focus console\|term\|home` | Bring the console, the tmux terminal or Claude's terminal to the front (macOS) |
 
 **Rehearse it once this way, D1 to D7.** Each step adds a few seconds while
 Claude responds, so note where D5 and D6 run long.

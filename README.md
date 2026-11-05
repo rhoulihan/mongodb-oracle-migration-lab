@@ -235,19 +235,90 @@ Pick a demo at the top, then work down its steps on the left.
   in the terminal instead: it stops the replicator container first.
 - **Theme:** the button at the top right switches light and dark;
   `?theme=dark` in the URL does the same.
-- **Let Claude drive:** `./lab.sh drive` lets a Claude Code session run the
-  steps for you on the shared screen. It queues console steps through the
-  console's remote channel (`/api/remote`); the open page presses its own
-  buttons. It types terminal commands into the tmux session `lab`. The
-  `drive-demo` skill in `.claude/skills/` is the protocol. Setup and use:
-  `docs/REHEARSAL.md` section 7.
-
-<img src="docs/figures/drive-workflow.svg" alt="Let Claude drive: Claude runs console steps through the page and terminal steps in the shared tmux session" width="100%">
+- **Let Claude drive:** a Claude Code session can set up the lab, run every
+  step on the shared screen and shut it down: see
+  [Hands-off copilot](#hands-off-copilot) below.
 
 The console runs as one long process, so demos keep their state from step to
 step. It is baked into the app image: run `./lab.sh build` after changing it.
 `node scripts/shots.mjs --run d5` (developers, needs Chrome) clicks through a
 demo and saves 1280x720 screenshots in both themes to `docs/shots/`.
+
+## Hands-off copilot
+
+A Claude Code session, in its own terminal that you don't share, runs the
+lab for you while you present. You talk; you say three kinds of things to
+Claude: **"launch the lab"**, **"run demo D3"** then **"next"**, and **"shut
+down the lab"**. Claude switches the windows, runs the steps, and gives you
+the result and the line to say. Three skills in `.claude/skills/` hold the
+protocol: `launch-lab`, `drive-demo` and `shutdown-lab`.
+
+<img src="docs/figures/drive-workflow.svg" alt="Let Claude drive: Claude runs console steps through the page and terminal steps in the shared tmux session" width="100%">
+
+**Screen layout** (`./lab.sh launch` puts every window in place):
+
+| Display | Windows |
+|---|---|
+| External (shared) | The console, the speaker notes (in front after the launch), the tmux terminal (Clear Dark profile; minimized until a demo needs it) |
+| Laptop | The deck, in focus for the clicker; the Claude terminal behind it |
+
+With one display, every window opens on it.
+
+**1. Launch: "launch the lab"** (`./lab.sh launch`, about 70 s)
+
+- Full reset: fresh volumes, Oracle and ORDS rebuilt, the order service back
+  on the MongoDB source in normal mode. Then the data load (`generate`).
+- tmux session `lab` staged on window `main`, every pane cleared, for D1.
+- The windows above. The deck opens its speaker notes by itself
+  (`deck/index.html?notes=auto`) once Chrome allows the deck pop-ups;
+  otherwise the launch asks you to press S.
+- It ends with a **checklist** in Claude's terminal, every line checked live:
+  the four services, the app mode, the source counts, carts still expiring,
+  MIG empty, the console page, the deck, the notes, tmux and the terminal
+  profile. An open item prints its fix. `./lab.sh launch --check` prints it
+  again without changing anything; `./lab.sh launch --notes` retries only the
+  speaker notes.
+
+**2. Present: "run demo D3", then "next"** (`drive-demo`)
+
+- Claude brings the window the step needs to the front (`./lab.sh drive
+  focus console|term`), so you never switch windows. The tmux window stays
+  minimized while the console is on show.
+- Console steps run through the console's remote channel (`/api/remote`):
+  the open page presses its own buttons, so the audience sees the same timer
+  and panes as when you click. Terminal steps are typed into tmux (the pane is
+  cleared first, so the audience sees only that command and its output), then
+  Mark done runs in the console.
+- After each step Claude gives focus back to its own terminal (`drive focus
+  home`) and reports in two lines: OK or FAIL, the key number, and the
+  run sheet's "Say" line.
+- On a failure Claude never debugs on stage: it offers **Skip to result**
+  (the rehearsal recording; say so out loud) or the step's reset.
+
+**3. Shut down: "shut down the lab"** (`./lab.sh shutdown`)
+
+Closes the console, deck and notes tabs (other tabs stay), ends tmux and
+closes its terminal window, and stops the stack. The volumes are kept;
+`--wipe` deletes them, and Claude runs it only when you ask by name.
+
+**Setup, once per laptop:**
+
+- `brew install tmux`, and Claude Code installed.
+- In Chrome, allow pop-ups for the deck (the address bar icon, the first time
+  the deck opens). Then the speaker notes open without an S press.
+- So no permission prompt appears on stage, add to `.claude/settings.local.json`:
+
+  ```json
+  { "permissions": { "allow": ["Bash(./lab.sh drive:*)", "Bash(./lab.sh launch:*)", "Bash(./lab.sh shutdown:*)"] } }
+  ```
+
+- macOS asks once to let the terminal control Chrome and Terminal
+  (Automation): allow it. Accessibility access is not needed.
+
+**Limits:** window placement uses AppleScript, so the launch and `drive focus`
+are macOS only. Claude needs internet; the lab doesn't. If the venue network
+drops, click and type the steps yourself (`docs/REHEARSAL.md` section 5).
+Every `./lab.sh drive` command: `docs/REHEARSAL.md` section 7.
 
 ## Deck
 
