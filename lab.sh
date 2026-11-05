@@ -15,6 +15,8 @@
 #   ./lab.sh bake-recordings       save the console's rehearsal results in fallback/recorded/
 #   ./lab.sh drive stage|status|plan dN   Claude drives the demos (tmux session `lab` + the console)
 #   ./lab.sh drive console dN STEP [--skip|--show] [--nowait] | wait SEQ | term [A|B] 'CMD'
+#   ./lab.sh launch [--notes|--check]  instructor setup: full reset, data, tmux, console + notes + terminal + deck windows (macOS)
+#   ./lab.sh shutdown [--wipe]     close the lab windows, end tmux, stop the stack (--wipe: delete the data)
 #   ./lab.sh drive focus console|term|home  bring the console tab, the tmux terminal, or this session's terminal to the front (macOS)
 # demo, reset dN, generate and agent run Node in a one-off runner container (the app
 # image), so the laptop needs no Node. LAB_HOST_NODE=1 uses the host's node.
@@ -533,21 +535,28 @@ on run argv
   set d to item 1 of argv
   set act to item 2 of argv
   tell application "Terminal"
+    -- Hold the window by id: "repeat with w in windows" is a reference by
+    -- position, and un-minimizing reorders the windows under it.
+    set wid to missing value
     repeat with w in windows
       repeat with t in tabs of w
         if tty of t is d then
-          if act is "min" then
-            set miniaturized of w to true
-          else
-            set miniaturized of w to false
-            set selected of t to true
-            set index of w to 1
-            activate
-          end if
-          return "ok"
+          set wid to id of w
+          set selected of t to true
+          exit repeat
         end if
       end repeat
+      if wid is not missing value then exit repeat
     end repeat
+    if wid is missing value then error "no tab"
+    if act is "min" then
+      set miniaturized of window id wid to true
+    else
+      set miniaturized of window id wid to false
+      set index of window id wid to 1
+      activate
+    end if
+    return "ok"
   end tell
   error "no tab"
 end run
@@ -626,8 +635,371 @@ cmd_drive() {
   esac
 }
 
+# ---------- launch: the instructor's one-command setup (macOS windows) ----------
+# Full reset (fresh volumes), data loaded, tmux staged, then the windows:
+# the speaker notes (in front), the console and the tmux terminal on the external display;
+# the deck in its own Chrome window on the laptop display, with the focus.
+# One display: everything opens on it.
+NOTES_TITLE='reveal.js - Speaker View'
+
+# One line per display role: "laptop|external L T R B" (top-left coordinates,
+# menu bar and Dock excluded). The laptop is the built-in screen, or the main
+# screen when there is none; the external is the first other screen, or the
+# laptop again when there is only one.
+launch_screens() {
+  osascript -l JavaScript <<'JXA'
+ObjC.import('AppKit');
+var s = $.NSScreen.screens, n = s.count, mainH = s.objectAtIndex(0).frame.size.height;
+function box(i) {
+  var v = s.objectAtIndex(i).visibleFrame, l = Math.round(v.origin.x),
+      t = Math.round(mainH - (v.origin.y + v.size.height));
+  return [l, t, l + Math.round(v.size.width), t + Math.round(v.size.height)].join(' ');
+}
+var lap = 0;
+for (var i = 0; i < n; i++) {
+  var nm = s.objectAtIndex(i).localizedName;
+  if (nm && ObjC.unwrap(nm).indexOf('Built-in') >= 0) { lap = i; break; }
+}
+var ext = lap;
+for (var j = 0; j < n; j++) if (j !== lap) { ext = j; break; }
+'laptop ' + box(lap) + '\nexternal ' + box(ext) + '\ncount ' + n;
+JXA
+}
+
+# Close the lab's Chrome tabs: the console, the deck and the speaker view.
+launch_close_tabs() {
+  osascript - "$CONSOLE_URL" "file://${PWD// /%20}/deck/index.html" "$NOTES_TITLE" <<'OSA' >/dev/null
+on run argv
+  tell application "Google Chrome"
+    set ids to id of every window
+    repeat with i in ids
+      set w to window id (contents of i)
+      repeat with k from (count tabs of w) to 1 by -1
+        set t to tab k of w
+        set u to URL of t
+        if u starts with (item 1 of argv) or u starts with (item 2 of argv) or title of t is (item 3 of argv) then close t
+      end repeat
+    end repeat
+  end tell
+end run
+OSA
+}
+
+# Close earlier console, deck and speaker-view tabs, then open the two Chrome
+# windows. Prints "CONSOLE_ID DECK_ID".
+launch_chrome() {
+  launch_close_tabs || return 1
+  osascript - "$CONSOLE_URL" "$1" "$2" "$3" <<'OSA'
+on splitBox(s)
+  set AppleScript's text item delimiters to " "
+  set p to text items of s
+  set AppleScript's text item delimiters to ""
+  return {(item 1 of p) as integer, (item 2 of p) as integer, (item 3 of p) as integer, (item 4 of p) as integer}
+end splitBox
+on run argv
+  set cu to item 1 of argv
+  set du to item 2 of argv
+  set ebox to my splitBox(item 3 of argv)
+  set lbox to my splitBox(item 4 of argv)
+  tell application "Google Chrome"
+    set cw to make new window
+    set URL of active tab of cw to cu
+    set bounds of cw to ebox
+    set dw to make new window
+    set URL of active tab of dw to du
+    set bounds of dw to lbox
+    return ((id of cw) as text) & " " & ((id of dw) as text)
+  end tell
+end run
+OSA
+}
+
+# Press S in the deck (System Events) and put the speaker view window on the
+# external display, behind the console. Without keystroke access, wait for the
+# presenter to press S. Prints OK or FAIL.
+launch_notes() {
+  local did="$1" box="$2" pressed=0 limit
+  sleep 2   # let the deck load before the keypress
+  if osascript - "$did" <<'OSA' >/dev/null 2>&1; then pressed=1; fi
+on run argv
+  tell application "Google Chrome"
+    set index of (window id ((item 1 of argv) as integer)) to 1
+    activate
+  end tell
+  delay 0.5
+  tell application "System Events" to keystroke "s"
+end run
+OSA
+  [ "$pressed" = 1 ] || echo "INFO  press S in the deck window to open the speaker notes (waiting 60 s)"
+  limit=$((SECONDS + 60))
+  while [ "$SECONDS" -lt "$limit" ]; do
+    if osascript - "$NOTES_TITLE" "$box" <<'OSA' >/dev/null 2>&1; then
+on run argv
+  set AppleScript's text item delimiters to " "
+  set p to text items of (item 2 of argv)
+  set AppleScript's text item delimiters to ""
+  tell application "Google Chrome"
+    repeat with w in windows
+      if title of active tab of w is (item 1 of argv) then
+        set bounds of window id (id of w) to {(item 1 of p) as integer, (item 2 of p) as integer, (item 3 of p) as integer, (item 4 of p) as integer}
+        return "ok"
+      end if
+    end repeat
+  end tell
+  error "not yet"
+end run
+OSA
+      echo "OK    speaker notes: own window on the external display"; return 0
+    fi
+    sleep 0.5
+  done
+  echo "FAIL  no speaker view: allow popups for the deck, press S in it, or run ./lab.sh launch --notes"
+  return 1
+}
+
+# The tmux terminal: a new Terminal.app window on the external display, or the
+# attached one moved there.
+launch_terminal() {
+  local box="$1" tty; tty="$(lab_tty)"
+  if [ -z "$tty" ]; then
+    osascript - "$PWD" "$TMUX_SESSION" <<'OSA' >/dev/null || return 1
+on run argv
+  tell application "Terminal"
+    do script "cd " & quoted form of (item 1 of argv) & " && tmux attach -t " & (item 2 of argv)
+  end tell
+end run
+OSA
+    local limit=$((SECONDS + 10))
+    while [ -z "$tty" ] && [ "$SECONDS" -lt "$limit" ]; do sleep 0.3; tty="$(lab_tty)"; done
+    [ -n "$tty" ] || { echo "FAIL  the new terminal did not attach: run tmux attach -t $TMUX_SESSION"; return 1; }
+  fi
+  osascript - "$tty" "$box" "${LAB_TERM_PROFILE:-Clear Dark}" <<'OSA' >/dev/null || { echo "FAIL  $tty is not a Terminal.app tab: move that window by hand"; return 1; }
+on run argv
+  set AppleScript's text item delimiters to " "
+  set p to text items of (item 2 of argv)
+  set AppleScript's text item delimiters to ""
+  tell application "Terminal"
+    set wid to missing value
+    repeat with w in windows
+      repeat with t in tabs of w
+        if tty of t is (item 1 of argv) then set wid to id of w
+      end repeat
+    end repeat
+    if wid is missing value then error "no tab"
+    -- The shared terminal's look: the Clear Dark profile (LAB_TERM_PROFILE),
+    -- skipped when this Mac has no profile by that name.
+    try
+      set current settings of (first tab of window id wid whose tty is (item 1 of argv)) to settings set (item 3 of argv)
+    end try
+    set miniaturized of window id wid to false
+    set bounds of window id wid to {(item 1 of p) as integer, (item 2 of p) as integer, (item 3 of p) as integer, (item 4 of p) as integer}
+  end tell
+end run
+OSA
+  echo "OK    terminal $tty attached to tmux session $TMUX_SESSION"
+}
+
+# Chrome window ids of the open console and deck tabs: "CONSOLE_ID DECK_ID".
+launch_window_ids() {
+  osascript - "$CONSOLE_URL" "file://${PWD// /%20}/deck/index.html" <<'OSA'
+on run argv
+  set c to ""
+  set d to ""
+  tell application "Google Chrome"
+    repeat with w in windows
+      repeat with t in tabs of w
+        if c is "" and URL of t starts with (item 1 of argv) then set c to (id of w) as text
+        if d is "" and URL of t starts with (item 2 of argv) then set d to (id of w) as text
+      end repeat
+    end repeat
+  end tell
+  if c is "" or d is "" then error "missing"
+  return c & " " & d
+end run
+OSA
+}
+
+# The lab off: its Chrome tabs closed, the tmux session ended (and its Terminal
+# window closed when that is the window's only tab), the stack stopped.
+# --wipe also deletes the data volumes.
+cmd_shutdown() {
+  local wipe=0 rc=0
+  case "${1:-}" in --wipe) wipe=1 ;; '') ;; *) usage ;; esac
+  if [ "$(uname)" = Darwin ]; then
+    launch_close_tabs && echo "OK    Chrome: console, deck and speaker notes closed" || { echo "FAIL  could not close the Chrome tabs"; rc=1; }
+  fi
+  if command -v tmux >/dev/null 2>&1 && tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+    local tty; tty="$(lab_tty)"
+    tmux kill-session -t "$TMUX_SESSION"
+    if [ -n "$tty" ] && [ "$(uname)" = Darwin ]; then
+      sleep 0.5
+      osascript - "$tty" <<'OSA' >/dev/null 2>&1
+on run argv
+  tell application "Terminal"
+    set ids to id of every window
+    repeat with i in ids
+      set w to window id (contents of i)
+      if (count tabs of w) is 1 and tty of tab 1 of w is (item 1 of argv) then close w
+    end repeat
+  end tell
+end run
+OSA
+    fi
+    echo "OK    tmux session $TMUX_SESSION ended"
+  else
+    echo "OK    no tmux session $TMUX_SESSION"
+  fi
+  if [ "$wipe" = 1 ]; then
+    compose --profile d4 down -v && echo "OK    stack stopped, data volumes deleted" || rc=1
+  else
+    compose --profile d4 down && echo "OK    stack stopped (volumes kept)" || rc=1
+  fi
+  return "$rc"
+}
+
+# The launch checklist, printed in the terminal that ran the launch: every
+# line is checked live, not taken from the steps above. [x] passed, [ ] failed
+# (with the fix). Returns the number of open items.
+LAB_COLLECTIONS='regions catalog accounts subscribers orders carts orderEvents regionTopDevices'
+ck() {   # status, label, fix (printed only when the item is open)
+  if [ "$1" = 0 ]; then printf '  [x] %s\n' "$2"
+  else printf '  [ ] %s%s\n' "$2" "${3:+   -> $3}"; CK_OPEN=$((CK_OPEN + 1)); fi
+}
+ck_counts() {   # $1 src|ora: "name=count ..." for the lab collections
+  local js="var o=[]; '$LAB_COLLECTIONS'.split(' ').forEach(function(c){var n=0; try{n=db.getCollection(c).countDocuments({})}catch(e){} o.push(c+'='+n)}); print(o.join(' '))"
+  case "$1" in
+    src) lab_exec mongo mongosh --quiet 'mongodb://localhost:27017/telco?replicaSet=rs0&directConnection=true' --eval "$js" </dev/null ;;
+    ora) lab_exec oracle mongosh --quiet "mongodb://MIG:${MIG_PASSWORD}@localhost:27017/MIG?authMechanism=PLAIN&authSource=\$external&tls=false&retryWrites=false&loadBalanced=true" --eval "$js" </dev/null ;;
+  esac 2>/dev/null | tail -1
+}
+ck_get() { sed -nE "s/(^|.* )$2=([0-9]+).*/\2/p" <<<"$1"; }
+
+launch_checklist() {
+  CK_OPEN=0
+  echo
+  echo "Launch checklist"
+  echo " Stack"
+  probe_mongo;    ck $? "MongoDB source (rs0 primary, 127.0.0.1:27117)"
+  probe_oracle;   ck $? "Oracle 26ai database (127.0.0.1:1523)"
+  probe_ords;     ck $? "ORDS (127.0.0.1:8183)"
+  probe_oramongo; ck $? "Oracle API for MongoDB (127.0.0.1:27119)"
+  grep -q 'mongodb://mongo:27017/telco' "$APP_ENV" 2>/dev/null; ck $? "order service on the MongoDB source, normal mode" "./lab.sh reset d2"
+
+  echo " Data"
+  local src ora c n want bad=0 line="" sum=0
+  src="$(ck_counts src)"
+  for c in regions:8 catalog:300 accounts:20000 subscribers:30000 orders:200000 regionTopDevices:8; do
+    n="$(ck_get "$src" "${c%%:*}")"; want="${c#*:}"
+    [ "${n:-0}" = "$want" ] || bad=1
+  done
+  ck "$bad" "MongoDB source loaded: $(ck_get "$src" orders) orders, $(ck_get "$src" subscribers) subscribers, $(ck_get "$src" accounts) accounts, $(ck_get "$src" catalog) products, $(ck_get "$src" regions) regions" "./lab.sh generate"
+  n="$(ck_get "$src" carts)"; [ "${n:-0}" -gt 0 ]; ck $? "carts still expiring live for D2: ${n:-0} left of 5,000" "./lab.sh generate"
+  n="$(ck_get "$src" orderEvents)"; [ "${n:-0}" -gt 0 ]; ck $? "orderEvents: ${n:-0}"
+  ora="$(ck_counts ora)"
+  for c in $LAB_COLLECTIONS; do n="$(ck_get "$ora" "$c")"; sum=$((sum + ${n:-0})); done
+  [ -n "$ora" ] && [ "$sum" = 0 ]; ck $? "Oracle MIG collections empty, ready for D2 (${sum} documents)" "./lab.sh reset d2"
+
+  echo " Console and windows"
+  drive_req GET /api/remote/status >/dev/null 2>&1 && grep -q '^OK    console page open' <<<"$BODY"; ck $? "console page open at $CONSOLE_URL" "reload it in Chrome"
+  if [ "$(uname)" = Darwin ]; then
+    local titles; titles="$(osascript -e 'tell application "Google Chrome" to get title of active tab of every window' 2>/dev/null)"
+    grep -q 'Migration Deep Dive' <<<"$titles"; ck $? "deck window open (laptop display)"
+    grep -q "$NOTES_TITLE" <<<"$titles"; ck $? "speaker notes window open, in front on the external display" "./lab.sh launch --notes"
+  fi
+  local tty; tty="$(lab_tty)"
+  [ -n "$tty" ]; ck $? "tmux session $TMUX_SESSION attached on ${tty:-no terminal}" "./lab.sh launch"
+  [ "$(tmux display -p -t "$TMUX_SESSION" '#{window_name}' 2>/dev/null)" = main ]; ck $? "tmux on window main, ready for D1"
+  if [ "$(uname)" = Darwin ] && [ -n "$tty" ]; then
+    local prof="${LAB_TERM_PROFILE:-Clear Dark}"
+    [ "$(osascript - "$tty" <<'OSA' 2>/dev/null
+on run argv
+  tell application "Terminal"
+    repeat with w in windows
+      repeat with t in tabs of w
+        if tty of t is (item 1 of argv) then return name of current settings of t
+      end repeat
+    end repeat
+  end tell
+end run
+OSA
+)" = "$prof" ]; ck $? "tmux terminal uses the $prof profile" "./lab.sh launch"
+  fi
+  echo
+  if [ "$CK_OPEN" = 0 ]; then echo "All checks passed: ready for D1."; else echo "$CK_OPEN item(s) open: fix them, then ./lab.sh launch --check"; fi
+  return "$CK_OPEN"
+}
+
+# The speaker notes in front on the external display, then the deck in front
+# on the laptop, with the focus (the presenter's clicker).
+launch_focus_deck() {
+  osascript - "$1" "$NOTES_TITLE" <<'OSA' >/dev/null || { echo "FAIL  could not focus the deck window"; return 1; }
+on run argv
+  tell application "Google Chrome"
+    set ids to id of every window
+    repeat with i in ids
+      if title of active tab of window id (contents of i) is (item 2 of argv) then set index of window id (contents of i) to 1
+    end repeat
+    set index of (window id ((item 1 of argv) as integer)) to 1
+    activate
+  end tell
+end run
+OSA
+  echo "OK    speaker notes in front on the external display, deck in focus on the laptop"
+}
+
+cmd_launch() {
+  [ "$(uname)" = Darwin ] || { echo "FAIL  launch opens the windows with AppleScript: macOS only" >&2; return 1; }
+  case "${1:-}" in
+    --notes)
+      # Retry the speaker notes only, on the windows already open.
+      local w; w="$(launch_window_ids)" || { echo "FAIL  no console or deck window: run ./lab.sh launch"; return 1; }
+      local eb; eb="$(launch_screens | sed -n 's/^external //p')"
+      launch_notes "${w#* }" "$eb" || return 1
+      drive_focus console >/dev/null; launch_focus_deck "${w#* }"; return ;;
+    --check) launch_checklist; return ;;
+    '') ;;
+    *) usage ;;
+  esac
+  # Always from scratch: fresh volumes (Oracle and ORDS rebuilt, the demo
+  # state of any earlier rehearsal gone), the app back on the MongoDB source in
+  # normal mode, then the data load.
+  compose --profile d4 down -v && write_app_env mongo && compose up -d && cmd_check || return 1
+  run_node gen/generate.mjs || { echo "FAIL  generate"; return 1; }
+  drive_stage | grep -v '^Next:' || return 1
+  # Ready for D1: window main on show, every pane cleared (scrollback too).
+  local pane
+  for pane in main agents.0 agents.1; do
+    tmux send-keys -t "$TMUX_SESSION:$pane" C-l
+    tmux clear-history -t "$TMUX_SESSION:$pane"
+  done
+  tmux select-window -t "$TMUX_SESSION:main"
+  echo "OK    tmux on window main, panes cleared (ready for D1)"
+
+  local screens ebox lbox n ids did rc=0
+  screens="$(launch_screens)" || { echo "FAIL  could not read the displays"; return 1; }
+  lbox="$(sed -n 's/^laptop //p' <<<"$screens")"
+  ebox="$(sed -n 's/^external //p' <<<"$screens")"
+  n="$(sed -n 's/^count //p' <<<"$screens")"
+  if [ "$n" -gt 1 ]; then echo "OK    $n displays: console, notes and terminal on the external, deck on the laptop"
+  else echo "INFO  one display: every window opens on it"; fi
+
+  local deck_url="file://${PWD// /%20}/deck/index.html"
+  ids="$(launch_chrome "$deck_url" "$ebox" "$lbox")" || { echo "FAIL  could not open the Chrome windows"; return 1; }
+  did="${ids#* }"
+  echo "OK    Chrome: console window ($CONSOLE_URL), deck window"
+  launch_notes "$did" "$ebox" || rc=1
+  launch_terminal "$ebox" || rc=1
+
+  # External display: the speaker notes in front (console behind, tmux
+  # minimized). Laptop: the deck with the focus (this terminal stays put).
+  drive_focus console >/dev/null || rc=1
+  launch_focus_deck "$did" || rc=1
+  launch_checklist || rc=1
+  return "$rc"
+}
+
 usage() {
-  sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -669,5 +1041,7 @@ case "$cmd" in
   repl)      [ $# -eq 1 ] || usage; cmd_repl "$1" ;;
   bake-recordings) cmd_bake_recordings ;;
   drive)     cmd_drive "$@" ;;
+  launch)    cmd_launch "$@" ;;
+  shutdown)  cmd_shutdown "$@" ;;
   *)         usage ;;
 esac

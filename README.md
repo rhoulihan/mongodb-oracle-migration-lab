@@ -86,6 +86,8 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh pull` | Pull the base images (needs network) |
 | `./lab.sh build` | Build the lab images (needs network the first time) |
 | `./lab.sh up` | Start the stack in the background |
+| `./lab.sh launch` | Instructor setup on the Mac: full reset (fresh volumes), data loaded, tmux staged, then the console, speaker notes and tmux terminal on the external display and the deck on the laptop display (press S in the deck when asked). `--notes` retries the speaker notes only; `--check` reprints the live checklist |
+| `./lab.sh shutdown [--wipe]` | After the session: close the console, deck and notes tabs, end the tmux session and its terminal window, stop the stack (data kept; `--wipe` deletes it) |
 | `./lab.sh check` | Wait up to 600 s (`CHECK_TIMEOUT`) until MongoDB, Oracle, ORDS and the Oracle API for MongoDB all answer; prints one line per service |
 | `./lab.sh preflight` | Laptop readiness checks (see above) |
 | `./lab.sh down` | Stop the stack and keep the data |

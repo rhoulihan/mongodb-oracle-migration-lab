@@ -284,6 +284,14 @@ on stage:
 
 **Before the session:**
 
+Shortcut on the Mac: in the Claude terminal, say "launch the lab" (the
+`launch-lab` skill, or `./lab.sh launch` yourself). It does steps 1 to 3
+below plus the data load, opens the deck on the laptop display and the
+speaker notes on the external one, and asks you to press S in the deck.
+Then go to step 4. After the session, "shut down the lab" (the
+`shutdown-lab` skill, or `./lab.sh shutdown`) closes it all and stops the
+stack, keeping the data.
+
 1. Run `./lab.sh drive stage`. It creates the tmux session `lab`: window
    `main`, and window `agents` split into A (left) and B (right) for D7.
 2. In the terminal window you will share, run `tmux attach -t lab`. Make
