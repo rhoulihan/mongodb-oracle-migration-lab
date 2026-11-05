@@ -287,7 +287,9 @@ on stage:
 Shortcut on the Mac: in the Claude terminal, say "launch the lab" (the
 `launch-lab` skill, or `./lab.sh launch` yourself). It does steps 1 to 3
 below plus the data load, opens the deck on the laptop display and the
-speaker notes on the external one, and asks you to press S in the deck.
+speaker notes on the external one. The deck opens the notes by itself once
+Chrome allows it pop-ups (the first time, allow them from the address bar
+icon and press S).
 Then go to step 4. After the session, "shut down the lab" (the
 `shutdown-lab` skill, or `./lab.sh shutdown`) closes it all and stops the
 stack, keeping the data.

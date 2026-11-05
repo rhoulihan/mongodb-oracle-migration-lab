@@ -26,10 +26,11 @@ What it does, in order:
    Chrome window on the laptop display. One display: everything on it.
    Old console, deck and speaker-view tabs are closed first, so a re-run
    leaves no duplicates.
-5. Speaker notes: the launch tries to press **S** in the deck. macOS blocks
-   that unless Terminal has Accessibility access, so it usually prints
-   `INFO  press S in the deck window`. **Tell the presenter at once: "Click
-   the deck and press S"**, then wait. It waits 60 s.
+5. Speaker notes: the deck opens them itself on load (`?notes=auto`), when
+   Chrome allows the deck pop-ups (allowed once per laptop, from the address
+   bar icon). If they don't open, it prints `INFO  the deck could not open the
+   speaker notes`. **Tell the presenter at once: "Allow pop-ups for the deck,
+   then click it and press S"**, then wait. It waits 60 s.
 6. End: the speaker notes in front on the external display (the console
    behind them, the tmux window minimized until a demo needs it), the deck in
    focus on the laptop. The Claude terminal stays where it is.

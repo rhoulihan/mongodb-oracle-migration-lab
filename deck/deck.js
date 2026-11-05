@@ -1,7 +1,8 @@
 /* Reveal setup for the migration deep dive deck. Classic script (not a module) so the
    deck runs straight from file://. Shared by index.html and the QA fixtures.
 
-   Keys: S opens the speaker view (notes plugin). The theme is dark only.
+   Keys: S opens the speaker view (notes plugin); ?notes=auto opens it on load.
+   The theme is dark only.
    The speaker view gets a pinned timer, a notes font control and draggable panes
    (enhanceSpeakerView below). */
 (function () {
@@ -213,4 +214,15 @@
     backgroundTransition: 'none',
     plugins: [RevealNotes]
   });
+
+  // ?notes=auto (set by ./lab.sh launch): open the speaker view on load, no S
+  // press. Chrome allows it only when the deck may open pop-ups (allow them
+  // once for the deck); otherwise S still works. Top window only: the speaker
+  // view's slide previews are this deck in iframes, with the same URL, and
+  // an open() from them would rewrite (blank) the speaker view.
+  if (window.self === window.top && /[?&]notes=auto\b/.test(window.location.search)) {
+    Reveal.on('ready', function () {
+      try { Reveal.getPlugin('notes').open(); } catch (err) { /* blocked: press S */ }
+    });
+  }
 })();

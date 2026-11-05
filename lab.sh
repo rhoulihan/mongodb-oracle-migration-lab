@@ -668,7 +668,8 @@ JXA
 
 # Close the lab's Chrome tabs: the console, the deck and the speaker view.
 launch_close_tabs() {
-  osascript - "$CONSOLE_URL" "file://${PWD// /%20}/deck/index.html" "$NOTES_TITLE" <<'OSA' >/dev/null
+  # The deck by any path to this repo (it is often reached through a symlink).
+  osascript - "$CONSOLE_URL" "/$(basename "$PWD")/deck/index.html" "$NOTES_TITLE" <<'OSA' >/dev/null
 on run argv
   tell application "Google Chrome"
     set ids to id of every window
@@ -677,7 +678,7 @@ on run argv
       repeat with k from (count tabs of w) to 1 by -1
         set t to tab k of w
         set u to URL of t
-        if u starts with (item 1 of argv) or u starts with (item 2 of argv) or title of t is (item 3 of argv) then close t
+        if u starts with (item 1 of argv) or (u starts with "file://" and u contains (item 2 of argv)) or title of t is (item 3 of argv) then close t
       end repeat
     end repeat
   end tell
@@ -714,13 +715,13 @@ end run
 OSA
 }
 
-# Press S in the deck (System Events) and put the speaker view window on the
-# external display, behind the console. Without keystroke access, wait for the
-# presenter to press S. Prints OK or FAIL.
+# The speaker view window on the external display. Prints OK or FAIL.
 launch_notes() {
-  local did="$1" box="$2" pressed=0 limit
-  sleep 2   # let the deck load before the keypress
-  if osascript - "$did" <<'OSA' >/dev/null 2>&1; then pressed=1; fi
+  local did="$1" box="$2"
+  # The deck opens the speaker view itself (?notes=auto) when Chrome allows it
+  # pop-ups; then System Events' S; then the presenter's S.
+  if launch_place_notes "$box" 8; then return 0; fi
+  if osascript - "$did" <<'OSA' >/dev/null 2>&1 && launch_place_notes "$box" 5; then return 0; fi
 on run argv
   tell application "Google Chrome"
     set index of (window id ((item 1 of argv) as integer)) to 1
@@ -730,8 +731,16 @@ on run argv
   tell application "System Events" to keystroke "s"
 end run
 OSA
-  [ "$pressed" = 1 ] || echo "INFO  press S in the deck window to open the speaker notes (waiting 60 s)"
-  limit=$((SECONDS + 60))
+  echo "INFO  the deck could not open the speaker notes: allow pop-ups for it in Chrome (address bar icon), then press S in the deck (waiting 60 s)"
+  launch_place_notes "$box" 60 && return 0
+  echo "FAIL  no speaker view: allow pop-ups for the deck, press S in it, or run ./lab.sh launch --notes"
+  return 1
+}
+
+# Wait up to $2 s for the speaker view window, then put it full size on the
+# display box $1.
+launch_place_notes() {
+  local box="$1" limit=$((SECONDS + $2))
   while [ "$SECONDS" -lt "$limit" ]; do
     if osascript - "$NOTES_TITLE" "$box" <<'OSA' >/dev/null 2>&1; then
 on run argv
@@ -753,7 +762,6 @@ OSA
     fi
     sleep 0.5
   done
-  echo "FAIL  no speaker view: allow popups for the deck, press S in it, or run ./lab.sh launch --notes"
   return 1
 }
 
@@ -983,7 +991,7 @@ cmd_launch() {
   if [ "$n" -gt 1 ]; then echo "OK    $n displays: console, notes and terminal on the external, deck on the laptop"
   else echo "INFO  one display: every window opens on it"; fi
 
-  local deck_url="file://${PWD// /%20}/deck/index.html"
+  local deck_url="file://${PWD// /%20}/deck/index.html?notes=auto"
   ids="$(launch_chrome "$deck_url" "$ebox" "$lbox")" || { echo "FAIL  could not open the Chrome windows"; return 1; }
   did="${ids#* }"
   echo "OK    Chrome: console window ($CONSOLE_URL), deck window"
