@@ -23,7 +23,8 @@ What it does, in order:
 3. tmux: `drive stage` (session `lab`: window `main`, window `agents`).
 4. Windows. Two displays: the console, the speaker notes and the tmux
    terminal go full size on the external display; the deck goes in its own
-   Chrome window on the laptop display. One display: everything on it.
+   window on the laptop display. The console and the deck are Chrome app
+   windows (no address bar, no tabs). One display: everything on it.
    Old console, deck and speaker-view tabs are closed first, so a re-run
    leaves no duplicates.
 5. Speaker notes: the deck opens them itself on load (`?notes=auto`), when

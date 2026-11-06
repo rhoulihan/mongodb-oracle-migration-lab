@@ -686,33 +686,61 @@ end run
 OSA
 }
 
-# Close earlier console, deck and speaker-view tabs, then open the two Chrome
-# windows. Prints "CONSOLE_ID DECK_ID".
-launch_chrome() {
-  launch_close_tabs || return 1
-  osascript - "$CONSOLE_URL" "$1" "$2" "$3" <<'OSA'
-on splitBox(s)
-  set AppleScript's text item delimiters to " "
-  set p to text items of s
-  set AppleScript's text item delimiters to ""
-  return {(item 1 of p) as integer, (item 2 of p) as integer, (item 3 of p) as integer, (item 4 of p) as integer}
-end splitBox
+# Open URL $1 as a Chrome app window (--app: no address bar, no tabs), full
+# size on the display box $2. A running Chrome takes the command line and
+# opens the window itself. Prints the window id.
+launch_app_window() {
+  local before id="" limit=$((SECONDS + 15))
+  before="$(osascript -e 'tell application "Google Chrome" to get id of every window' 2>/dev/null)"
+  open -na "Google Chrome" --args --app="$1" || return 1
+  while [ -z "$id" ] && [ "$SECONDS" -lt "$limit" ]; do
+    sleep 0.5
+    id="$(osascript - "$1" "$2" "$before" <<'OSA' 2>/dev/null
 on run argv
-  set cu to item 1 of argv
-  set du to item 2 of argv
-  set ebox to my splitBox(item 3 of argv)
-  set lbox to my splitBox(item 4 of argv)
+  set AppleScript's text item delimiters to " "
+  set p to text items of (item 2 of argv)
+  set AppleScript's text item delimiters to ""
   tell application "Google Chrome"
-    set cw to make new window
-    set URL of active tab of cw to cu
-    set bounds of cw to ebox
-    set dw to make new window
-    set URL of active tab of dw to du
-    set bounds of dw to lbox
-    return ((id of cw) as text) & " " & ((id of dw) as text)
+    set ids to id of every window
+    repeat with i in ids
+      set w to window id (contents of i)
+      if (item 3 of argv) does not contain ((id of w) as text) and URL of active tab of w starts with (item 1 of argv) then
+        set bounds of w to {(item 1 of p) as integer, (item 2 of p) as integer, (item 3 of p) as integer, (item 4 of p) as integer}
+        return (id of w) as text
+      end if
+    end repeat
+  end tell
+  error "not yet"
+end run
+OSA
+)"
+  done
+  [ -n "$id" ] || return 1
+  # Chrome can open a blank window along with the app window: close a new
+  # window whose only tab is a New Tab page.
+  osascript - "$before" <<'OSA' >/dev/null 2>&1
+on run argv
+  tell application "Google Chrome"
+    set ids to id of every window
+    repeat with i in ids
+      set w to window id (contents of i)
+      if (item 1 of argv) does not contain ((id of w) as text) and (count tabs of w) is 1 and URL of active tab of w is "chrome://newtab/" then close w
+    end repeat
   end tell
 end run
 OSA
+  echo "$id"
+}
+
+# Close earlier console, deck and speaker-view tabs, then open the console
+# (external display) and the deck (laptop display) as app windows.
+# Prints "CONSOLE_ID DECK_ID".
+launch_chrome() {
+  local cid did
+  launch_close_tabs || return 1
+  cid="$(launch_app_window "$CONSOLE_URL/" "$2")" || return 1
+  did="$(launch_app_window "$1" "$3")" || return 1
+  echo "$cid $did"
 }
 
 # The speaker view window on the external display. Prints OK or FAIL.
@@ -997,7 +1025,7 @@ cmd_launch() {
   local deck_url="file://${PWD// /%20}/deck/index.html?notes=auto"
   ids="$(launch_chrome "$deck_url" "$ebox" "$lbox")" || { echo "FAIL  could not open the Chrome windows"; return 1; }
   did="${ids#* }"
-  echo "OK    Chrome: console window ($CONSOLE_URL), deck window"
+  echo "OK    Chrome app windows (no address bar): console ($CONSOLE_URL), deck"
   launch_notes "$did" "$ebox" || rc=1
   launch_terminal "$ebox" || rc=1
 
