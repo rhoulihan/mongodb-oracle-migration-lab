@@ -566,6 +566,57 @@ OSA
 focus_tty() { term_window "$1" front; }
 lab_tty() { tmux list-clients -t "$TMUX_SESSION" -F '#{client_tty}' 2>/dev/null | head -1; }
 
+# The terminal this command was started from (Claude's own session): the
+# first ancestor process that has a tty. Prints /dev/ttysNNN.
+home_tty() {
+  local p=$$ t=""
+  while [ "${p:-1}" -gt 1 ]; do
+    t="$(ps -o tty= -p "$p" | tr -d ' ')"
+    case "$t" in ''|'??') p="$(ps -o ppid= -p "$p" | tr -d ' ')" ;; *) break ;; esac
+  done
+  case "$t" in ''|'??') return 1 ;; esac
+  echo "/dev/$t"
+}
+
+# Claude's terminal window follows the speaker notes: on the notes' display,
+# at their upper left, sized to cover the speaker view's current-slide
+# preview (LAB_NOTES_PREVIEW: its width and height in % of the view, 45 50 for
+# the tall layout; LAB_NOTES_CHROME: the popup's title and address bars, px).
+# No notes window: nothing moves.
+claude_place() {
+  [ "$(uname)" = Darwin ] || return 0
+  local t nb; t="$(home_tty)" || return 0
+  nb="$(osascript -e 'tell application "Google Chrome" to get bounds of (first window whose title of active tab is "'"$NOTES_TITLE"'")' 2>/dev/null | tr -d ' ')" || return 0
+  [ -n "$nb" ] || return 0
+  local l tp r b px py ch
+  IFS=, read -r l tp r b <<<"$nb"
+  read -r px py <<<"${LAB_NOTES_PREVIEW:-45 50}"
+  ch="${LAB_NOTES_CHROME:-56}"
+  osascript - "$t" "$l" "$tp" "$((l + (r - l) * px / 100))" "$((tp + ch + (b - tp - ch) * py / 100))" <<'OSA' >/dev/null 2>&1
+on run argv
+  tell application "Terminal"
+    set ids to id of every window
+    repeat with i in ids
+      set w to window id (contents of i)
+      repeat with tb in tabs of w
+        if tty of tb is (item 1 of argv) then
+          set bounds of w to {(item 2 of argv) as integer, (item 3 of argv) as integer, (item 4 of argv) as integer, (item 5 of argv) as integer}
+          return "ok"
+        end if
+      end repeat
+    end repeat
+  end tell
+end run
+OSA
+}
+
+# Chrome to the front with only its main window raised (window index 1):
+# AppleScript's activate raises every Chrome window, the notes too, above
+# Claude's terminal.
+chrome_activate_main() {
+  osascript -l JavaScript -e 'ObjC.import("AppKit"); var a = $.NSRunningApplication.runningApplicationsWithBundleIdentifier("com.google.Chrome"); if (a.count > 0) a.objectAtIndex(0).activateWithOptions(0); ""' >/dev/null
+}
+
 drive_focus() {
   mkdir -p "$DRIVE_DIR"
   [ "$(uname)" = Darwin ] || { echo "FAIL  drive focus needs macOS: switch the window by hand" >&2; return 1; }
@@ -603,14 +654,9 @@ OSA
       echo term > "$DRIVE_DIR/focus"
       echo "OK    terminal in front" ;;
     home)
-      # The terminal this command was started from (Claude's own session):
-      # the first ancestor process that has a tty.
-      local p=$$ t=""
-      while [ "${p:-1}" -gt 1 ]; do
-        t="$(ps -o tty= -p "$p" | tr -d ' ')"
-        case "$t" in ''|'??') p="$(ps -o ppid= -p "$p" | tr -d ' ')" ;; *) break ;; esac
-      done
-      case "$t" in ''|'??') echo "FAIL  no terminal found for this session" >&2; return 1 ;; esac
+      local t; t="$(home_tty)" || { echo "FAIL  no terminal found for this session" >&2; return 1; }
+      t="${t#/dev/}"
+      claude_place
       focus_tty "/dev/$t" || { echo "FAIL  /dev/$t is not a Terminal.app tab: switch by hand" >&2; return 1; }
       # Activating Terminal raises the tmux window too: minimize it again
       # unless it is the window on show.
@@ -656,14 +702,16 @@ on run argv
   error "no notes"
 end run
 OSA
+  # Claude's terminal follows the notes and comes to the front.
+  [ "$where" = external ] && { local lt; lt="$(lab_tty)"; [ -n "$lt" ] && term_window "$lt" min; }
+  mkdir -p "$DRIVE_DIR"; echo present > "$DRIVE_DIR/focus"
+  drive_focus home >/dev/null || true
   if [ "$where" = laptop ]; then
     echo "OK    speaker notes on the laptop display: the external display is free to share"
     return 0
   fi
-  local lt; lt="$(lab_tty)"; [ -n "$lt" ] && term_window "$lt" min
   local w; w="$(launch_window_ids)" || { echo "FAIL  no deck window: ./lab.sh launch" >&2; return 1; }
   launch_focus_deck "${w#* }" >/dev/null || return 1
-  mkdir -p "$DRIVE_DIR"; echo present > "$DRIVE_DIR/focus"
   echo "OK    speaker notes back on the external display, deck in focus on the laptop: share the laptop"
 }
 
@@ -1030,22 +1078,12 @@ OSA
   return "$CK_OPEN"
 }
 
-# The speaker notes in front on the external display, then the deck in front
-# on the laptop, with the focus (the presenter's clicker).
+# The deck in front on the laptop, with the focus (the presenter's clicker),
+# raised alone so Claude's terminal stays above the notes.
 launch_focus_deck() {
-  osascript - "$1" "$NOTES_TITLE" <<'OSA' >/dev/null || { echo "FAIL  could not focus the deck window"; return 1; }
-on run argv
-  tell application "Google Chrome"
-    set ids to id of every window
-    repeat with i in ids
-      if title of active tab of window id (contents of i) is (item 2 of argv) then set index of window id (contents of i) to 1
-    end repeat
-    set index of (window id ((item 1 of argv) as integer)) to 1
-    activate
-  end tell
-end run
-OSA
-  echo "OK    speaker notes in front on the external display, deck in focus on the laptop"
+  osascript -e "tell application \"Google Chrome\" to set index of window id $1 to 1" >/dev/null 2>&1 \
+    && chrome_activate_main || { echo "FAIL  could not focus the deck window"; return 1; }
+  echo "OK    deck window in focus"
 }
 
 cmd_launch() {
@@ -1056,7 +1094,7 @@ cmd_launch() {
       local w; w="$(launch_window_ids)" || { echo "FAIL  no console or deck window: run ./lab.sh launch"; return 1; }
       local eb; eb="$(launch_screens | sed -n 's/^external //p')"
       launch_notes "${w#* }" "$eb" || return 1
-      drive_focus console >/dev/null; launch_focus_deck "${w#* }"; return ;;
+      drive_focus console >/dev/null; drive_notes external; return ;;
     --check) launch_checklist; return ;;
     '') ;;
     *) usage ;;
@@ -1094,7 +1132,8 @@ cmd_launch() {
   # External display: the speaker notes in front (console behind, tmux
   # minimized). Laptop: the deck with the focus (this terminal stays put).
   drive_focus console >/dev/null || rc=1
-  launch_focus_deck "$did" || rc=1
+  drive_notes external >/dev/null || rc=1
+  echo "OK    speaker notes in front on the external display (Claude's terminal over the slide preview), deck in focus on the laptop"
   launch_checklist || rc=1
   return "$rc"
 }

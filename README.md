@@ -260,10 +260,13 @@ protocol: `launch-lab`, `drive-demo` and `shutdown-lab`.
 | Display | Windows |
 |---|---|
 | External (shared during demos) | The console, the speaker notes (in front after the launch), the tmux terminal (Clear Dark profile; minimized until a demo needs it) |
-| Laptop (shared between demos) | The deck, in focus for the clicker; the Claude terminal behind it |
+| Laptop (shared between demos) | The deck, in focus for the clicker |
 
 The console and the deck open as Chrome app windows (`--app`): no address
-bar, no tabs. With one display, every window opens on it.
+bar, no tabs. The Claude terminal follows the speaker notes: on their
+display, at their upper left, sized to cover the current-slide preview, and
+in front (`LAB_NOTES_PREVIEW`, default `45 50`, the preview's width and height
+in % for the tall layout). With one display, every window opens on it.
 
 **1. Launch: "launch the lab"** (`./lab.sh launch`, about 70 s)
 

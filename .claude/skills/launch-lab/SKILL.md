@@ -34,7 +34,8 @@ What it does, in order:
    then click it and press S"**, then wait. It waits 60 s.
 6. End: the speaker notes in front on the external display (the console
    behind them, the tmux window minimized until a demo needs it), the deck in
-   focus on the laptop. The Claude terminal stays where it is.
+   focus on the laptop. The Claude terminal follows the speaker notes: over
+   their current-slide preview, in front.
 
 7. Checklist: every item checked live (stack, data counts, MIG empty,
    console, deck, notes, tmux, terminal profile). `[ ]` items print their fix.
