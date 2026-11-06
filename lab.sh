@@ -18,6 +18,7 @@
 #   ./lab.sh launch [--notes|--check]  instructor setup: full reset, data, tmux, console + notes + terminal + deck windows (macOS)
 #   ./lab.sh shutdown [--wipe]     close the lab windows, end tmux, stop the stack (--wipe: delete the data)
 #   ./lab.sh drive focus console|term|home  bring the console tab, the tmux terminal, or this session's terminal to the front (macOS)
+#   ./lab.sh drive notes laptop|external  speaker notes to the laptop (demo on) or back to the external display, deck in focus (demo over)
 # demo, reset dN, generate and agent run Node in a one-off runner container (the app
 # image), so the laptop needs no Node. LAB_HOST_NODE=1 uses the host's node.
 set -uo pipefail
@@ -621,6 +622,51 @@ OSA
   esac
 }
 
+# The speaker notes between displays, around a demo. "laptop": the notes full
+# size on the laptop display, in front, so the external display shows only
+# the console and the terminal. "external": the notes back in front on the
+# external display (tmux minimized) and the deck in focus on the laptop, so
+# the presenter shares the laptop and presents until the next demo.
+drive_notes() {
+  [ "$(uname)" = Darwin ] || { echo "FAIL  drive notes needs macOS" >&2; return 1; }
+  local where="$1" screens box
+  screens="$(launch_screens)" || { echo "FAIL  could not read the displays" >&2; return 1; }
+  case "$where" in
+    laptop)   box="$(sed -n 's/^laptop //p' <<<"$screens")" ;;
+    external) box="$(sed -n 's/^external //p' <<<"$screens")" ;;
+    *) usage ;;
+  esac
+  osascript - "$NOTES_TITLE" "$box" <<'OSA' >/dev/null || { echo "FAIL  no speaker notes window: ./lab.sh launch --notes" >&2; return 1; }
+on run argv
+  set AppleScript's text item delimiters to " "
+  set p to text items of (item 2 of argv)
+  set AppleScript's text item delimiters to ""
+  tell application "Google Chrome"
+    set ids to id of every window
+    repeat with i in ids
+      set w to window id (contents of i)
+      if title of active tab of w is (item 1 of argv) then
+        set bounds of w to {(item 1 of p) as integer, (item 2 of p) as integer, (item 3 of p) as integer, (item 4 of p) as integer}
+        set index of w to 1
+        activate
+        return "ok"
+      end if
+    end repeat
+  end tell
+  error "no notes"
+end run
+OSA
+  if [ "$where" = laptop ]; then
+    echo "OK    speaker notes on the laptop display: the external display is free to share"
+    return 0
+  fi
+  local lt; lt="$(lab_tty)"; [ -n "$lt" ] && term_window "$lt" min
+  local w; w="$(launch_window_ids)" || { echo "FAIL  no deck window: ./lab.sh launch" >&2; return 1; }
+  launch_focus_deck "${w#* }" >/dev/null || return 1
+  mkdir -p "$DRIVE_DIR"; echo present > "$DRIVE_DIR/focus"
+  echo "OK    speaker notes back on the external display, deck in focus on the laptop: share the laptop"
+}
+
 cmd_drive() {
   local sub="${1:-}"; [ $# -gt 0 ] && shift
   case "$sub" in
@@ -631,6 +677,7 @@ cmd_drive() {
     wait)    [ $# -eq 1 ] || usage; drive_wait "$1" ;;
     term)    drive_term "$@" ;;
     focus)   [ $# -eq 1 ] || usage; drive_focus "$1" ;;
+    notes)   [ $# -eq 1 ] || usage; drive_notes "$1" ;;
     *)       usage ;;
   esac
 }
@@ -1053,7 +1100,7 @@ cmd_launch() {
 }
 
 usage() {
-  sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 

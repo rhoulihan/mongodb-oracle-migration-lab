@@ -259,8 +259,8 @@ protocol: `launch-lab`, `drive-demo` and `shutdown-lab`.
 
 | Display | Windows |
 |---|---|
-| External (shared) | The console, the speaker notes (in front after the launch), the tmux terminal (Clear Dark profile; minimized until a demo needs it) |
-| Laptop | The deck, in focus for the clicker; the Claude terminal behind it |
+| External (shared during demos) | The console, the speaker notes (in front after the launch), the tmux terminal (Clear Dark profile; minimized until a demo needs it) |
+| Laptop (shared between demos) | The deck, in focus for the clicker; the Claude terminal behind it |
 
 The console and the deck open as Chrome app windows (`--app`): no address
 bar, no tabs. With one display, every window opens on it.
@@ -282,6 +282,11 @@ bar, no tabs. With one display, every window opens on it.
 
 **2. Present: "run demo D3", then "next"** (`drive-demo`)
 
+- At the start of each demo Claude moves the speaker notes to the laptop
+  display (`./lab.sh drive notes laptop`), so you share the external display.
+  At the last "next" it moves them back to the external display and puts the
+  deck in focus (`./lab.sh drive notes external`): share the laptop and
+  present until the next demo.
 - Claude brings the window the step needs to the front (`./lab.sh drive
   focus console|term`), so you never switch windows. The tmux window stays
   minimized while the console is on show.

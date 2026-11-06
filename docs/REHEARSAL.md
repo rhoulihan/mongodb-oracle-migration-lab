@@ -302,6 +302,9 @@ terminal you share (font large), the console open in Chrome, then
 
 **During the session:** say "run demo D3" (the `drive-demo` skill).
 
+- Claude moves the speaker notes to the laptop when a demo starts (share
+  the external display) and back when it ends, with the deck in focus (share
+  the laptop).
 - Claude switches the shared window itself (`./lab.sh drive focus console`
   or `term`). If a switch fails, it says **Share the Console** or **Share the
   Terminal**: switch by hand and reply "ready".
@@ -321,6 +324,7 @@ the lab's windows close and the stack stops, keeping the volumes.
 | `./lab.sh drive console dN STEP [--skip] [--nowait]` | Run a console step (`--skip`: the rehearsal result) |
 | `./lab.sh drive wait SEQ` | Wait for a step started with `--nowait` |
 | `./lab.sh drive term [A\|B] 'CMD'` | Type a command into the tmux pane (A and B: D7) |
+| `./lab.sh drive notes laptop\|external` | Speaker notes to the laptop at a demo's start; back to the external display, deck in focus, at its end |
 | `./lab.sh drive focus console\|term\|home` | Bring the console, the tmux terminal or Claude's terminal to the front (macOS) |
 
 **Rehearse it once this way, D1 to D7.** Each step adds a few seconds while
