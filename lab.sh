@@ -872,17 +872,32 @@ cmd_shutdown() {
       # window that still runs tmux, and that dialog would wait for a click.
       local n=0
       while ps -t "${tty#/dev/}" -o comm= 2>/dev/null | grep -q tmux && [ "$n" -lt 50 ]; do sleep 0.1; n=$((n + 1)); done
-      osascript - "$tty" <<'OSA' >/dev/null 2>&1
+      local wid; wid="$(osascript - "$tty" <<'OSA' 2>/dev/null
 on run argv
   tell application "Terminal"
     set ids to id of every window
     repeat with i in ids
       set w to window id (contents of i)
-      if (count tabs of w) is 1 and tty of tab 1 of w is (item 1 of argv) then close w
+      if (count tabs of w) is 1 and tty of tab 1 of w is (item 1 of argv) then
+        set wid to id of w
+        close w
+        return wid as text
+      end if
     end repeat
   end tell
+  return ""
 end run
 OSA
+)"
+      # Terminal can take several seconds to finish closing: wait for it.
+      if [ -n "$wid" ]; then
+        n=0
+        # Closed means gone, or left in Terminal's window list with no tabs
+        # (Terminal keeps a closed window there for a while, off screen).
+        while [ "$(osascript -e "tell application \"Terminal\" to if exists window id $wid then count tabs of window id $wid" 2>/dev/null)" -gt 0 ] 2>/dev/null && [ "$n" -lt 30 ]; do sleep 0.5; n=$((n + 1)); done
+        if [ "$n" -lt 30 ]; then echo "OK    tmux terminal window closed"
+        else echo "FAIL  the tmux terminal window is still open: close it by hand"; rc=1; fi
+      fi
     fi
     echo "OK    tmux session $TMUX_SESSION ended"
   else
