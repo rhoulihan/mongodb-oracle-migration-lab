@@ -155,7 +155,7 @@ restore check fails.
 
 ### D3: Dump, restore, prove it
 
-Segment 3, slide 22 (clock 0:36, 4 min).
+Segment 3, slide 23 (clock 0:36, 4 min).
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
@@ -171,7 +171,7 @@ Reset after: none. D4's first step reloads Oracle from a fresh dump.
 
 ### D4: Live sync and cutover
 
-Segment 4, slide 29 (clock 0:50, 4 min). Say first: the replicator is a
+Segment 4, slide 30 (clock 0:50, 4 min). Say first: the replicator is a
 **stand-in for Oracle GoldenGate**, not GoldenGate.
 
 | # | Lane | Do | Expect |
@@ -182,7 +182,7 @@ Segment 4, slide 29 (clock 0:50, 4 min). Say first: the replicator is a
 | 4 | terminal | `./lab.sh repl stop && ./lab.sh app-uri oracle` | Drains to lag 0, stops; the app flips. Mark done: same counts |
 | 5 | terminal | `./lab.sh repl rev` | `ready`. The first reverse lag can read about 49 s: those are Oracle's TTL deletes from the forward phase |
 | 6 | console | Write to Oracle through the app, watch it land in MongoDB | Every new order shows up on MongoDB |
-| 7 | console | No lost or duplicated writes: counts and hashes on both sides | Same count and sha-256 on both sides |
+| 7 | console | No lost or duplicated writes: counts and hashes on both sides | Same count and sha-256 on both sides. Say: the hash is a fingerprint of every document and field, exact types, so one changed, lost or doubled write shows |
 
 **Reset after: `./lab.sh reset d4`**, before anything else. It stops the
 replicator, drops the capture objects and points the app back at MongoDB.
@@ -192,7 +192,7 @@ orders to the source; `./lab.sh generate` puts that back.
 
 ### D5: Top-N counter, three ways
 
-Segment 5, slide 34 (clock 1:00, 4 min).
+Segment 5, slide 35 (clock 1:00, 4 min).
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
@@ -207,17 +207,17 @@ If step 1 fails: `./lab.sh reset d5`. Reset after: none.
 
 ### D6: Pipeline vs $sql
 
-Segment 5, slide 38 (clock 1:08, 4 min).
+Segment 5, slide 39 (clock 1:08, 4 min).
 
 **Setup timing.** Click D6 step 1 right after D5's last step, and no later
 than clock 1:05. If D5 runs long, click **Skip to result** on its remaining
 steps so D6 setup starts on time. If setup is still running when you reach
-slide 38, talk the `$setWindowFields` compatibility note (slide 38 notes)
+slide 39, talk the `$setWindowFields` compatibility note (slide 39 notes)
 until it finishes. Measure the Mac's setup time at rehearsal (section 3).
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
-| 1 | console | Same data on both sides, statistics gathered | **Click it right after D5's last step**, then go back to the deck for slides 35 to 37 while it runs (about 2.5 min: statistics, then one untimed warm-up run of the pipeline and of $sql). Expect: same window counts, stats gathered, both sides warmed once. Say "both sides warmed once during setup" |
+| 1 | console | Same data on both sides, statistics gathered | **Click it right after D5's last step**, then go back to the deck for slides 36 to 38 while it runs (about 2.5 min: statistics, then one untimed warm-up run of the pipeline and of $sql). Expect: same window counts, stats gathered, both sides warmed once. Say "both sides warmed once during setup" |
 | 2 | console | (1) The pipeline on MongoDB: the stage tree, timed | COLLSCAN, three $lookups, $unwinds, $groups, $sort; median of 3 runs, hidden until step 5 |
 | 3 | console | (2) The same pipeline on Oracle through the MongoDB API | **One timed run, warm, about 35 s** (34 to 35 s measured on the Mac). The timer runs. Narrate the plan while it runs: it is one run, not three, to keep the demo inside its 4 minutes. Then the summary: the same 160 rows as MongoDB, and both times (Mac: about 34 s against about 4.5 s, about 7.6x slower). Say why, and lead into $sql: the API translates stage by stage, the optimizer never sees the whole question |
 | 4 | terminal | `./lab.sh mongosh ora demos/d6-sql/sql-stage.js` | The first 10 of 160 rows. Mark done: 160 rows, ranks 1 to 5 for 32 pairs |
@@ -233,7 +233,7 @@ demo. Reset after: none.
 
 ### D7: ETags, two agents, one order
 
-Segment 5, slide 43 (clock 1:15, 3 min). Terminal A on the left, B on the
+Segment 5, slide 44 (clock 1:15, 3 min). Terminal A on the left, B on the
 right.
 
 | # | Lane | Do | Expect |
@@ -290,8 +290,10 @@ the repo, so no permission prompt appears on stage:
 **Before the session:** start `claude` in the repo folder, in a terminal you
 don't share, and say "launch the lab" (the `launch-lab` skill). It runs
 `./lab.sh launch`: full reset, data load, tmux session `lab` (window `main`,
-and window `agents` split into A and B for D7), the console, speaker notes
-and tmux terminal on the external display, the deck on the laptop. Check
+and window `agents` split into A and B for D7), the deck (in front), the
+console and the tmux terminal on the external display, the speaker notes on
+the laptop. Share the external display once, in the
+room or in Zoom, and leave it shared. Check
 that the checklist it prints ends "All checks passed: ready for D1". Mind
 the 30-minute rule in section 4: if the session starts more than about 3
 hours later, run `./lab.sh generate` again.
@@ -300,18 +302,26 @@ By hand instead: `./lab.sh drive stage`, `tmux attach -t lab` in the
 terminal you share (font large), the console open in Chrome, then
 `./lab.sh drive status` (three OK lines and `INFO  idle`).
 
-**During the session:** say "run demo D3" (the `drive-demo` skill).
+**During the session:** your clicker drives the demos (the autopilot,
+`./lab.sh drive autopilot`, started by the launch). Say "watch the demos"
+once (the `drive-demo` skill) and Claude relays each result.
 
-- Claude moves the speaker notes to the laptop when a demo starts (share
-  the external display) and back when it ends, with the deck in focus (share
-  the laptop).
-- Claude switches the shared window itself (`./lab.sh drive focus console`
-  or `term`). If a switch fails, it says **Share the Console** or **Share the
-  Terminal**: switch by hand and reply "ready".
-- After each step, Claude replies with the result and the line to say. Say
-  "next" or "go" to continue.
-- On a failure, Claude offers **Skip to result** (the rehearsal recording)
-  and never debugs on stage.
+- You never switch shares. On a demo slide (D1 to D7), next (Right arrow)
+  brings the demo up: step 1's window comes to the front of the shared
+  display. Each next after that runs one step, with its window in front.
+  The next after the last step brings the deck back, still on the demo
+  slide, with the focus; the next one moves on as usual.
+- On a FAIL, the next press shows that step's rehearsal result: say so out
+  loud. Presses while a step runs are dropped: wait for the result.
+- D2 and D4 reset in the background once the deck is back. D5's end starts
+  D6 step 1 in the background.
+- During a demo the keyboard focus sits on the speaker notes (laptop), so
+  every press reaches the autopilot, Right arrow or Page Down, whichever
+  window the shared display shows. Don't click into the terminal or the
+  console during a demo: the press would go there instead.
+- Claude watches `.lab/drive/autopilot.log` and posts, in its terminal on
+  the laptop, the result and the line to say. With the autopilot off, say
+  "run demo D3" and "next" instead: Claude drives each step by hand.
 
 **After the session:** say "shut down the lab" (the `shutdown-lab` skill):
 the lab's windows close and the stack stops, keeping the volumes.
@@ -324,7 +334,8 @@ the lab's windows close and the stack stops, keeping the volumes.
 | `./lab.sh drive console dN STEP [--skip] [--nowait]` | Run a console step (`--skip`: the rehearsal result) |
 | `./lab.sh drive wait SEQ` | Wait for a step started with `--nowait` |
 | `./lab.sh drive term [A\|B] 'CMD'` | Type a command into the tmux pane (A and B: D7) |
-| `./lab.sh drive notes laptop\|external` | Speaker notes to the laptop at a demo's start; back to the external display, deck in focus, at its end |
+| `./lab.sh drive autopilot start\|stop\|status` | The clicker drives the demos (launch starts it; log: `.lab/drive/autopilot.log`) |
+| `./lab.sh drive demo\|slides` | A demo's start (notes stay on the laptop) / its end (deck in front on the shared display, in focus) |
 | `./lab.sh drive focus console\|term\|home` | Bring the console, the tmux terminal or Claude's terminal to the front (macOS) |
 
 **Rehearse it once this way, D1 to D7.** Each step adds a few seconds while

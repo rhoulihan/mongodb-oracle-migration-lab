@@ -398,6 +398,36 @@ describe('remote control (./lab.sh drive)', () => {
     expect((await done(1, { ok: 'yes' })).status).toBe(400);
   });
 
+  test('presenter keys: dropped with no autopilot, queued and taken once while it polls', async () => {
+    const key = (q) => fetch(`${rbase}/api/remote/key?${q}`, { method: 'POST' });
+    expect((await key('from=nobody')).status).toBe(400);
+    expect((await key('from=deck&demo=d9')).status).toBe(400);
+    const r0 = await key('from=deck&demo=d1');
+    expect(r0.headers.get('access-control-allow-origin')).toBe('*');
+    expect(await r0.json()).toEqual({ ok: false, listening: false }); // the deck moves on by itself
+    const poll = rget('/api/remote/key?wait=5000'); // the autopilot's long poll
+    await new Promise((r) => setTimeout(r, 100));
+    expect(await (await key('from=deck&demo=d1')).json()).toEqual({ ok: true, listening: true });
+    const got = await poll;
+    expect(got.status).toBe(200);
+    expect((await got.text()).trim()).toBe('deck d1');
+    await key('from=term');
+    await key('from=console');
+    expect((await fetch(`${rbase}/api/remote/key`, { method: 'DELETE' })).status).toBe(204);
+    expect((await rget('/api/remote/key?wait=0')).status).toBe(204); // presses during a step are gone
+  });
+
+  test('presenter keys: the running demo is published for the deck and the notes', async () => {
+    const state = async () => (await (await rget('/api/remote/key/state')).text()).trim();
+    expect(await state()).toBe('');
+    expect((await fetch(`${rbase}/api/remote/key/state?demo=d2`, { method: 'POST' })).status).toBe(204);
+    expect(await state()).toBe('d2');
+    expect((await fetch(`${rbase}/api/remote/key/state?demo=x`, { method: 'POST' })).status).toBe(400);
+    await fetch(`${rbase}/api/remote/key/state?demo=`, { method: 'POST' });
+    expect(await state()).toBe('');
+    expect((await fetch(`${rbase}/api/remote/key?from=notes`, { method: 'POST' })).status).toBe(200);
+  });
+
   test('status reports readiness, whether a page is polling, and what runs', async () => {
     await rget('/api/remote/next');
     const t = await (await rget('/api/remote/status')).text();

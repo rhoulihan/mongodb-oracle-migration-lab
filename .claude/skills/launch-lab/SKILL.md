@@ -21,24 +21,29 @@ What it does, in order:
    (four OK lines). Every demo starts clean.
 2. Data: `generate` (loads the MongoDB source).
 3. tmux: `drive stage` (session `lab`: window `main`, window `agents`).
-4. Windows. Two displays: the console, the speaker notes and the tmux
-   terminal go full size on the external display; the deck goes in its own
-   window on the laptop display. The console and the deck are Chrome app
+4. Windows. Two displays: the deck, the console and the tmux terminal go
+   full size on the external display, the one the presenter shares (in the
+   room or in Zoom) for the whole session; the speaker notes go on the
+   laptop display. The console and the deck are Chrome app
    windows (no address bar, no tabs). One display: everything on it.
    Old console, deck and speaker-view tabs are closed first, so a re-run
    leaves no duplicates.
-5. Speaker notes: the deck opens them itself on load (`?notes=auto`), when
+5. Speaker notes: the deck opens them itself on load (`?speaker=auto`), when
    Chrome allows the deck pop-ups (allowed once per laptop, from the address
    bar icon). If they don't open, it prints `INFO  the deck could not open the
    speaker notes`. **Tell the presenter at once: "Allow pop-ups for the deck,
    then click it and press S"**, then wait. It waits 60 s.
-6. End: the speaker notes in front on the external display (the console
-   behind them, the tmux window minimized until a demo needs it), the deck in
-   focus on the laptop. The Claude terminal follows the speaker notes: over
-   their current-slide preview, in front.
+6. End: the deck in front on the external display with the focus (the
+   console behind it, the tmux window minimized until a demo needs it), the
+   speaker notes on the laptop. The Claude terminal follows the speaker notes:
+   over their current-slide preview, in front. Tell the presenter once: share
+   the external display, and leave it shared.
 
-7. Checklist: every item checked live (stack, data counts, MIG empty,
-   console, deck, notes, tmux, terminal profile). `[ ]` items print their fix.
+7. Autopilot: `./lab.sh drive autopilot start`. The presenter's clicker
+   (Right arrow) drives the demos from here on.
+
+8. Checklist: every item checked live (stack, data counts, MIG empty,
+   console, deck, notes, tmux, autopilot, terminal profile). `[ ]` items print their fix.
 
 ## Report
 
@@ -57,4 +62,4 @@ What it does, in order:
 - Never change macOS or Chrome settings yourself (Accessibility, popups).
   Tell the presenter what to change.
 - Never print or repeat any password.
-- Then demos run with the `drive-demo` skill.
+- Then the clicker drives the demos (autopilot). Offer once: "say watch the demos and I'll relay each result" (the `drive-demo` skill).

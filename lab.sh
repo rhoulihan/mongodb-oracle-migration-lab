@@ -18,7 +18,8 @@
 #   ./lab.sh launch [--notes|--check]  instructor setup: full reset, data, tmux, console + notes + terminal + deck windows (macOS)
 #   ./lab.sh shutdown [--wipe]     close the lab windows, end tmux, stop the stack (--wipe: delete the data)
 #   ./lab.sh drive focus console|term|home  bring the console tab, the tmux terminal, or this session's terminal to the front (macOS)
-#   ./lab.sh drive notes laptop|external  speaker notes to the laptop (demo on) or back to the external display, deck in focus (demo over)
+#   ./lab.sh drive autopilot start|stop|status|run  the clicker drives the demos (launch starts it)
+#   ./lab.sh drive demo|slides     demo start (notes stay on the laptop) / demo end (deck in front on the shared display, in focus)
 # demo, reset dN, generate and agent run Node in a one-off runner container (the app
 # image), so the laptop needs no Node. LAB_HOST_NODE=1 uses the host's node.
 set -uo pipefail
@@ -449,6 +450,7 @@ drive_stage() {
     tmux set-option -t "$TMUX_SESSION" status off >/dev/null
     echo "OK    tmux session $TMUX_SESSION: window main, window agents (A left, B right)"
   fi
+  drive_bind_keys
   echo "Next: in the terminal you will share, run:  tmux attach -t $TMUX_SESSION"
 }
 
@@ -668,20 +670,18 @@ OSA
   esac
 }
 
-# The speaker notes between displays, around a demo. "laptop": the notes full
-# size on the laptop display, in front, so the external display shows only
-# the console and the terminal. "external": the notes back in front on the
-# external display (tmux minimized) and the deck in focus on the laptop, so
-# the presenter shares the laptop and presents until the next demo.
-drive_notes() {
-  [ "$(uname)" = Darwin ] || { echo "FAIL  drive notes needs macOS" >&2; return 1; }
-  local where="$1" screens box
+# One shared display (the external, or the only one): the deck, the console and
+# the tmux terminal all live there, full size, and the presenter shares it once
+# (in the room or in Zoom). The speaker notes stay on the laptop for the whole
+# session. Between demos the deck is in front with the focus; during a demo the
+# console or the terminal comes in front (drive focus). Nobody switches shares.
+#   demo:   the notes on the laptop; the window a step uses comes up with focus.
+#   slides: the notes on the laptop; tmux minimized, the deck in front with the
+#           focus (the presenter's clicker).
+drive_notes_home() {
+  local screens box
   screens="$(launch_screens)" || { echo "FAIL  could not read the displays" >&2; return 1; }
-  case "$where" in
-    laptop)   box="$(sed -n 's/^laptop //p' <<<"$screens")" ;;
-    external) box="$(sed -n 's/^external //p' <<<"$screens")" ;;
-    *) usage ;;
-  esac
+  box="$(sed -n 's/^laptop //p' <<<"$screens")"
   osascript - "$NOTES_TITLE" "$box" <<'OSA' >/dev/null || { echo "FAIL  no speaker notes window: ./lab.sh launch --notes" >&2; return 1; }
 on run argv
   set AppleScript's text item delimiters to " "
@@ -693,8 +693,6 @@ on run argv
       set w to window id (contents of i)
       if title of active tab of w is (item 1 of argv) then
         set bounds of w to {(item 1 of p) as integer, (item 2 of p) as integer, (item 3 of p) as integer, (item 4 of p) as integer}
-        set index of w to 1
-        activate
         return "ok"
       end if
     end repeat
@@ -702,17 +700,200 @@ on run argv
   error "no notes"
 end run
 OSA
-  # Claude's terminal follows the notes and comes to the front.
-  [ "$where" = external ] && { local lt; lt="$(lab_tty)"; [ -n "$lt" ] && term_window "$lt" min; }
-  mkdir -p "$DRIVE_DIR"; echo present > "$DRIVE_DIR/focus"
-  drive_focus home >/dev/null || true
-  if [ "$where" = laptop ]; then
-    echo "OK    speaker notes on the laptop display: the external display is free to share"
-    return 0
+}
+
+drive_mode() {
+  [ "$(uname)" = Darwin ] || { echo "FAIL  drive $1 needs macOS" >&2; return 1; }
+  drive_notes_home || return 1
+  mkdir -p "$DRIVE_DIR"
+  case "$1" in
+    demo)
+      echo present > "$DRIVE_DIR/focus"
+      echo "OK    demo on: the speaker notes stay on the laptop; the console or terminal comes up on the shared display" ;;
+    slides)
+      local lt; lt="$(lab_tty)"; [ -n "$lt" ] && term_window "$lt" min
+      echo present > "$DRIVE_DIR/focus"
+      local w; w="$(launch_window_ids)" || { echo "FAIL  no deck window: ./lab.sh launch" >&2; return 1; }
+      launch_focus_deck "${w#* }" >/dev/null || return 1
+      echo "OK    deck in front on the shared display, with the focus" ;;
+    *) usage ;;
+  esac
+}
+
+# ---------- autopilot: the presenter's clicker drives the demos ----------
+# The clicker's next (Right arrow) reaches the console server from whichever
+# window has the focus: the deck on a demo slide, the console page, or the
+# tmux terminal (a key binding below). This loop on the host takes each press:
+#   deck, demo slide dN  -> demo on: step 1's window in front
+#   each press after it  -> the next step runs (terminal: typed, then Mark done)
+#   a press after a FAIL -> that step's rehearsal result (--skip)
+#   the press after the last step -> back to the deck, in front with the focus
+# D2 and D4 reset in the background once the deck is back; D5's end starts
+# D6 step 1 in the background. Presses during a step are dropped.
+# Log: .lab/drive/autopilot.log (Claude watches it and relays each result).
+AP_PAT='^ *[0-9]+  ([^ ]+)  (console|terminal)  (.*)$'
+AP_CMD_PAT='^ +\$ (.*)$'
+
+ap_log() { printf '%s %s\n' "$(date +%H:%M:%S)" "$*" >> "$DRIVE_DIR/autopilot.log"; }
+
+# The steps of demo $1 into AP_IDS, AP_LANES, AP_TITLES, AP_CMDS.
+ap_plan() {
+  drive_req GET "/api/remote/plan/$1" 2>/dev/null || return 1
+  AP_IDS=(); AP_LANES=(); AP_TITLES=(); AP_CMDS=()
+  local line
+  while IFS= read -r line; do
+    if [[ "$line" =~ $AP_PAT ]]; then
+      AP_IDS+=("${BASH_REMATCH[1]}"); AP_LANES+=("${BASH_REMATCH[2]}")
+      AP_TITLES+=("${BASH_REMATCH[3]}"); AP_CMDS+=("")
+    elif [[ "$line" =~ $AP_CMD_PAT ]] && [ "${#AP_CMDS[@]}" -gt 0 ]; then
+      AP_CMDS[${#AP_CMDS[@]}-1]="${BASH_REMATCH[1]}"
+    fi
+  done <<<"$BODY"
+  [ "${#AP_IDS[@]}" -gt 0 ]
+}
+
+# Step $1 (1-based): its window to the front of the shared display, then the
+# keyboard focus to the speaker notes on the laptop (Chrome raised by its
+# key window only, so the shared display keeps the console or the terminal).
+# The notes send every next to the autopilot; Terminal.app is never asked to
+# take the keys (it would keep Page Down, and its focus can stay elsewhere).
+ap_focus() {
+  drive_focus "$([ "${AP_LANES[$1-1]}" = terminal ] && echo term || echo console)" >/dev/null 2>&1
+  osascript -e "tell application \"Google Chrome\" to set index of (first window whose title of active tab is \"$NOTES_TITLE\") to 1" >/dev/null 2>&1 \
+    && chrome_activate_main
+}
+
+# The demo running ('' between demos), for the deck and the notes.
+ap_state() { curl -s --max-time 5 -o /dev/null -X POST "$CONSOLE_URL/api/remote/key/state?demo=$1" || true; }
+
+# Step $1 (1-based) of AP_DEMO; $2 = skip shows the rehearsal result. Logs the outcome.
+ap_run() {
+  local i="$1" id="${AP_IDS[$1-1]}" lane="${AP_LANES[$1-1]}" cmd="${AP_CMDS[$1-1]}" out rc=0 tag
+  tag="$AP_DEMO $i/${#AP_IDS[@]} $id"
+  if [ "${2:-}" = skip ]; then
+    out="$(drive_console "$AP_DEMO" "$id" --skip 2>&1)" || rc=1
+    ap_log "$tag (rehearsal result): $(tail -1 <<<"$out")"; return "$rc"
   fi
-  local w; w="$(launch_window_ids)" || { echo "FAIL  no deck window: ./lab.sh launch" >&2; return 1; }
-  launch_focus_deck "${w#* }" >/dev/null || return 1
-  echo "OK    speaker notes back on the external display, deck in focus on the laptop: share the laptop"
+  if [ "$lane" = terminal ]; then
+    local pane=""
+    case "$cmd" in *"--agent A"*) pane=A ;; *"--agent B"*) pane=B ;; esac
+    out="$(drive_term $pane "$cmd" 2>&1)" || rc=1
+    local took; took="$(grep -Eo 'restore took [0-9.]+ s' <<<"$out" | tail -1)"
+    [ -n "$took" ] && ap_log "$tag: $took"
+    if [ "$rc" != 0 ]; then ap_log "$tag: $(tail -1 <<<"$out") (next press: the rehearsal result)"; return 1; fi
+    out="$(drive_console "$AP_DEMO" "$id" 2>&1)" || rc=1
+  elif [ "$AP_DEMO" = d6 ] && [ "$i" = 1 ] && [ -n "${AP_D6_SEQ:-}" ]; then
+    out="$(drive_wait "$AP_D6_SEQ" 2>&1)" || rc=1
+    AP_D6_SEQ=""
+  else
+    out="$(drive_console "$AP_DEMO" "$id" 2>&1)" || rc=1
+  fi
+  ap_log "$tag: $(tail -1 <<<"$out")$([ "$rc" != 0 ] && echo ' (next press: the rehearsal result)')"
+  return "$rc"
+}
+
+# Every tmux pane cleared (scrollback too), window main on show: each demo
+# starts on a clean terminal.
+drive_clear_tmux() {
+  local pane
+  for pane in main agents.0 agents.1; do
+    tmux send-keys -t "$TMUX_SESSION:$pane" C-l 2>/dev/null
+    tmux clear-history -t "$TMUX_SESSION:$pane" 2>/dev/null
+  done
+  tmux select-window -t "$TMUX_SESSION:main" 2>/dev/null
+  return 0
+}
+
+ap_end() {
+  drive_mode slides >/dev/null 2>&1 || ap_log "FAIL  could not bring the deck back: ./lab.sh drive slides"
+  drive_clear_tmux
+  ap_log "$AP_DEMO done: deck in front, tmux cleared"
+  case "$AP_DEMO" in
+    d2|d4) ap_log "$AP_DEMO reset running in the background"
+           ( ./lab.sh reset "$AP_DEMO" >/dev/null 2>&1 && ap_log "$AP_DEMO reset OK" || ap_log "FAIL  $AP_DEMO reset: run ./lab.sh reset $AP_DEMO" ) & ;;
+    d5) if ap_plan d6; then
+          local o; o="$(drive_console d6 "${AP_IDS[0]}" --nowait 2>&1)"
+          AP_D6_SEQ="$(grep -Eo 'drive wait [0-9]+' <<<"$o" | grep -Eo '[0-9]+$')"
+          [ -n "$AP_D6_SEQ" ] && ap_log "d6 step 1 started in the background" || ap_log "FAIL  d6 step 1 did not start: $o"
+        fi ;;
+  esac
+  AP_DEMO=""
+  ap_state ""
+}
+
+drive_autopilot_loop() {
+  mkdir -p "$DRIVE_DIR"
+  AP_DEMO="" AP_I=0 AP_FAILED=0 AP_D6_SEQ=""
+  ap_log "autopilot on"
+  ap_state ""
+  local from demo n
+  while :; do
+    if ! curl -s --max-time 30 -o "$DRIVE_DIR/key" -w '%{http_code}' "$CONSOLE_URL/api/remote/key?wait=25000" > "$DRIVE_DIR/key.code" 2>/dev/null; then
+      sleep 2; continue
+    fi
+    [ "$(cat "$DRIVE_DIR/key.code")" = 200 ] || continue
+    read -r from demo < "$DRIVE_DIR/key"
+    if [ -z "$AP_DEMO" ]; then
+      # Between demos only the deck's demo slides start one; stray presses are ignored.
+      [ "$from" = deck ] && [ -n "${demo:-}" ] || continue
+      if ! ap_plan "$demo"; then ap_log "FAIL  no plan for $demo"; drive_mode slides >/dev/null 2>&1; continue; fi
+      AP_DEMO="$demo" AP_I=0 AP_FAILED=0
+      ap_state "$demo"
+      # The console on this demo's first step before it shows (not run), so it
+      # never comes up on the last demo's result. D6 step 1 started at D5's end
+      # has the console there already.
+      [ "$demo" = d6 ] && [ -n "${AP_D6_SEQ:-}" ] || drive_console "$demo" "${AP_IDS[0]}" --show >/dev/null 2>&1
+      drive_mode demo >/dev/null 2>&1
+      ap_focus 1
+      ap_log "$demo up: ${#AP_IDS[@]} steps; next press runs step 1 (${AP_IDS[0]})"
+    else
+      n="${#AP_IDS[@]}"
+      if [ "$AP_FAILED" = 1 ]; then
+        AP_FAILED=0; ap_run "$AP_I" skip
+      elif [ "$AP_I" -lt "$n" ]; then
+        AP_I=$((AP_I + 1))
+        ap_focus "$AP_I"
+        ap_run "$AP_I" || AP_FAILED=1
+        [ "$AP_I" -lt "$n" ] || [ "$AP_FAILED" = 1 ] || ap_log "$AP_DEMO: last step done; next press goes back to the slides"
+      else
+        ap_end
+      fi
+    fi
+    curl -s --max-time 5 -o /dev/null -X DELETE "$CONSOLE_URL/api/remote/key" || true
+  done
+}
+
+# start | stop | status | run (foreground)
+drive_autopilot() {
+  mkdir -p "$DRIVE_DIR"
+  local pidf="$DRIVE_DIR/autopilot.pid" pid
+  pid="$(cat "$pidf" 2>/dev/null)"
+  case "${1:-status}" in
+    run) drive_autopilot_loop ;;
+    start)
+      [ -n "$pid" ] && kill "$pid" 2>/dev/null
+      nohup ./lab.sh drive autopilot run >/dev/null 2>&1 &
+      echo $! > "$pidf"
+      echo "OK    autopilot on: the clicker drives the demos (log: $DRIVE_DIR/autopilot.log)" ;;
+    stop)
+      if [ -n "$pid" ] && kill "$pid" 2>/dev/null; then echo "OK    autopilot off"; else echo "OK    autopilot was not running"; fi
+      rm -f "$pidf" ;;
+    status)
+      if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then echo "OK    autopilot on (pid $pid)"; return 0; fi
+      echo "FAIL  autopilot off: ./lab.sh drive autopilot start"; return 1 ;;
+    *) usage ;;
+  esac
+}
+
+# In the lab's tmux session, Right arrow (and Page Down) is the clicker's
+# next: it goes to the console server, not to the shell. Other sessions keep
+# their keys.
+drive_bind_keys() {
+  local k url="$CONSOLE_URL/api/remote/key?from=term"
+  for k in Right NPage; do
+    tmux bind-key -n "$k" if-shell -F "#{==:#{session_name},$TMUX_SESSION}" \
+      "run-shell -b \"curl -s -o /dev/null -X POST '$url'\"" "send-keys $k"
+  done
 }
 
 cmd_drive() {
@@ -725,15 +906,18 @@ cmd_drive() {
     wait)    [ $# -eq 1 ] || usage; drive_wait "$1" ;;
     term)    drive_term "$@" ;;
     focus)   [ $# -eq 1 ] || usage; drive_focus "$1" ;;
-    notes)   [ $# -eq 1 ] || usage; drive_notes "$1" ;;
+    demo|slides) drive_mode "$sub" ;;
+    autopilot) drive_autopilot "$@" ;;
+    # Older name: notes laptop = demo, notes external = slides.
+    notes)   [ $# -eq 1 ] || usage; case "$1" in laptop) drive_mode demo ;; external) drive_mode slides ;; *) usage ;; esac ;;
     *)       usage ;;
   esac
 }
 
 # ---------- launch: the instructor's one-command setup (macOS windows) ----------
 # Full reset (fresh volumes), data loaded, tmux staged, then the windows:
-# the speaker notes (in front), the console and the tmux terminal on the external display;
-# the deck in its own Chrome window on the laptop display, with the focus.
+# the deck (in front, with the focus), the console and the tmux terminal on the
+# external display, the one the presenter shares; the speaker notes on the laptop.
 # One display: everything opens on it.
 NOTES_TITLE='reveal.js - Speaker View'
 
@@ -828,7 +1012,7 @@ OSA
 }
 
 # Close earlier console, deck and speaker-view tabs, then open the console
-# (external display) and the deck (laptop display) as app windows.
+# and the deck as app windows, both on the shared display.
 # Prints "CONSOLE_ID DECK_ID".
 launch_chrome() {
   local cid did
@@ -838,10 +1022,10 @@ launch_chrome() {
   echo "$cid $did"
 }
 
-# The speaker view window on the external display. Prints OK or FAIL.
+# The speaker view window on the laptop display. Prints OK or FAIL.
 launch_notes() {
   local did="$1" box="$2"
-  # The deck opens the speaker view itself (?notes=auto) when Chrome allows it
+  # The deck opens the speaker view itself (?speaker=auto) when Chrome allows it
   # pop-ups; then System Events' S; then the presenter's S.
   if launch_place_notes "$box" 8; then return 0; fi
   if osascript - "$did" <<'OSA' >/dev/null 2>&1 && launch_place_notes "$box" 5; then return 0; fi
@@ -881,7 +1065,7 @@ on run argv
   error "not yet"
 end run
 OSA
-      echo "OK    speaker notes: own window on the external display"; return 0
+      echo "OK    speaker notes: own window on the laptop display"; return 0
     fi
     sleep 0.5
   done
@@ -904,7 +1088,7 @@ OSA
     while [ -z "$tty" ] && [ "$SECONDS" -lt "$limit" ]; do sleep 0.3; tty="$(lab_tty)"; done
     [ -n "$tty" ] || { echo "FAIL  the new terminal did not attach: run tmux attach -t $TMUX_SESSION"; return 1; }
   fi
-  osascript - "$tty" "$box" "${LAB_TERM_PROFILE:-Clear Dark}" <<'OSA' >/dev/null || { echo "FAIL  $tty is not a Terminal.app tab: move that window by hand"; return 1; }
+  osascript - "$tty" "$box" "${LAB_TERM_PROFILE:-Clear Dark}" "${LAB_TERM_FONT_SIZE:-16}" <<'OSA' >/dev/null || { echo "FAIL  $tty is not a Terminal.app tab: move that window by hand"; return 1; }
 on run argv
   set AppleScript's text item delimiters to " "
   set p to text items of (item 2 of argv)
@@ -921,6 +1105,8 @@ on run argv
     -- skipped when this Mac has no profile by that name.
     try
       set current settings of (first tab of window id wid whose tty is (item 1 of argv)) to settings set (item 3 of argv)
+      -- The audience reads it from the back of the room (LAB_TERM_FONT_SIZE).
+      set font size of settings set (item 3 of argv) to ((item 4 of argv) as integer)
     end try
     set miniaturized of window id wid to false
     set bounds of window id wid to {(item 1 of p) as integer, (item 2 of p) as integer, (item 3 of p) as integer, (item 4 of p) as integer}
@@ -932,7 +1118,8 @@ OSA
 
 # Chrome window ids of the open console and deck tabs: "CONSOLE_ID DECK_ID".
 launch_window_ids() {
-  osascript - "$CONSOLE_URL" "file://${PWD// /%20}/deck/index.html" <<'OSA'
+  # The deck by any path to this repo: Chrome reports the symlink-resolved one.
+  osascript - "$CONSOLE_URL" "/$(basename "$PWD")/deck/index.html" <<'OSA'
 on run argv
   set c to ""
   set d to ""
@@ -940,7 +1127,7 @@ on run argv
     repeat with w in windows
       repeat with t in tabs of w
         if c is "" and URL of t starts with (item 1 of argv) then set c to (id of w) as text
-        if d is "" and URL of t starts with (item 2 of argv) then set d to (id of w) as text
+        if d is "" and URL of t starts with "file://" and URL of t contains (item 2 of argv) then set d to (id of w) as text
       end repeat
     end repeat
   end tell
@@ -956,6 +1143,7 @@ OSA
 cmd_shutdown() {
   local wipe=0 rc=0
   case "${1:-}" in --wipe) wipe=1 ;; '') ;; *) usage ;; esac
+  drive_autopilot stop
   if [ "$(uname)" = Darwin ]; then
     launch_close_tabs && echo "OK    Chrome: console, deck and speaker notes closed" || { echo "FAIL  could not close the Chrome tabs"; rc=1; }
   fi
@@ -1052,12 +1240,13 @@ launch_checklist() {
   drive_req GET /api/remote/status >/dev/null 2>&1 && grep -q '^OK    console page open' <<<"$BODY"; ck $? "console page open at $CONSOLE_URL" "reload it in Chrome"
   if [ "$(uname)" = Darwin ]; then
     local titles; titles="$(osascript -e 'tell application "Google Chrome" to get title of active tab of every window' 2>/dev/null)"
-    grep -q 'Migration Deep Dive' <<<"$titles"; ck $? "deck window open (laptop display)"
-    grep -q "$NOTES_TITLE" <<<"$titles"; ck $? "speaker notes window open, in front on the external display" "./lab.sh launch --notes"
+    grep -q 'Migration Deep Dive' <<<"$titles"; ck $? "deck window open (shared display)"
+    grep -q "$NOTES_TITLE" <<<"$titles"; ck $? "speaker notes window open (laptop display)" "./lab.sh launch --notes"
   fi
   local tty; tty="$(lab_tty)"
   [ -n "$tty" ]; ck $? "tmux session $TMUX_SESSION attached on ${tty:-no terminal}" "./lab.sh launch"
   [ "$(tmux display -p -t "$TMUX_SESSION" '#{window_name}' 2>/dev/null)" = main ]; ck $? "tmux on window main, ready for D1"
+  drive_autopilot status >/dev/null 2>&1; ck $? "autopilot on: the clicker drives the demos" "./lab.sh drive autopilot start"
   if [ "$(uname)" = Darwin ] && [ -n "$tty" ]; then
     local prof="${LAB_TERM_PROFILE:-Clear Dark}"
     [ "$(osascript - "$tty" <<'OSA' 2>/dev/null
@@ -1078,8 +1267,8 @@ OSA
   return "$CK_OPEN"
 }
 
-# The deck in front on the laptop, with the focus (the presenter's clicker),
-# raised alone so Claude's terminal stays above the notes.
+# The deck in front on the shared display, with the focus (the presenter's
+# clicker), raised alone so Claude's terminal stays above the notes.
 launch_focus_deck() {
   osascript -e "tell application \"Google Chrome\" to set index of window id $1 to 1" >/dev/null 2>&1 \
     && chrome_activate_main || { echo "FAIL  could not focus the deck window"; return 1; }
@@ -1092,9 +1281,9 @@ cmd_launch() {
     --notes)
       # Retry the speaker notes only, on the windows already open.
       local w; w="$(launch_window_ids)" || { echo "FAIL  no console or deck window: run ./lab.sh launch"; return 1; }
-      local eb; eb="$(launch_screens | sed -n 's/^external //p')"
-      launch_notes "${w#* }" "$eb" || return 1
-      drive_focus console >/dev/null; drive_notes external; return ;;
+      local lb; lb="$(launch_screens | sed -n 's/^laptop //p')"
+      launch_notes "${w#* }" "$lb" || return 1
+      drive_mode slides; return ;;
     --check) launch_checklist; return ;;
     '') ;;
     *) usage ;;
@@ -1106,12 +1295,7 @@ cmd_launch() {
   run_node gen/generate.mjs || { echo "FAIL  generate"; return 1; }
   drive_stage | grep -v '^Next:' || return 1
   # Ready for D1: window main on show, every pane cleared (scrollback too).
-  local pane
-  for pane in main agents.0 agents.1; do
-    tmux send-keys -t "$TMUX_SESSION:$pane" C-l
-    tmux clear-history -t "$TMUX_SESSION:$pane"
-  done
-  tmux select-window -t "$TMUX_SESSION:main"
+  drive_clear_tmux
   echo "OK    tmux on window main, panes cleared (ready for D1)"
 
   local screens ebox lbox n ids did rc=0
@@ -1119,21 +1303,22 @@ cmd_launch() {
   lbox="$(sed -n 's/^laptop //p' <<<"$screens")"
   ebox="$(sed -n 's/^external //p' <<<"$screens")"
   n="$(sed -n 's/^count //p' <<<"$screens")"
-  if [ "$n" -gt 1 ]; then echo "OK    $n displays: console, notes and terminal on the external, deck on the laptop"
+  if [ "$n" -gt 1 ]; then echo "OK    $n displays: deck, console and terminal on the external (share it), speaker notes on the laptop"
   else echo "INFO  one display: every window opens on it"; fi
 
-  local deck_url="file://${PWD// /%20}/deck/index.html?notes=auto"
-  ids="$(launch_chrome "$deck_url" "$ebox" "$lbox")" || { echo "FAIL  could not open the Chrome windows"; return 1; }
+  local deck_url="file://${PWD// /%20}/deck/index.html?speaker=auto"
+  ids="$(launch_chrome "$deck_url" "$ebox" "$ebox")" || { echo "FAIL  could not open the Chrome windows"; return 1; }
   did="${ids#* }"
   echo "OK    Chrome app windows (no address bar): console ($CONSOLE_URL), deck"
-  launch_notes "$did" "$ebox" || rc=1
+  launch_notes "$did" "$lbox" || rc=1
   launch_terminal "$ebox" || rc=1
 
-  # External display: the speaker notes in front (console behind, tmux
-  # minimized). Laptop: the deck with the focus (this terminal stays put).
+  # Shared display: the deck in front with the focus (console behind, tmux
+  # minimized). Laptop: the speaker notes, Claude's terminal over the slide preview.
   drive_focus console >/dev/null || rc=1
-  drive_notes external >/dev/null || rc=1
-  echo "OK    speaker notes in front on the external display (Claude's terminal over the slide preview), deck in focus on the laptop"
+  drive_mode slides >/dev/null || rc=1
+  drive_autopilot start || rc=1
+  echo "OK    deck in front on the shared display, in focus; speaker notes on the laptop (Claude's terminal over the slide preview)"
   launch_checklist || rc=1
   return "$rc"
 }

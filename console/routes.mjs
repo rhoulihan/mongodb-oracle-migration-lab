@@ -336,6 +336,62 @@ export function createConsoleApp({ demos, ctx, readiness, recordedDir, bakedDir 
     return r ? text(res, 200, `${r.ok ? 'OK  ' : 'FAIL'}  ${r.summary}`) : text(res, 202, 'waiting');
   });
 
+  // ---- presenter keys (./lab.sh drive autopilot) ---------------------------
+  // The clicker's "next" from whichever window has the focus: the deck on a
+  // demo slide (?from=deck&demo=dN), the console page (?from=console) or the
+  // tmux terminal (?from=term). The autopilot on the host long-polls them and
+  // runs the demo, one step per press. A query-string POST with no body is a
+  // simple request, so the deck (file://) needs no CORS preflight.
+  const keys = { q: [], lastPoll: 0, waiting: 0, active: '' };
+  const listening = () => keys.waiting > 0 || Date.now() - keys.lastPoll < 30000;
+  // The demo the autopilot is running ('' between demos). The deck polls it:
+  // while a demo runs, the speaker notes (which hold the keyboard focus) and
+  // the deck send every next here instead of moving the slides.
+  app.get('/api/remote/key/state', (_req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    text(res, 200, keys.active);
+  });
+  app.post('/api/remote/key/state', (req, res) => {
+    const demo = String(req.query.demo || '');
+    if (demo && !/^d[1-7]$/.test(demo)) return res.status(400).json({ error: 'demo=d1..d7 or empty' });
+    keys.active = demo;
+    return res.status(204).end();
+  });
+  app.post('/api/remote/key', (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    const from = String(req.query.from || '');
+    const demo = String(req.query.demo || '');
+    if (!['deck', 'notes', 'console', 'term'].includes(from) || (demo && !/^d[1-7]$/.test(demo))) {
+      return res.status(400).json({ error: 'from=deck|notes|console|term, demo=d1..d7' });
+    }
+    if (!listening()) return res.json({ ok: false, listening: false });
+    keys.q.push({ from, demo });
+    if (keys.q.length > 20) keys.q.shift();
+    return res.json({ ok: true, listening: true });
+  });
+  // Long poll (?wait= ms, at most 25 s): "FROM [DEMO]" as text, or 204.
+  app.get('/api/remote/key', async (req, res) => {
+    keys.lastPoll = Date.now();
+    const wait = Math.min(Number(req.query.wait) || 0, 25000);
+    if (!keys.q.length && wait > 0) {
+      let gone = false;
+      req.on('close', () => { gone = true; });
+      keys.waiting++;
+      try {
+        for (let t = 0; !keys.q.length && !gone && t < wait; t += 50) await sleep(50);
+      } finally {
+        keys.waiting--;
+        keys.lastPoll = Date.now();
+      }
+      if (gone) return undefined;
+    }
+    const k = keys.q.shift();
+    if (!k) return res.status(204).end();
+    return text(res, 200, `${k.from} ${k.demo}`.trim());
+  });
+  // Presses that came in while a step ran: dropped, so they don't queue up.
+  app.delete('/api/remote/key', (_req, res) => { keys.q.length = 0; res.status(204).end(); });
+
   app.use('/api', (_req, res) => res.status(404).json({ error: 'not found' }));
   app.use(express.static(PUBLIC, { index: 'index.html', maxAge: 0 }));
   return app;

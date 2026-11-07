@@ -1,7 +1,7 @@
 /* Reveal setup for the migration deep dive deck. Classic script (not a module) so the
    deck runs straight from file://. Shared by index.html and the QA fixtures.
 
-   Keys: S opens the speaker view (notes plugin); ?notes=auto opens it on load.
+   Keys: S opens the speaker view (notes plugin); ?speaker=auto opens it on load.
    The theme is dark only.
    The speaker view gets a pinned timer, a notes font control and draggable panes
    (enhanceSpeakerView below). */
@@ -87,8 +87,62 @@
     'body[data-speaker-layout="tall"] .dk-bar.h { top: var(--split-y); left: 0; width: var(--split-x); }',
     'body[data-speaker-layout="notes-only"] .dk-bar { display: none; }',
     'body.dk-dragging iframe { pointer-events: none; }',
-    'body.dk-dragging { user-select: none; }'
+    'body.dk-dragging { user-select: none; }',
+    /* Over/under the slide's target clock, beside the elapsed timer. */
+    '.speaker-controls-time .timer { white-space: nowrap; }',
+    '.dk-pace { margin-left: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }',
+    '.dk-pace.under { color: #16a34a; }',
+    '.dk-pace.over { color: #C74634; }',
+    '.dk-font .dk-reset { margin-left: 10px; }'
   ].join('\n');
+
+  /* Target clock per slide, in seconds from the session start: the slide's eyebrow
+     .clock (h:mm), carried forward to slides that have none. */
+  function targets() {
+    var last = 0;
+    return Reveal.getSlides().map(function (s) {
+      var c = s.querySelector('.eyebrow .clock');
+      var m = c && /^(\d+):(\d{2})\b/.exec(c.textContent.trim());
+      if (m) last = (Number(m[1]) * 60 + Number(m[2])) * 60;
+      return last;
+    });
+  }
+
+  function fmt(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  /* Time in the bank vs the plan. Each slide is due by the next later clock (the last
+     window ends at SESSION_MIN). Before that deadline: a green countdown, which carries any
+     time banked on earlier slides. Past it: a red overtime count. It reads the plugin's own
+     timer, so the Reset button (or a click on the time block) zeroes both. */
+  var SESSION_MIN = 90;
+  function pace(win, doc) {
+    var timer = doc.querySelector('.speaker-controls-time .timer');
+    if (!timer) return;
+    var el = doc.createElement('span');
+    el.className = 'dk-pace';
+    el.title = 'Green: time in the bank before this slide is due. Red: overtime.';
+    timer.appendChild(el);
+    var plan = targets();
+    function tick() {
+      var v = ['.hours-value', '.minutes-value', '.seconds-value'].map(function (q) {
+        var n = timer.querySelector(q);
+        return n ? Math.abs(parseInt(n.textContent.replace(/[^\d-]/g, ''), 10)) || 0 : 0;
+      });
+      var elapsed = v[0] * 3600 + v[1] * 60 + v[2];
+      var i = Reveal.getSlides().indexOf(Reveal.getCurrentSlide());
+      if (i < 0) return;
+      var due = SESSION_MIN * 60;
+      for (var j = i + 1; j < plan.length; j++) { if (plan[j] > plan[i]) { due = plan[j]; break; } }
+      var left = due - elapsed;
+      el.className = 'dk-pace ' + (left >= 0 ? 'under' : 'over');
+      el.textContent = left >= 0 ? fmt(left) : '+' + fmt(-left);
+    }
+    tick();
+    win.setInterval(tick, 1000);
+  }
 
   function enhanceSpeakerView(win) {
     var doc = win.document;
@@ -104,7 +158,8 @@
     var font = doc.createElement('span');
     font.className = 'dk-font';
     font.innerHTML = '<button type="button" title="Smaller notes">A-</button>' +
-      '<output></output><button type="button" title="Larger notes">A+</button>';
+      '<output></output><button type="button" title="Larger notes">A+</button>' +
+      '<button type="button" class="dk-reset" title="Zero the timer: press when the session starts">Reset</button>';
     var out = font.querySelector('output');
     function setScale(s) {
       scale = Math.min(2.5, Math.max(0.6, Math.round(s * 10) / 10));
@@ -115,10 +170,18 @@
     var buttons = font.querySelectorAll('button');
     buttons[0].addEventListener('click', function (ev) { ev.stopPropagation(); setScale(scale - 0.1); });
     buttons[1].addEventListener('click', function (ev) { ev.stopPropagation(); setScale(scale + 0.1); });
+    // Reset: the plugin zeroes its timer on a click of the time block.
+    buttons[2].addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      doc.querySelector('.speaker-controls-time').click();
+    });
     font.addEventListener('click', function (ev) { ev.stopPropagation(); }); // the time block resets the timer on click
     font.addEventListener('mousedown', function (ev) { ev.preventDefault(); }); // keep keys going to the deck
     doc.querySelector('.speaker-controls-time').appendChild(font);
     setScale(scale);
+    pace(win, doc);
+    // The clicker in the speaker notes: during a demo, next is a demo step.
+    win.addEventListener('keydown', function (ev) { onNextKey(ev, 'notes'); }, true);
 
     // Split panes: one {x, y} per layout.
     var split = load(SPLIT_KEY, {});
@@ -215,12 +278,54 @@
     plugins: [RevealNotes]
   });
 
-  // ?notes=auto (set by ./lab.sh launch): open the speaker view on load, no S
+  // The clicker drives the demos (./lab.sh drive autopilot, through the console
+  // server). On a demo slide (data-demo="dN") whose demo hasn't run, next
+  // (Right arrow, Page Down) starts the demo instead of moving on. While a demo
+  // runs, the autopilot keeps the keyboard focus on the speaker notes (on the
+  // laptop: the shared display shows the console or the terminal), and every
+  // next from the notes or this deck goes to the autopilot as one step. After
+  // the last step the deck comes back, still on the demo slide, and next moves
+  // on as usual. No autopilot listening: next just moves on.
+  var CONSOLE_URL = 'http://127.0.0.1:3200';
+  var demoStarted = {};
+  var demoActive = '';
+  function pollDemo() {
+    fetch(CONSOLE_URL + '/api/remote/key/state')
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (t) { demoActive = (t || '').trim(); })
+      .catch(function () { demoActive = ''; });
+  }
+  function onNextKey(ev, from) {
+    if (ev.key !== 'ArrowRight' && ev.key !== 'PageDown') return;
+    if (demoActive) {
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      fetch(CONSOLE_URL + '/api/remote/key?from=' + from, { method: 'POST' }).catch(function () {});
+      return;
+    }
+    var slide = Reveal.getCurrentSlide();
+    var demo = slide && slide.getAttribute('data-demo');
+    if (!demo || demoStarted[demo]) return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    demoStarted[demo] = true;
+    demoActive = demo; // until the next poll confirms it
+    fetch(CONSOLE_URL + '/api/remote/key?from=deck&demo=' + demo, { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (!j.listening) { demoActive = ''; Reveal.next(); } })
+      .catch(function () { demoActive = ''; Reveal.next(); });
+  }
+  if (window.self === window.top) {
+    window.addEventListener('keydown', function (ev) { onNextKey(ev, 'deck'); }, true);
+    setInterval(pollDemo, 700);
+  }
+
+  // ?speaker=auto (set by ./lab.sh launch): open the speaker view on load, no S
   // press. Chrome allows it only when the deck may open pop-ups (allow them
   // once for the deck); otherwise S still works. Top window only: the speaker
   // view's slide previews are this deck in iframes, with the same URL, and
   // an open() from them would rewrite (blank) the speaker view.
-  if (window.self === window.top && /[?&]notes=auto\b/.test(window.location.search)) {
+  if (window.self === window.top && /[?&]speaker=auto\b/.test(window.location.search)) {
     Reveal.on('ready', function () {
       try { Reveal.getPlugin('notes').open(); } catch (err) { /* blocked: press S */ }
     });

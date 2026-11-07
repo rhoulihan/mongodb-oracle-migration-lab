@@ -86,7 +86,7 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh pull` | Pull the base images (needs network) |
 | `./lab.sh build` | Build the lab images (needs network the first time) |
 | `./lab.sh up` | Start the stack in the background |
-| `./lab.sh launch` | Instructor setup on the Mac: full reset (fresh volumes), data loaded, tmux staged, then the console, speaker notes and tmux terminal on the external display and the deck on the laptop display (the deck opens the speaker notes itself once Chrome allows it pop-ups; else press S when asked). `--notes` retries the speaker notes only; `--check` reprints the live checklist |
+| `./lab.sh launch` | Instructor setup on the Mac: full reset (fresh volumes), data loaded, tmux staged, then the deck, the console and the tmux terminal on the external display (share it once, in the room or in Zoom) and the speaker notes on the laptop display (the deck opens the speaker notes itself once Chrome allows it pop-ups; else press S when asked). `--notes` retries the speaker notes only; `--check` reprints the live checklist |
 | `./lab.sh shutdown [--wipe]` | After the session: close the console, deck and notes tabs, end the tmux session and its terminal window, stop the stack (data kept; `--wipe` deletes it) |
 | `./lab.sh check` | Wait up to 600 s (`CHECK_TIMEOUT`) until MongoDB, Oracle, ORDS and the Oracle API for MongoDB all answer; prints one line per service |
 | `./lab.sh preflight` | Laptop readiness checks (see above) |
@@ -274,7 +274,7 @@ in % for the tall layout). With one display, every window opens on it.
   on the MongoDB source in normal mode. Then the data load (`generate`).
 - tmux session `lab` staged on window `main`, every pane cleared, for D1.
 - The windows above. The deck opens its speaker notes by itself
-  (`deck/index.html?notes=auto`) once Chrome allows the deck pop-ups;
+  (`deck/index.html?speaker=auto`) once Chrome allows the deck pop-ups;
   otherwise the launch asks you to press S.
 - It ends with a **checklist** in Claude's terminal, every line checked live:
   the four services, the app mode, the source counts, carts still expiring,
@@ -283,13 +283,23 @@ in % for the tall layout). With one display, every window opens on it.
   again without changing anything; `./lab.sh launch --notes` retries only the
   speaker notes.
 
-**2. Present: "run demo D3", then "next"** (`drive-demo`)
+**2. Present: the clicker drives the demos** (the autopilot; `drive-demo`)
 
-- At the start of each demo Claude moves the speaker notes to the laptop
-  display (`./lab.sh drive notes laptop`), so you share the external display.
-  At the last "next" it moves them back to the external display and puts the
-  deck in focus (`./lab.sh drive notes external`): share the laptop and
-  present until the next demo.
+- You share the external display once and never switch. The speaker notes
+  stay on the laptop.
+- On a demo slide (`data-demo="dN"` in the deck), next (Right arrow) brings
+  the demo up. Each next after that runs one step, with its window in front;
+  the next after the last step brings the deck back, with the focus. The
+  arrow reaches the autopilot from the deck, the console page and the tmux
+  terminal (a key binding in session `lab`), through the console server
+  (`/api/remote/key`); `./lab.sh drive autopilot` on the host runs the steps.
+  During a demo the keyboard focus sits on the speaker notes (laptop), which
+  send every press, Right arrow or Page Down, whatever the shared display shows.
+- On a FAIL the next press shows the rehearsal result. D2 and D4 reset in the
+  background when the deck comes back; D5's end starts D6 step 1.
+- Say "watch the demos" once: Claude follows `.lab/drive/autopilot.log` and
+  relays each result with its "Say" line. With the autopilot off, say "run
+  demo D3", then "next": Claude drives each step by hand, as below.
 - Claude brings the window the step needs to the front (`./lab.sh drive
   focus console|term`), so you never switch windows. The tmux window stays
   minimized while the console is on show.

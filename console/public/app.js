@@ -455,6 +455,15 @@ $('reset').addEventListener('click', async () => {
   render();
 });
 
+// The presenter's clicker during a demo: Right arrow or Page Down is "next"
+// for the autopilot (./lab.sh drive autopilot), which runs the next step.
+addEventListener('keydown', (ev) => {
+  if (ev.key !== 'ArrowRight' && ev.key !== 'PageDown') return;
+  if (ev.target.closest?.('input, textarea, select, [contenteditable]')) return;
+  ev.preventDefault();
+  api('POST', '/api/remote/key?from=console').catch(() => {});
+});
+
 addEventListener('hashchange', () => {
   const [id, step] = location.hash.slice(1).split('/');
   if (id && (id !== state.demo?.id || step !== state.step)) select(id, step);
