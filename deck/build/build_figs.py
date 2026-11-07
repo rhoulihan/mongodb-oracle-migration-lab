@@ -247,42 +247,53 @@ def fig_workload_inventory() -> Fig:
     return f
 
 
-LANDMINES = [  # field, BSON type, value on MongoDB, how it reads back, what changes for queries
+LANDMINES = [  # field, BSON type, value on MongoDB, how it reads back, what a query sees, workaround (2 lines)
     ("catalog.skuPattern", "regex", "/^SKU-DEV-[0-9]{4}$/", '{"$regularExpression": ...}',
-     "{$type: 'regex'} is rejected"),
+     "{$type: 'regex'} is rejected", ("filter: {$exists: true}", "read: new RegExp(pattern, options)")),
     ("orderEvents.ts", "Timestamp", "Timestamp(t, i)", '{"$timestamp": ...}',
-     "{$type: 'timestamp'} is rejected"),
-    ("catalog.price", "Decimal128", '"19.00"', '"19"', "same value, trailing zeros gone"),
-    ("orders.lines", "array", "[{...}, {...}]", "[{...}, {...}]", "$type misses the elements"),
+     "{$type: 'timestamp'} is rejected", ("filter: {$exists: true}", "sort and range on createdAt (a Date)")),
+    ("catalog.price", "Decimal128", '"19.00"', '"19"', "same value, trailing zeros gone",
+     ("compare as numbers", "format the scale in the app")),
+    ("orders.lines", "array", "[{...}, {...}]", "[{...}, {...}]", "$type misses the elements",
+     ("{lines: {$elemMatch: {$type: 'object'}}}", "same count on both sides")),
 ]
 
 
 def fig_type_landmines() -> Fig:
-    """Four BSON landmines: what MongoDB holds, what Oracle reads back, what a query sees."""
-    f = Fig(1120, 384, "BSON type landmines. A regex and a BSON Timestamp read back from Oracle as "
-                       "tagged objects, and $type queries on them are rejected. Decimal128 keeps its value "
-                       "and drops trailing zeros. On an array, $type does not match the elements")
-    cols = [(18, 320, "ON MONGODB (BSON)"), (378, 330, "READS BACK FROM ORACLE"), (748, 354, "WHAT A QUERY SEES")]
+    """Four BSON landmines: what MongoDB holds, what Oracle reads back, what a query sees, the fix."""
+    f = Fig(1240, 420, "BSON type landmines and their workarounds. A regex and a BSON Timestamp read back "
+                       "from Oracle as tagged objects, and $type queries on them are rejected: filter with "
+                       "$exists, rebuild the regex on read, sort on a Date. Decimal128 drops trailing zeros: "
+                       "format the scale in the app. On an array, $type misses the elements: use $elemMatch")
+    gap = 26
+    widths = [206, 262, 272, 374]
+    cols, x = [], 18
+    for w, h in zip(widths, ("ON MONGODB (BSON)", "READS BACK FROM ORACLE", "WHAT A QUERY SEES", "WORKAROUND")):
+        cols.append((x, w, h))
+        x += w + gap
     for x, w, h in cols:
         f.text(x, 34, h, size=13, weight=700, font=MONO, fill="var(--muted)")
-    top, rh = 50, 60
-    for i, (field, typ, src, back, query) in enumerate(LANDMINES):
+    top, rh = 50, 68
+    for i, (field, typ, src, back, query, fix) in enumerate(LANDMINES):
         y = top + i * rh
         cy = y + (rh - 8) / 2
         for k, (x, w, _) in enumerate(cols):
-            hot = k == 2
-            f.rect(x, y, w, rh - 8, fill="var(--hot-soft)" if hot else "var(--panel)",
-                   stroke="var(--hot)" if hot else "var(--hairline)", sw=1.4, rx=6, name="cell")
-        f.text(30, cy - 5, f"{field} · {typ}", size=13, fill="var(--muted)")
-        f.text(30, cy + 15, src, size=15, font=MONO, weight=600)
-        f.text(390, cy + 6, back, size=15, font=MONO, fill="var(--cool)" if i < 3 else "var(--ink)")
-        f.text(760, cy + 6, query, size=15, weight=600, fill="var(--hot)")
-        for xa, xb in ((338, 378), (708, 748)):
-            f.line(xa + 6, cy, xb - 6, cy, stroke="var(--faint)", sw=1.6, arrow=True, name="arrow")
+            fill, stroke = {2: ("var(--hot-soft)", "var(--hot)"), 3: ("var(--cool-soft)", "var(--cool)")}.get(
+                k, ("var(--panel)", "var(--hairline)"))
+            f.rect(x, y, w, rh - 8, fill=fill, stroke=stroke, sw=1.4, rx=6, name="cell")
+        (x0, _, _), (x1, _, _), (x2, _, _), (x3, _, _) = cols
+        f.text(x0 + 12, cy - 5, f"{field} · {typ}", size=13, fill="var(--muted)")
+        f.text(x0 + 12, cy + 15, src, size=14, font=MONO, weight=600)
+        f.text(x1 + 12, cy + 5, back, size=14, font=MONO, fill="var(--cool)" if i < 3 else "var(--ink)")
+        f.text(x2 + 12, cy + 5, query, size=14, weight=600, fill="var(--hot)")
+        f.text(x3 + 12, cy - 4, fix[0], size=13, font=MONO, weight=600, fill="var(--cool)")
+        f.text(x3 + 12, cy + 16, fix[1], size=13, fill="var(--ink)")
+        for (xa, wa, _), (xb, _, _) in zip(cols, cols[1:]):
+            f.line(xa + wa + 4, cy, xb - 4, cy, stroke="var(--faint)", sw=1.6, arrow=True, name="arrow")
     yb = top + len(LANDMINES) * rh + 10
-    f.rect(18, yb, 1084, 54, fill="var(--panel)", stroke="var(--hot)", sw=1.8, rx=27, name="callout")
-    f.text(560, yb + 34, "Reads the same. Queries differently.", size=22, weight=800, font=HEAD,
-           fill="var(--hot)", anchor="middle")
+    f.rect(18, yb, 1204, 54, fill="var(--panel)", stroke="var(--hot)", sw=1.8, rx=27, name="callout")
+    f.text(620, yb + 34, "Reads the same. Queries differently. Rewrite the query, not the data.", size=22,
+           weight=800, font=HEAD, fill="var(--hot)", anchor="middle")
     return f
 
 
@@ -372,7 +383,7 @@ def _ageout_router(state: str) -> Fig:
         f.path(f"M{bx + 270},{198} H{lane} V{282} H{rx - 2}", [(bx + 270, 198), (lane, 282), (rx - 2, 282)],
                stroke="var(--flow)", sw=2, arrow=True, dash="6 4", name="to-legacy")
         overlay(f, "ar-legacy", "flow", rx, 230, legacy_w, 104)
-        f.text(rx + 20, 268, "MongoDB archive", size=19, weight=800, font=HEAD, fill="var(--flow)")
+        f.text(rx + 20, 268, "MongoDB, old data", size=19, weight=800, font=HEAD, fill="var(--flow)")
         f.text(rx + 20, 294, sub, size=15, fill="var(--muted)")
         if state == "day":
             clock(f, rx + 30, 316 - 4, 8, "hot")
@@ -420,12 +431,12 @@ STACK = ["Patch cycle", "Login model", "Attack surface", "Backups", "On-call run
 
 
 def fig_two_stacks() -> Fig:
-    """Age out's cost: the same operational stack, twice, for the whole retention window."""
-    f = Fig(1120, 400, "The cost of age out: two full operational stacks, one for the MongoDB archive and "
+    """Age out's cost: the same operational stack, twice, while the old data must stay queryable."""
+    f = Fig(1120, 400, "The cost of age out: two full operational stacks, one for the old data on MongoDB and "
                        "one for Oracle, each with its own patch cycle, login model, attack surface, backups "
-                       "and on-call runbook, for every year of the retention window")
+                       "and on-call runbook, for as long as the old data must stay online and queryable")
     w, lh, gap, top = 330, 46, 8, 74
-    cols = [(150, "MongoDB archive", "flow"), (640, "Oracle", "cool")]
+    cols = [(150, "MongoDB, old data", "flow"), (640, "Oracle", "cool")]
     for x, title, tone in cols:
         col, soft = TONE[tone]
         f.rect(x, 24, w, 40, fill=soft, stroke=col, sw=1.8, rx=8, name="head")
@@ -438,7 +449,7 @@ def fig_two_stacks() -> Fig:
     f.text(mid, top + 2 * (lh + gap) + lh / 2 + 12, "×2", size=34, weight=800, font=HEAD, fill="var(--hot)",
            anchor="middle")
     yb = top + len(STACK) * (lh + gap) + 14
-    f.text(560, yb + 14, "for every year of the retention window", size=17, weight=600, fill="var(--hot)",
+    f.text(560, yb + 14, "only while the old data must stay online and queryable", size=17, weight=600, fill="var(--hot)",
            anchor="middle")
     return f
 
@@ -804,38 +815,46 @@ def fig_canonical_to_projections() -> Fig:
 
 
 def fig_forced_embeds() -> Fig:
-    """Why so many embeds exist: a read-only view was the only joined shape, so the copy was
-    forced. On Oracle the joined shape takes writes."""
-    f = Fig(1120, 380, "Forced embeds: the app wants an order with its subscriber joined in. A MongoDB "
-                       "view can join it but is read only, so the order embeds a copy of the subscriber's "
-                       "name, tier and address. One address change then rewrites every order that copied "
-                       "it. On Oracle a duality view is that joined shape and takes writes, with the "
-                       "subscriber stored once")
+    """Why so many embeds exist: a read-only view was the only joined shape, so the subscriber's
+    contact info was copied into every record. Some copies are history (keep them); some must be
+    current (they go stale). On Oracle the joined shape takes writes and reads the current row."""
+    f = Fig(1120, 440, "Forced embeds: the app wants its records with the subscriber joined in. A MongoDB "
+                       "view can join them but is read only, so every record embeds a copy of the "
+                       "subscriber's contact info. Some copies are history and should stay frozen: where an "
+                       "order shipped. Others must be current: a contact change has to be recopied "
+                       "everywhere, and a recall notice to everyone who received an item in the last 90 "
+                       "days needs today's contact info, not the copy. On Oracle a duality view joins the "
+                       "current subscriber row at read time and takes writes: snapshot what is history, "
+                       "reference what is current")
     fl = Flow(f)
-    y, h = 36, 104
-    fl.node("want", 18, y, 300, h, ["The app wants", "an order with its", "subscriber joined in"], size=18, sub=15)
-    fl.node("view", 410, y, 300, h, ["A MongoDB view", "joins it, but read only:", "no writes through it"],
+    y, h = 30, 100
+    fl.node("want", 18, y, 300, h, ["The app wants", "orders, tickets, devices", "with the subscriber joined in"],
+            size=18, sub=15)
+    fl.node("view", 410, y, 300, h, ["A MongoDB view", "joins them, but read only:", "no writes through it"],
             tone="hot", size=18, sub=15)
-    fl.node("copy", 802, y, 300, h, ["So the order embeds", "a copy: name, tier,", "address in every order"],
+    fl.node("copy", 802, y, 300, h, ["So every record embeds", "a copy of the subscriber's", "contact info"],
             tone="hot", size=18, sub=15)
     fl.edge("want", "view", 364, tone="flow")
     fl.edge("view", "copy", 756, tone="hot")
-    # the write amplification that follows
-    ry = 176
-    f.text(18, ry + 30, "One address change", size=19, weight=800, font=HEAD, fill="var(--hot)")
-    f.text(18, ry + 56, "rewrites every order that copied it", size=15, fill="var(--muted)")
-    f.line(330, ry + 34, 404, ry + 34, stroke="var(--hot)", sw=1.8, arrow=True, name="fan")
-    for k in range(11):
-        x = 420 + k * 62
-        f.rect(x, ry, 50, 68, fill="var(--panel)", stroke="var(--hot)", sw=1.4, rx=4, name="doc")
-        for j, (fill, stroke) in enumerate((("var(--chip)", "var(--chip)"), ("var(--chip)", "var(--chip)"),
-                                            ("var(--hot-soft)", "var(--hot)"))):
-            f.rect(x + 8, ry + 12 + j * 16, 34, 8, fill=fill, stroke=stroke, sw=1, rx=2, name="bar")
-    f.text(420, ry + 96, "order 1 ... order N: the same copied address, N writes", size=14, font=MONO,
-           fill="var(--hot)")
-    f.box(18, 300, 1084, 62, ["On Oracle: a duality view is that joined shape, and it takes writes",
-                              "the subscriber is stored once, so one change is one row"], tone="cool",
-          size=18, sub_size=15)
+    # Two kinds of copy: history (right to freeze) and current (goes stale).
+    cy, ch, cw = 158, 176, 530
+    for x, tone, head, lines in (
+        (18, "cool", "History: a snapshot is right",
+         ["Where this order shipped.", "The address on the invoice.", "Frozen on purpose: keep the copy."]),
+        (572, "hot", "Current: the copy goes stale",
+         ["A contact change: recopy it into every record.",
+          "A recall: notify everyone who received this",
+          "item in the last 90 days, at today's address."]),
+    ):
+        col = TONE[tone][0]
+        f.rect(x, cy, cw, ch, fill="var(--panel)", stroke=col, sw=1.6, rx=8, name="card")
+        f.rect(x, cy, 4, ch, fill=col, stroke=col, sw=0, rx=2, name="accent")
+        f.text(x + 24, cy + 38, head, size=20, weight=800, font=HEAD, fill=col)
+        for k, ln in enumerate(lines):
+            f.text(x + 24, cy + 78 + k * 30, ln, size=16, fill="var(--ink)")
+    f.box(18, 360, 1084, 62, ["On Oracle: a duality view is that joined shape, and it takes writes",
+                              "snapshot what is history; reference what is current: one row, read at query time"],
+          tone="cool", size=18, sub_size=15)
     return f
 
 
@@ -1207,6 +1226,61 @@ def fig_hybrids() -> Fig:
                    sw=1.6, name="bracket", seg=False)
             f.text((x0 + x1) / 2, y + 118, f"{letter}  {name}", size=16, weight=700, fill=col, anchor="middle")
             x += 24
+    return f
+
+
+def _uri(f: Fig, x, y, parts, size=14) -> None:
+    """A connection string drawn in runs; a (text, tone) run with a tone is highlighted."""
+    for s, tone in parts:
+        w = tw(s, size, MONO, 600)
+        if tone:
+            col, soft = TONE[tone]
+            f.rect(x - 3, y - size * 1.05, w + 6, size * 1.5, fill=soft, stroke=col, sw=1.2, rx=3,
+                   name="mark")
+            f.text(x + 3, y, s, size=size, weight=700, font=MONO, fill=col)
+            x += 6
+        else:
+            f.text(x, y, s, size=size, weight=600, font=MONO)
+        x += w
+
+
+def fig_uri_trap() -> Fig:
+    """The /MIG trap: the app's URI copied into the restore restores nothing and exits 0;
+    the restore URI ends at the slash and the target goes in --nsFrom/--nsTo."""
+    f = Fig(1120, 360, "Keep the database name out of the restore URI. The app's connection string ends "
+                       "in /MIG; copied into mongorestore it acts as --db MIG, the dump holds only telco, "
+                       "and the restore finishes with 0 documents and exit code 0. The restore URI ends at "
+                       "the slash, and --nsFrom telco.* --nsTo MIG.* renames every collection into MIG")
+    host = "mongodb://MIG:\u2022\u2022\u2022@host:27017"
+    opts = "?authMechanism=PLAIN&authSource=$external"
+    lx, lw, rx, rw = 18, 680, 742, 360
+    rows = [
+        (34, "COPIED FROM THE APP'S CONNECTION STRING", "hot", 104,
+         [(host, None), ("/MIG", "hot"), (opts, None)], None,
+         "right for the app; mongorestore reads it as --db MIG",
+         ["0 document(s) restored", "exit 0: the job reports green", "the dump holds only telco.*"]),
+        (184, "WRITTEN FOR THE RESTORE", "cool", 140,
+         [(host, None), ("/", "cool"), (opts, None)], "--nsFrom 'telco.*' --nsTo 'MIG.*'",
+         "the URI ends at the slash; the target goes in the flags",
+         ["N document(s) restored", "telco.orders \u2192 MIG.orders", "fail the job when N is 0"]),
+    ]
+    for hy, label, tone, h, parts, flags, note, res in rows:
+        col, soft = TONE[tone]
+        f.text(lx, hy, label, size=13, weight=700, font=MONO, fill="var(--muted)")
+        y = hy + 14
+        f.rect(lx, y, lw, h, fill="var(--panel)", stroke=col, sw=1.6, rx=8, name="uri-box")
+        _uri(f, lx + 22, y + 40, parts)
+        ty = y + 40
+        if flags:
+            ty += 32
+            f.text(lx + 22, ty, flags, size=14, weight=700, font=MONO, fill=col)
+        f.text(lx + 22, ty + 34, note, size=15, fill="var(--muted)")
+        f.rect(rx, y, rw, h, fill=soft, stroke=col, sw=1.6, rx=8, name="result")
+        f.text(rx + 22, y + 40, res[0], size=20, weight=800, font=HEAD, fill=col)
+        step = (h - 56) / 2
+        f.text(rx + 22, y + 40 + step, res[1], size=15, weight=600, font=MONO if "\u2192" in res[1] else SANS)
+        f.text(rx + 22, y + 40 + 2 * step, res[2], size=15, fill="var(--muted)")
+        f.line(lx + lw + 6, y + h / 2, rx - 6, y + h / 2, stroke=col, sw=1.8, arrow=True, name="arrow")
     return f
 
 

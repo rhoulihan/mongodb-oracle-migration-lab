@@ -155,7 +155,15 @@ async function writeThrough(ctx, { dir, want, plan, label }) {
   return { w, s, peak: lag.peak(), samples: lag.samples, load: loadLag(lag.samples, w, plan) };
 }
 
+// What "same sha-256" means on screen (D4 step 7).
+const HASH_NOTE = 'sha-256 is a fingerprint of a whole collection: every document, in _id order, '
+  + 'every field and value with its exact BSON type (Int32, Int64 and Double differ), keys sorted. '
+  + 'One changed, lost or duplicated document gives a different hash. Each side is hashed on its own '
+  + 'and only the fingerprints are compared. MongoDB documents are hashed in the form Oracle stores them '
+  + '(Decimal128 trailing zeros, the regex and Timestamp tags), and TTL collections only for documents '
+  + 'not about to expire.';
 /** @type {import('../contract.mjs').Demo} */
+
 export default {
   id: 'd4',
   title: 'Blue/green with a fallback path',
@@ -310,9 +318,10 @@ export default {
             summary: bad.length
               ? `MongoDB and Oracle differ for ${bad.join(', ')}: ${RESET}`
               : `all ${rows.length} collections match: ${docs} documents, same counts, same sha-256 on both sides`,
+            verified: HASH_NOTE,
             panes: { left: rows },
             metrics: { collections: rows.length, documents: docs },
-            detail: formatComparison(rows),
+            detail: `${formatComparison(rows)}\n\n${HASH_NOTE}`,
           };
         } finally {
           // A headless run ends here: stop what this process started.
