@@ -1,47 +1,55 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="510" viewBox="0 0 960 510" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="500" viewBox="0 0 960 500" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
 <defs><marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker></defs>
 <rect width="100%" height="100%" fill="#ffffff"/>
-<text x="24" y="36.0" font-size="18" fill="#C74634" font-weight="700">Let Claude drive the demos</text>
-<text x="24" y="58.0" font-size="12.5" fill="#5b6570">You talk and share one window at a time. Claude runs each step on the shared screen through ./lab.sh drive.</text>
+<text x="24" y="36.0" font-size="18" fill="#C74634" font-weight="700">The clicker drives the demos</text>
+<text x="24" y="58.0" font-size="12.5" fill="#5b6570">Share one display and never switch. Each press reaches the autopilot, which runs one step and logs it.</text>
 <rect x="40" y="84" width="240" height="92" rx="6" fill="#ffffff" stroke="#C74634" stroke-width="1.6"/>
 <rect x="40" y="84" width="5" height="92" rx="2" fill="#C74634"/>
-<text x="56" y="111.0" font-size="13.5" fill="#1a1a1a" font-weight="700">You, presenting</text>
-<text x="56" y="134.0" font-size="11.5" fill="#5b6570">say "run demo D3", then "ready"</text>
-<text x="56" y="150.7" font-size="11.5" fill="#5b6570">when the window is on screen</text>
+<text x="56" y="111.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Your clicker</text>
+<text x="56" y="134.0" font-size="11.5" fill="#5b6570">Right arrow or Page Down: on a</text>
+<text x="56" y="150.7" font-size="11.5" fill="#5b6570">demo slide it starts the demo,</text>
+<text x="56" y="167.4" font-size="11.5" fill="#5b6570">then one step per press</text>
 <rect x="360" y="84" width="240" height="92" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
 <rect x="360" y="84" width="5" height="92" rx="2" fill="#2563eb"/>
-<text x="376" y="111.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Claude Code session</text>
-<text x="376" y="134.0" font-size="11.5" fill="#5b6570">drive-demo skill, in a terminal</text>
-<text x="376" y="150.7" font-size="11.5" fill="#5b6570">you do not share</text>
+<text x="376" y="111.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Deck, notes or console</text>
+<text x="376" y="134.0" font-size="11.5" fill="#5b6570">the window with the focus posts</text>
+<text x="376" y="150.7" font-size="11.5" fill="#5b6570">the press to /api/remote/key</text>
+<text x="376" y="167.4" font-size="11.5" fill="#5b6570">(tmux binds Right arrow too)</text>
 <rect x="680" y="84" width="240" height="92" rx="6" fill="#ffffff" stroke="#334155" stroke-width="1.6"/>
 <rect x="680" y="84" width="5" height="92" rx="2" fill="#334155"/>
-<text x="696" y="111.0" font-size="13.5" fill="#1a1a1a" font-weight="700">./lab.sh drive</text>
-<text x="696" y="134.0" font-size="11.5" fill="#5b6570">status, plan, console, term</text>
-<path d="M280,130 L360,130" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)" marker-start="url(#ar)"/>
+<text x="696" y="111.0" font-size="13.5" fill="#1a1a1a" font-weight="700">./lab.sh drive autopilot</text>
+<text x="696" y="134.0" font-size="11.5" fill="#5b6570">on the host: takes each press,</text>
+<text x="696" y="150.7" font-size="11.5" fill="#5b6570">runs the step, logs the result</text>
+<path d="M280,130 L360,130" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
 <path d="M600,130 L680,130" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
-<path d="M800,176 L800,206 L480,206 L480,236" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
-<path d="M800,206 L800,236" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
-<text x="640" y="198.0" font-size="11" fill="#2563eb" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" text-anchor="middle">console dN STEP</text>
-<text x="812" y="226.0" font-size="11" fill="#2563eb" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">term 'CMD'</text>
+<path d="M800,176 L800,236" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M800,206 L160,206 L160,236" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M480,206 L480,236" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<text x="320" y="198.0" font-size="11" fill="#2563eb" text-anchor="middle">window in front, then the step</text>
+<rect x="40" y="236" width="240" height="106" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="40" y="236" width="5" height="106" rx="2" fill="#16a34a"/>
+<text x="56" y="263.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Console in Chrome</text>
+<text x="56" y="286.0" font-size="11.5" fill="#5b6570">console steps: the page presses</text>
+<text x="56" y="302.7" font-size="11.5" fill="#5b6570">its own button, same timer</text>
+<text x="56" y="319.4" font-size="11.5" fill="#5b6570">and result as a click</text>
 <rect x="360" y="236" width="240" height="106" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
 <rect x="360" y="236" width="5" height="106" rx="2" fill="#16a34a"/>
-<text x="376" y="263.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Console in Chrome</text>
-<text x="376" y="286.0" font-size="11.5" fill="#5b6570">takes the step from /api/remote</text>
-<text x="376" y="302.7" font-size="11.5" fill="#5b6570">and presses its own button:</text>
-<text x="376" y="319.4" font-size="11.5" fill="#5b6570">same timer and result as a click</text>
-<rect x="680" y="236" width="240" height="106" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
-<rect x="680" y="236" width="5" height="106" rx="2" fill="#16a34a"/>
-<text x="696" y="263.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Shared terminal</text>
-<text x="696" y="286.0" font-size="11.5" fill="#5b6570">tmux session lab: the command</text>
-<text x="696" y="302.7" font-size="11.5" fill="#5b6570">types itself, output streams live,</text>
-<text x="696" y="319.4" font-size="11.5" fill="#5b6570">A and B panes for D7</text>
+<text x="376" y="263.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Shared terminal (tmux)</text>
+<text x="376" y="286.0" font-size="11.5" fill="#5b6570">terminal steps type themselves,</text>
+<text x="376" y="302.7" font-size="11.5" fill="#5b6570">then Mark done in the console;</text>
+<text x="376" y="319.4" font-size="11.5" fill="#5b6570">A and B panes for D7</text>
+<rect x="680" y="236" width="240" height="106" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.6"/>
+<rect x="680" y="236" width="5" height="106" rx="2" fill="#d97706"/>
+<text x="696" y="263.0" font-size="13.5" fill="#1a1a1a" font-weight="700">MongoDB Compass</text>
+<text x="696" y="286.0" font-size="11.5" fill="#5b6570">D7 step 7: the filter is on the</text>
+<text x="696" y="302.7" font-size="11.5" fill="#5b6570">clipboard; you paste, click Find,</text>
+<text x="696" y="319.4" font-size="11.5" fill="#5b6570">then click the speaker notes</text>
+<path d="M160,342 L160,384" fill="none" stroke="#16a34a" stroke-width="1.8" marker-end="url(#ar)"/>
 <path d="M480,342 L480,384" fill="none" stroke="#16a34a" stroke-width="1.8" marker-end="url(#ar)"/>
 <path d="M800,342 L800,384" fill="none" stroke="#16a34a" stroke-width="1.8" marker-end="url(#ar)"/>
-<rect x="360" y="384" width="560" height="52" rx="6" fill="#f6f7f9" stroke="#334155" stroke-width="1.6"/>
-<rect x="360" y="384" width="5" height="52" rx="2" fill="#334155"/>
-<text x="376" y="415.0" font-size="13" fill="#1a1a1a" font-weight="700">The audience sees only the window you share</text>
-<path d="M160,176 L160,410 L360,410" fill="none" stroke="#C74634" stroke-width="1.8" marker-end="url(#ar)"/>
-<text x="176" y="382.0" font-size="11" fill="#C74634">you share the Console</text>
-<text x="176" y="398.0" font-size="11" fill="#C74634">or the Terminal</text>
-<text x="40" y="462.0" font-size="11.5" fill="#5b6570">No network for Claude? Click and type the same steps yourself. Nothing else changes.</text>
+<rect x="40" y="384" width="880" height="58" rx="6" fill="#f6f7f9" stroke="#334155" stroke-width="1.6"/>
+<rect x="40" y="384" width="5" height="58" rx="2" fill="#334155"/>
+<text x="56" y="407.0" font-size="13" fill="#1a1a1a" font-weight="700">The shared display: the deck between demos, each step's window in front</text>
+<text x="56" y="428.0" font-size="11.5" fill="#5b6570">The press after the last step brings the deck back, still on the demo slide, with the focus.</text>
+<text x="40" y="470.0" font-size="11.5" fill="#5b6570">Claude watches the autopilot log and posts each result and the line to say, on the laptop.</text>
 </svg>

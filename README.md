@@ -86,8 +86,9 @@ when `podman` is on your PATH (or `PODMAN=1` is set), otherwise `docker compose`
 | `./lab.sh pull` | Pull the base images (needs network) |
 | `./lab.sh build` | Build the lab images (needs network the first time) |
 | `./lab.sh up` | Start the stack in the background |
-| `./lab.sh launch` | Instructor setup on the Mac: full reset (fresh volumes), data loaded, tmux staged, then the deck, the console and the tmux terminal on the external display (share it once, in the room or in Zoom) and the speaker notes on the laptop display (the deck opens the speaker notes itself once Chrome allows it pop-ups; else press S when asked). `--notes` retries the speaker notes only; `--check` reprints the live checklist |
-| `./lab.sh shutdown [--wipe]` | After the session: close the console, deck and notes tabs, end the tmux session and its terminal window, stop the stack (data kept; `--wipe` deletes it) |
+| `./lab.sh launch` | Instructor setup on the Mac: full reset (fresh volumes), data loaded, tmux staged, then the deck, the console, the tmux terminal and MongoDB Compass on the external display (share it once, in the room or in Zoom), the speaker notes on the laptop display, and the autopilot on (the clicker drives the demos). `--notes` retries the speaker notes only; `--check` reprints the live checklist |
+| `./lab.sh drive autopilot start\|stop\|status` | The clicker drives the demos (launch starts it; log `.lab/drive/autopilot.log`) |
+| `./lab.sh shutdown [--wipe]` | After the session: stop the autopilot, quit Compass, close the console, deck and notes tabs, end the tmux session and its terminal window, stop the stack (data kept; `--wipe` deletes it) |
 | `./lab.sh check` | Wait up to 600 s (`CHECK_TIMEOUT`) until MongoDB, Oracle, ORDS and the Oracle API for MongoDB all answer; prints one line per service |
 | `./lab.sh preflight` | Laptop readiness checks (see above) |
 | `./lab.sh down` | Stop the stack and keep the data |
@@ -246,98 +247,118 @@ demo and saves 1280x720 screenshots in both themes to `docs/shots/`.
 
 ## Hands-off copilot
 
-A Claude Code session, in its own terminal that you don't share, runs the
-lab for you while you present. You talk; you say three kinds of things to
-Claude: **"launch the lab"**, **"run demo D3"** then **"next"**, and **"shut
-down the lab"**. Claude switches the windows, runs the steps, and gives you
-the result and the line to say. Three skills in `.claude/skills/` hold the
-protocol: `launch-lab`, `drive-demo` and `shutdown-lab`.
+You present; the lab runs itself. Your clicker drives the slides and the
+demos, and a Claude Code session, in its own terminal on the laptop, sets the
+lab up, watches each demo and hands you the line to say. You say three things
+to Claude: **"launch the lab"**, **"watch the demos"** and **"shut down the
+lab"**. Three skills in `.claude/skills/` hold the protocol: `launch-lab`,
+`drive-demo` and `shutdown-lab`.
 
-<img src="docs/figures/drive-workflow.svg" alt="Let Claude drive: Claude runs console steps through the page and terminal steps in the shared tmux session" width="100%">
+<img src="docs/figures/drive-workflow.svg" alt="The clicker drives the demos: each press goes from the deck, notes or console to the autopilot, which brings the console, terminal or Compass to the front of the shared display and runs one step" width="100%">
 
-**Screen layout** (`./lab.sh launch` puts every window in place):
+**Screen layout** (`./lab.sh launch` puts every window in place). Share the
+external display once, in the room or in Zoom, and leave it shared: nobody
+switches shares during the session.
 
 | Display | Windows |
 |---|---|
-| External (shared during demos) | The console, the speaker notes (in front after the launch), the tmux terminal (Clear Dark profile; minimized until a demo needs it) |
-| Laptop (shared between demos) | The deck, in focus for the clicker |
+| External (shared for the whole session) | The deck (in front between demos, with the focus), the console, the tmux terminal (Clear Dark profile, minimized until a demo needs it), MongoDB Compass (hidden until D7) |
+| Laptop (yours) | The speaker notes, and Claude's terminal over their current-slide preview |
 
 The console and the deck open as Chrome app windows (`--app`): no address
-bar, no tabs. The Claude terminal follows the speaker notes: on their
-display, at their upper left, sized to cover the current-slide preview, and
-in front (`LAB_NOTES_PREVIEW`, default `45 50`, the preview's width and height
-in % for the tall layout). With one display, every window opens on it.
+bar, no tabs. Claude's terminal sits over the notes' current-slide preview
+(`LAB_NOTES_PREVIEW`, default `45 50`, the preview's width and height in %
+for the tall layout). With one display, every window opens on it.
 
-**1. Launch: "launch the lab"** (`./lab.sh launch`, about 70 s)
+**1. Launch: "launch the lab"** (`./lab.sh launch`, about 3 minutes)
 
 - Full reset: fresh volumes, Oracle and ORDS rebuilt, the order service back
   on the MongoDB source in normal mode. Then the data load (`generate`).
 - tmux session `lab` staged on window `main`, every pane cleared, for D1.
 - The windows above. The deck opens its speaker notes by itself
   (`deck/index.html?speaker=auto`) once Chrome allows the deck pop-ups;
-  otherwise the launch asks you to press S.
+  otherwise the launch asks you to press S. MongoDB Compass, when installed,
+  opens connected to the Oracle API for MongoDB as `MIG` (the connection
+  string comes from `lib/config.mjs` and is never printed).
+- The autopilot starts (`./lab.sh drive autopilot start`).
 - It ends with a **checklist** in Claude's terminal, every line checked live:
   the four services, the app mode, the source counts, carts still expiring,
-  MIG empty, the console page, the deck, the notes, tmux and the terminal
-  profile. An open item prints its fix. `./lab.sh launch --check` prints it
-  again without changing anything; `./lab.sh launch --notes` retries only the
-  speaker notes.
+  MIG empty, the console page, the deck, the notes, tmux, the autopilot,
+  Compass and the terminal profile. An open item prints its fix.
+  `./lab.sh launch --check` prints it again without changing anything;
+  `./lab.sh launch --notes` retries only the speaker notes.
 
-**2. Present: the clicker drives the demos** (the autopilot; `drive-demo`)
+**2. Present: the clicker drives the demos** (the autopilot)
 
-- You share the external display once and never switch. The speaker notes
-  stay on the laptop.
-- On a demo slide (`data-demo="dN"` in the deck), next (Right arrow) brings
-  the demo up. Each next after that runs one step, with its window in front;
-  the next after the last step brings the deck back, with the focus. The
-  arrow reaches the autopilot from the deck, the console page and the tmux
-  terminal (a key binding in session `lab`), through the console server
-  (`/api/remote/key`); `./lab.sh drive autopilot` on the host runs the steps.
-  During a demo the keyboard focus sits on the speaker notes (laptop), which
-  send every press, Right arrow or Page Down, whatever the shared display shows.
-- On a FAIL the next press shows the rehearsal result. D2 and D4 reset in the
-  background when the deck comes back; D5's end starts D6 step 1.
-- Say "watch the demos" once: Claude follows `.lab/drive/autopilot.log` and
-  relays each result with its "Say" line. With the autopilot off, say "run
-  demo D3", then "next": Claude drives each step by hand, as below.
-- Claude brings the window the step needs to the front (`./lab.sh drive
-  focus console|term`), so you never switch windows. The tmux window stays
-  minimized while the console is on show.
-- Console steps run through the console's remote channel (`/api/remote`):
-  the open page presses its own buttons, so the audience sees the same timer
-  and panes as when you click. Terminal steps are typed into tmux (the pane is
-  cleared first, so the audience sees only that command and its output), then
-  Mark done runs in the console.
-- After each step Claude gives focus back to its own terminal (`drive focus
-  home`) and reports in two lines: OK or FAIL, the key number, and the
-  run sheet's "Say" line.
-- On a failure Claude never debugs on stage: it offers **Skip to result**
-  (the rehearsal recording; say so out loud) or the step's reset.
+- **Slides:** next and back as usual. The speaker view shows the elapsed
+  time and, next to it, the time in the bank: a green countdown to the
+  current slide's planned clock (credit from earlier slides carries over) or a
+  red overtime count. Press **Reset** next to A- / A+ when the session starts.
+- **A demo slide** (`data-demo="dN"`): next brings the demo up instead of
+  moving on. The console opens on that demo's first step, and step 1's window
+  (console or terminal) comes to the front of the shared display.
+- **Each next after that runs one step**, its window in front: console steps
+  through the console's own buttons (the audience sees the usual timer and
+  panes); terminal steps typed into tmux (the pane cleared first), then Mark
+  done in the console. Presses while a step runs are dropped: wait for it.
+- **During a demo the keyboard focus stays on the speaker notes** (laptop),
+  which send every press, Right arrow or Page Down, whatever the shared
+  display shows. Don't click into the console or the terminal; if a press does
+  nothing, click the speaker notes once.
+- **D7 step 7, MongoDB Compass:** Compass comes up with the order's filter on
+  the clipboard. Paste it in mig > orders_dv, click Find, then click the
+  speaker notes to go on. The one hand-off in the session.
+- **The next after the last step** brings the deck back, in front with the
+  focus, still on the demo slide; tmux is cleared; the next press moves on.
+  D2 and D4 reset in the background; D5's end starts D6 step 1 in the
+  background, so D6 doesn't wait 35 s.
+- **On a FAIL** the next press shows that step's rehearsal recording: say so
+  out loud. Never debug on stage.
+- **Claude:** say "watch the demos" once. Claude follows
+  `.lab/drive/autopilot.log` and posts, for each step, OK or FAIL, the key
+  number and the run sheet's "Say" line. It runs no drive command while a
+  demo runs unless you ask.
+
+How the keys travel: the deck, the speaker notes and the console page post
+each press to the console server (`/api/remote/key`), and the tmux session
+binds Right arrow to the same call. `./lab.sh drive autopilot` on the host
+long-polls it and runs the steps with the same `./lab.sh drive` commands
+Claude uses by hand (`docs/REHEARSAL.md` section 7).
+
+**Manual fallback:** with the autopilot off (`./lab.sh drive autopilot
+stop`), say "run demo D3", then "next" before each step: Claude brings each
+window to the front, runs the step and reports, as the `drive-demo` skill
+describes.
 
 **3. Shut down: "shut down the lab"** (`./lab.sh shutdown`)
 
-Closes the console, deck and notes tabs (other tabs stay), ends tmux and
-closes its terminal window, and stops the stack. The volumes are kept;
-`--wipe` deletes them, and Claude runs it only when you ask by name.
+Stops the autopilot, quits Compass, closes the console, deck and notes tabs
+(other tabs stay), ends tmux and closes its terminal window, and stops the
+stack. The volumes are kept; `--wipe` deletes them, and Claude runs it only
+when you ask by name.
 
 **Setup, once per laptop:**
 
-- `brew install tmux`, and Claude Code installed.
+- `brew install tmux`, and Claude Code installed. MongoDB Compass for D7's
+  Compass step (optional: without it the step shows its result in the console).
 - In Chrome, allow pop-ups for the deck (the address bar icon, the first time
   the deck opens). Then the speaker notes open without an S press.
+- In Compass, remove or rename saved connections you don't want on the shared
+  screen: its sidebar lists them all.
 - So no permission prompt appears on stage, add to `.claude/settings.local.json`:
 
   ```json
   { "permissions": { "allow": ["Bash(./lab.sh drive:*)", "Bash(./lab.sh launch:*)", "Bash(./lab.sh shutdown:*)"] } }
   ```
 
-- macOS asks once to let the terminal control Chrome and Terminal
-  (Automation): allow it. Accessibility access is not needed.
+- macOS asks once to let the terminal control Chrome, Terminal and System
+  Events (Automation): allow it. Accessibility access is not needed.
 
-**Limits:** window placement uses AppleScript, so the launch and `drive focus`
-are macOS only. Claude needs internet; the lab doesn't. If the venue network
-drops, click and type the steps yourself (`docs/REHEARSAL.md` section 5).
-Every `./lab.sh drive` command: `docs/REHEARSAL.md` section 7.
+**Limits:** window placement uses AppleScript, so the launch, the autopilot
+and `drive focus` are macOS only. The autopilot needs no internet; Claude does.
+If the venue network drops, the clicker still drives the demos; only Claude's
+relayed lines stop. If the autopilot itself fails, click and type the steps
+yourself (`docs/REHEARSAL.md` section 5).
 
 ## Deck
 
@@ -346,8 +367,11 @@ server and no network: Reveal.js 5.1.0 and the fonts are in the repo.
 
 - **Keys:** arrows or a clicker walk every slide in order; **S** opens the
   speaker view (notes, timer, next slide). In the speaker view the timer stays
-  pinned at the top, **A-** / **A+** size the notes, and the bars between panes
-  drag to resize them (double-click a bar to reset). Both settings are remembered.
+  pinned at the top with the pace beside it (green: time in the bank before the
+  slide's planned clock; red: overtime; **Reset** zeroes both), **A-** / **A+**
+  size the notes, and the bars between panes drag to resize them (double-click a
+  bar to reset). Both settings are remembered. On a `data-demo` slide, next
+  starts that demo when the autopilot runs (see Hands-off copilot).
 - **Authoring:** one `<section data-segment="N">` per session segment, slides
   inside it, and an `<aside class="notes">` on every slide. Demo transition
   slides get `class="demo"`.
@@ -592,8 +616,14 @@ agent, in this order:
 ./lab.sh agent write --agent A    # terminal 1: status -> provisioned, accepted
 ./lab.sh agent write --agent B    # terminal 2: device swap with a stale ETag, rejected (ORA-42699)
 ./lab.sh agent retry --agent B    # terminal 2: re-read, reapply, accepted
+./lab.sh demo d7 --step compass   # the filter and what Compass should show
 ./lab.sh demo d7 --step final     # both changes, exactly 2 updates applied
 ```
+
+Step 7 checks the same order in MongoDB Compass, connected to the Oracle API
+for MongoDB like any MongoDB server: mig > orders_dv, filter
+`{_id: '<order id>'}`, Find. Compass shows the new `_metadata.etag` in base64;
+the agents print it in hex.
 
 Each agent keeps the document and ETag it last read in
 `/state/d7/agent-A.json` (or `-B`) on the `state` volume (`.lab/state/d7/` with

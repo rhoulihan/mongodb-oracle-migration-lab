@@ -170,30 +170,33 @@ def session_flow():
 
 
 def drive_workflow():
-    f = Fig("drive-workflow", 510, "Let Claude drive the demos",
-            "You talk and share one window at a time. Claude runs each step on the shared screen through ./lab.sh drive.")
-    f.card(40, 84, 240, 92, "You, presenting", ["say \"run demo D3\", then \"ready\"", "when the window is on screen"], accent=RED)
-    f.card(360, 84, 240, 92, "Claude Code session", ["drive-demo skill, in a terminal", "you do not share"], accent=BLUE)
-    f.card(680, 84, 240, 92, "./lab.sh drive", ["status, plan, console, term"], accent=SLATE, mono_lines=())
-    f.path([(280, 130), (360, 130)], BLUE, both=True)
+    f = Fig("drive-workflow", 500, "The clicker drives the demos",
+            "Share one display and never switch. Each press reaches the autopilot, which runs one step and logs it.")
+    f.card(40, 84, 240, 92, "Your clicker", ["Right arrow or Page Down: on a", "demo slide it starts the demo,",
+                                             "then one step per press"], accent=RED)
+    f.card(360, 84, 240, 92, "Deck, notes or console", ["the window with the focus posts", "the press to /api/remote/key",
+                                                       "(tmux binds Right arrow too)"], accent=BLUE)
+    f.card(680, 84, 240, 92, "./lab.sh drive autopilot", ["on the host: takes each press,", "runs the step, logs the result"],
+           accent=SLATE)
+    f.path([(280, 130), (360, 130)], BLUE)
     f.path([(600, 130), (680, 130)], BLUE)
-    # two paths from the driver
-    f.path([(800, 176), (800, 206), (480, 206), (480, 236)], BLUE)
-    f.path([(800, 206), (800, 236)], BLUE)
-    f.text(640, 198, "console dN STEP", 11, BLUE, anchor="middle", mono=True)
-    f.text(812, 226, "term 'CMD'", 11, BLUE, mono=True)
-    f.card(360, 236, 240, 106, "Console in Chrome", ["takes the step from /api/remote", "and presses its own button:",
-                                                     "same timer and result as a click"], accent=GREEN)
-    f.card(680, 236, 240, 106, "Shared terminal", ["tmux session lab: the command", "types itself, output streams live,",
-                                                   "A and B panes for D7"], accent=GREEN)
-    f.path([(480, 342), (480, 384)], GREEN)
-    f.path([(800, 342), (800, 384)], GREEN)
-    f.box(360, 384, 560, 52, stroke=SLATE, fill=PANEL, accent=SLATE)
-    f.text(376, 415, "The audience sees only the window you share", 13, INK, w=700)
-    f.path([(160, 176), (160, 410), (360, 410)], RED)
-    f.text(176, 382, "you share the Console", 11, RED)
-    f.text(176, 398, "or the Terminal", 11, RED)
-    f.text(40, 462, "No network for Claude? Click and type the same steps yourself. Nothing else changes.", 11.5, MUTE)
+    # one bus from the autopilot to the three windows a step can use
+    f.path([(800, 176), (800, 236)], BLUE)
+    f.path([(800, 206), (160, 206), (160, 236)], BLUE)
+    f.path([(480, 206), (480, 236)], BLUE)
+    f.text(320, 198, "window in front, then the step", 11, BLUE, anchor="middle")
+    f.card(40, 236, 240, 106, "Console in Chrome", ["console steps: the page presses", "its own button, same timer",
+                                                   "and result as a click"], accent=GREEN)
+    f.card(360, 236, 240, 106, "Shared terminal (tmux)", ["terminal steps type themselves,", "then Mark done in the console;",
+                                                         "A and B panes for D7"], accent=GREEN)
+    f.card(680, 236, 240, 106, "MongoDB Compass", ["D7 step 7: the filter is on the", "clipboard; you paste, click Find,",
+                                                  "then click the speaker notes"], accent=AMBER)
+    for x in (160, 480, 800):
+        f.path([(x, 342), (x, 384)], GREEN)
+    f.box(40, 384, 880, 58, stroke=SLATE, fill=PANEL, accent=SLATE)
+    f.text(56, 407, "The shared display: the deck between demos, each step's window in front", 13, INK, w=700)
+    f.text(56, 428, "The press after the last step brings the deck back, still on the demo slide, with the focus.", 11.5, MUTE)
+    f.text(40, 470, "Claude watches the autopilot log and posts each result and the line to say, on the laptop.", 11.5, MUTE)
     f.save()
 
 
