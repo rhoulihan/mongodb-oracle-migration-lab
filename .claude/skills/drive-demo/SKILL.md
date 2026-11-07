@@ -65,6 +65,7 @@ Your job: watch and relay.
 - **D3, terminal step 2:** read the `restore took N s` number to the presenter so they can say it live (the autopilot logs it on its own line).
 - **D4:** before step 1, remind the presenter to say it's a **stand-in for Oracle GoldenGate**.
 - **D5, then D6:** the autopilot starts D6 step 1 in the background when D5 ends, while the presenter talks slides 36 to 38; D6's first step waits for it. Manual: offer to start it with `--nowait` before `drive slides`; back at D6, run `drive demo` and `drive focus console`, then `drive wait SEQ` before step 2.
+- **D7 step 7 (Compass):** Compass comes to the front with the order's filter on the clipboard. Relay: "In Compass: mig, orders_dv, paste, Find." The presenter's clicks there take the keyboard, so add: "Then click the speaker notes to go on."
 - **D6 step 3** runs about 35 s on the Mac. Say "running, about 35 s" once, then wait.
 - **Timings stay hidden until the equality step passes** (D5 step 5, D6 step 5). This is by design. Don't report a missing time as a fault.
 

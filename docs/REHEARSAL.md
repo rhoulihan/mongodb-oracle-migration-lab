@@ -244,7 +244,8 @@ right.
 | 4 | terminal A | `./lab.sh agent write --agent A` | Accepted: provisioned, 1 update |
 | 5 | terminal B | `./lab.sh agent write --agent B` | **Rejected: ORA-42699.** Still 1 update |
 | 6 | terminal B | `./lab.sh agent retry --agent B` | Accepted: provisioned, the new device, 2 updates |
-| 7 | console | The final order: both changes, 2 updates applied | The change log has exactly 2 rows |
+| 7 | compass | Check it in MongoDB Compass | mig > orders_dv, paste the filter (on the clipboard), Find: provisioned, the new device, a new `_metadata.etag` (base64 in Compass, hex in the terminal). Say: Compass works on Oracle as on any MongoDB server. Then click the speaker notes |
+| 8 | console | The final order: both changes, 2 updates applied | The change log has exactly 2 rows |
 
 If a step fails: `./lab.sh reset d7`, then start again from step 1.
 

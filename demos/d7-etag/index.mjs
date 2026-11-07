@@ -251,6 +251,33 @@ export default {
       },
     },
     {
+      // The presenter checks the same document in MongoDB Compass, connected
+      // to the Oracle API for MongoDB like any MongoDB server. The autopilot
+      // puts the filter on the clipboard and brings Compass up.
+      id: 'compass',
+      title: 'Check it in MongoDB Compass: the same order, both changes, a new ETag',
+      lane: 'compass',
+      async run(ctx) {
+        let now;
+        try {
+          now = await live(ctx);
+        } catch (err) {
+          return fail(`${err.message}`);
+        }
+        const { pick, doc, log } = now;
+        const ok = doc.status === 'provisioned' && device(doc) === pick.toSku && log.length === 2;
+        const hex = etagHex(doc._metadata?.etag);
+        const b64 = Buffer.from(hex, 'hex').toString('base64');
+        const filter = `{_id: '${pick.orderId}'}`;
+        return ok
+          ? { ok: true,
+            summary: `In Compass: mig > orders_dv, paste the filter ${filter} (on the clipboard), Find. `
+              + `Expect status provisioned, device ${pick.toSku}, and _metadata.etag ${b64} (Compass shows it in base64; hex ${hex})`,
+            panes: { left: paneDoc(doc) } }
+          : fail(`expected provisioned, device ${pick.toSku} and 2 updates; found ${doc.status}, ${device(doc)}, ${log.length}: run the agent steps in order, or ${RESET}`);
+      },
+    },
+    {
       id: 'final',
       title: 'The final order: both changes, 2 updates applied',
       lane: 'console',

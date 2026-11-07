@@ -712,6 +712,7 @@ drive_mode() {
       echo "OK    demo on: the speaker notes stay on the laptop; the console or terminal comes up on the shared display" ;;
     slides)
       local lt; lt="$(lab_tty)"; [ -n "$lt" ] && term_window "$lt" min
+      compass_running && compass_hide
       echo present > "$DRIVE_DIR/focus"
       local w; w="$(launch_window_ids)" || { echo "FAIL  no deck window: ./lab.sh launch" >&2; return 1; }
       launch_focus_deck "${w#* }" >/dev/null || return 1
@@ -719,6 +720,46 @@ drive_mode() {
     *) usage ;;
   esac
 }
+
+# ---------- MongoDB Compass (D7): connected to the Oracle API for MongoDB ----------
+COMPASS_APP="MongoDB Compass"
+compass_installed() { [ -d "/Applications/$COMPASS_APP.app" ]; }
+compass_running() { pgrep -xq "$COMPASS_APP"; }
+
+# A fresh Compass connected to MIG on the Oracle API (the URI comes from
+# lib/config.mjs and is never printed), full size on display box $1, hidden
+# until D7 needs it.
+compass_launch() {
+  compass_installed || { echo "INFO  MongoDB Compass is not installed: D7's Compass step shows its result in the console only"; return 0; }
+  if compass_running; then
+    osascript -e "quit app \"$COMPASS_APP\"" >/dev/null 2>&1
+    local n=0; while compass_running && [ "$n" -lt 50 ]; do sleep 0.2; n=$((n + 1)); done
+  fi
+  local uri
+  uri="$(LAB_HOST_NODE=1 node -e "import('./lib/config.mjs').then(m=>process.stdout.write(m.config.oraMongoUri.replace('localhost','127.0.0.1')))" 2>/dev/null)"
+  [ -n "$uri" ] || { echo "FAIL  could not build the Compass connection string (node on the host?)"; return 1; }
+  open -na "$COMPASS_APP" --args "$uri"
+  uri=""
+  local limit=$((SECONDS + 30)) l t r b
+  IFS=' ' read -r l t r b <<<"$1"
+  while [ "$SECONDS" -lt "$limit" ]; do
+    if osascript - "$COMPASS_APP" "$l" "$t" "$((r - l))" "$((b - t))" <<'OSA' >/dev/null 2>&1; then
+on run argv
+  tell application "System Events" to tell process (item 1 of argv)
+    if (count windows) is 0 then error "no window"
+    set position of window 1 to {(item 2 of argv) as integer, (item 3 of argv) as integer}
+    set size of window 1 to {(item 4 of argv) as integer, (item 5 of argv) as integer}
+  end tell
+end run
+OSA
+      compass_hide; echo "OK    MongoDB Compass connected to the Oracle API (MIG), on the shared display, hidden until D7"; return 0
+    fi
+    sleep 0.5
+  done
+  echo "FAIL  MongoDB Compass did not open a window: open it by hand on the shared display"; return 1
+}
+compass_hide() { osascript -e "tell application \"System Events\" to set visible of process \"$COMPASS_APP\" to false" >/dev/null 2>&1; return 0; }
+compass_front() { osascript -e "tell application \"$COMPASS_APP\" to activate" >/dev/null 2>&1; }
 
 # ---------- autopilot: the presenter's clicker drives the demos ----------
 # The clicker's next (Right arrow) reaches the console server from whichever
@@ -731,7 +772,7 @@ drive_mode() {
 # D2 and D4 reset in the background once the deck is back; D5's end starts
 # D6 step 1 in the background. Presses during a step are dropped.
 # Log: .lab/drive/autopilot.log (Claude watches it and relays each result).
-AP_PAT='^ *[0-9]+  ([^ ]+)  (console|terminal)  (.*)$'
+AP_PAT='^ *[0-9]+  ([^ ]+)  (console|terminal|compass)  (.*)$'
 AP_CMD_PAT='^ +\$ (.*)$'
 
 ap_log() { printf '%s %s\n' "$(date +%H:%M:%S)" "$*" >> "$DRIVE_DIR/autopilot.log"; }
@@ -758,6 +799,9 @@ ap_plan() {
 # The notes send every next to the autopilot; Terminal.app is never asked to
 # take the keys (it would keep Page Down, and its focus can stay elsewhere).
 ap_focus() {
+  # Compass: in front with the keyboard (the presenter pastes the filter and
+  # clicks Find, then clicks the speaker notes to go on).
+  if [ "${AP_LANES[$1-1]}" = compass ]; then compass_front; return; fi
   drive_focus "$([ "${AP_LANES[$1-1]}" = terminal ] && echo term || echo console)" >/dev/null 2>&1
   osascript -e "tell application \"Google Chrome\" to set index of (first window whose title of active tab is \"$NOTES_TITLE\") to 1" >/dev/null 2>&1 \
     && chrome_activate_main
@@ -787,6 +831,11 @@ ap_run() {
     AP_D6_SEQ=""
   else
     out="$(drive_console "$AP_DEMO" "$id" 2>&1)" || rc=1
+  fi
+  # Compass: the step's filter on the clipboard, ready to paste.
+  if [ "$lane" = compass ]; then
+    local fl; fl="$(grep -Eo "\{_id: '[^']+'\}" <<<"$out" | head -1)"
+    [ -n "$fl" ] && printf '%s' "$fl" | pbcopy
   fi
   ap_log "$tag: $(tail -1 <<<"$out")$([ "$rc" != 0 ] && echo ' (next press: the rehearsal result)')"
   return "$rc"
@@ -1144,6 +1193,7 @@ cmd_shutdown() {
   local wipe=0 rc=0
   case "${1:-}" in --wipe) wipe=1 ;; '') ;; *) usage ;; esac
   drive_autopilot stop
+  if compass_running; then osascript -e "quit app \"$COMPASS_APP\"" >/dev/null 2>&1 && echo "OK    MongoDB Compass closed"; fi
   if [ "$(uname)" = Darwin ]; then
     launch_close_tabs && echo "OK    Chrome: console, deck and speaker notes closed" || { echo "FAIL  could not close the Chrome tabs"; rc=1; }
   fi
@@ -1247,6 +1297,7 @@ launch_checklist() {
   [ -n "$tty" ]; ck $? "tmux session $TMUX_SESSION attached on ${tty:-no terminal}" "./lab.sh launch"
   [ "$(tmux display -p -t "$TMUX_SESSION" '#{window_name}' 2>/dev/null)" = main ]; ck $? "tmux on window main, ready for D1"
   drive_autopilot status >/dev/null 2>&1; ck $? "autopilot on: the clicker drives the demos" "./lab.sh drive autopilot start"
+  if compass_installed; then compass_running; ck $? "MongoDB Compass open on the Oracle API, for D7" "./lab.sh launch"; fi
   if [ "$(uname)" = Darwin ] && [ -n "$tty" ]; then
     local prof="${LAB_TERM_PROFILE:-Clear Dark}"
     [ "$(osascript - "$tty" <<'OSA' 2>/dev/null
@@ -1312,6 +1363,7 @@ cmd_launch() {
   echo "OK    Chrome app windows (no address bar): console ($CONSOLE_URL), deck"
   launch_notes "$did" "$lbox" || rc=1
   launch_terminal "$ebox" || rc=1
+  compass_launch "$ebox" || rc=1
 
   # Shared display: the deck in front with the focus (console behind, tmux
   # minimized). Laptop: the speaker notes, Claude's terminal over the slide preview.

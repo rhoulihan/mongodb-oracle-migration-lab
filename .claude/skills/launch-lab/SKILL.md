@@ -39,11 +39,14 @@ What it does, in order:
    over their current-slide preview, in front. Tell the presenter once: share
    the external display, and leave it shared.
 
-7. Autopilot: `./lab.sh drive autopilot start`. The presenter's clicker
+7. MongoDB Compass (when installed): opened connected to the Oracle API (MIG),
+   full size on the shared display, hidden until D7's Compass step.
+
+8. Autopilot: `./lab.sh drive autopilot start`. The presenter's clicker
    (Right arrow) drives the demos from here on.
 
-8. Checklist: every item checked live (stack, data counts, MIG empty,
-   console, deck, notes, tmux, autopilot, terminal profile). `[ ]` items print their fix.
+9. Checklist: every item checked live (stack, data counts, MIG empty,
+   console, deck, notes, tmux, autopilot, Compass, terminal profile). `[ ]` items print their fix.
 
 ## Report
 

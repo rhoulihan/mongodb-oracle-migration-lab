@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { config } from '../lib/config.mjs';
 
 /** @typedef {{ok:boolean, summary:string, panes?:{left?:any,right?:any}, labels?:{left?:string,right?:string}, metrics?:object, plan?:{left?:string,right?:string}, detail?:string, verified?:string}} StepResult */
-/** @typedef {{id:string,title:string,lane:'console'|'terminal',command?:string,run:(ctx)=>Promise<StepResult>,verify?:(ctx)=>Promise<StepResult>}} Step */
+/** @typedef {{id:string,title:string,lane:'console'|'terminal'|'compass',command?:string,run:(ctx)=>Promise<StepResult>,verify?:(ctx)=>Promise<StepResult>}} Step */
 // Terminal steps (Ruling O) carry three things:
 //   command  what the presenter types on the host
 //   run      the same operation done in-process, for headless runs and tests
@@ -27,7 +27,7 @@ import { config } from '../lib/config.mjs';
 /** @typedef {{id:'d1'|'d2'|'d3'|'d4'|'d5'|'d6'|'d7', title:string, banner?:string, revealAfter?:RevealAfter, steps:Step[], setup:(ctx)=>Promise<void>, reset:(ctx)=>Promise<void>}} Demo */
 
 export const DEMOS_DIR = fileURLToPath(new URL('.', import.meta.url));
-const LANES = ['console', 'terminal'];
+const LANES = ['console', 'terminal', 'compass'];
 
 /** Problems with a demo's shape, as strings; empty when it follows the contract. */
 export function validateDemo(demo) {
@@ -43,7 +43,7 @@ export function validateDemo(demo) {
     seen.add(s.id);
     if (typeof s.id !== 'string' || !s.id) p.push('step without an id');
     if (typeof s.title !== 'string' || !s.title) p.push(`step ${s.id}: title missing`);
-    if (!LANES.includes(s.lane)) p.push(`step ${s.id}: lane ${s.lane} is not console or terminal`);
+    if (!LANES.includes(s.lane)) p.push(`step ${s.id}: lane ${s.lane} is not console, terminal or compass`);
     if (s.lane === 'terminal' && !(typeof s.command === 'string' && s.command.trim())) {
       p.push(`step ${s.id}: a terminal step needs a command`);
     }

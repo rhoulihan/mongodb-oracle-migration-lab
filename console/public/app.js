@@ -222,7 +222,7 @@ function renderSteps() {
     const t = h('span', 't', s.title);
     const st = stepClass(s.id);
     const tag = { ok: 'passed', fail: 'failed', rec: 'recorded result', busy: 'running' }[st];
-    t.append(h('span', 'lane', `${s.lane === 'terminal' ? 'terminal' : 'console'}${tag ? `, ${tag}` : ''}`));
+    t.append(h('span', 'lane', `${s.lane}${tag ? `, ${tag}` : ''}`));
     b.append(t);
     b.addEventListener('click', () => { state.step = s.id; location.hash = `${state.demo.id}/${s.id}`; render(); });
     li.append(b);
