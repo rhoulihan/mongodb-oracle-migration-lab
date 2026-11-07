@@ -40,7 +40,7 @@ describe('D3 dump, restore, flip', () => {
   });
 
   test('counts match for all 8 collections at the dump snapshot (Ruling J)', () => {
-    const rows = result('counts').panes.left;
+    const rows = result('counts').rows;
     expect(rows.map((x) => x.coll).sort()).toEqual([...COLLECTIONS].sort());
     for (const x of rows) {
       // Dump vs restore: one snapshot, exact for every collection.
@@ -124,7 +124,9 @@ describe('D3 dump, restore, flip', () => {
     const r = await counts.run(ctx);
     expect(r.ok, r.summary).toBe(true);
     expect(r.summary).toMatch(/3 smoke-test documents left out/);
-    const byColl = Object.fromEntries(r.panes.left.map((x) => [x.coll, x.smokeExcluded]));
+    const byColl = Object.fromEntries(r.rows.map((x) => [x.coll, x.smokeExcluded]));
+    expect(r.panes.left.find((x) => x.collection === 'orders').note).toMatch(/1 smoke-test documents left out/);
+    expect(Object.keys(r.panes.left[0])).not.toContain('smokeExcluded');
     expect(byColl).toMatchObject({ orders: 1, orderEvents: 2 });
   });
 

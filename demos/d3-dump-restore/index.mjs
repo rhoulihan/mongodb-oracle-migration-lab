@@ -112,6 +112,18 @@ async function compareCounts(ora, archive) {
   });
 }
 
+/** The counts pane: what the presenter reads (the raw rows stay in result.rows). */
+function countsPane(rows) {
+  return rows.map((r) => ({
+    collection: r.coll,
+    'in the dump': r.archive,
+    restored: r.restored ?? '-',
+    'on Oracle now': r.oracle,
+    note: [r.ttl ? `TTL ${r.ttl}: ${r.archive - r.oracle} expired since the dump` : '',
+      r.smokeExcluded ? `${r.smokeExcluded} smoke-test documents left out` : ''].filter(Boolean).join('; '),
+  }));
+}
+
 function countsTable(rows) {
   const head = ['collection', 'in the dump', 'restored', 'on Oracle now', 'note'];
   const body = rows.map((r) => [
@@ -221,7 +233,8 @@ export default {
           summary: bad.length
             ? `counts differ for ${bad.join(', ')}${note}`
             : `all ${rows.length} collections match the dump${note}`,
-          panes: { left: rows },
+          panes: { left: countsPane(rows) },
+          rows,
           detail: countsTable(rows),
         };
       },
