@@ -473,6 +473,23 @@
     <p class="byline"><b>Questions</b></p>
     <aside class="notes">The closing line. Pick the door by what you can afford to lose. Pick the model by what you need to read.<br><br>Three sentences to take home. Moving from MongoDB to Oracle is usually lift and shift: same driver, standard tools, a new connection string, and a validation gate that checks queries, not counts. The door you pick is a trade between downtime, a way back, and how long you run two systems. And once you're through it, the converged engine brings the full SQL optimizer to the queries document databases struggle with: Top-N over relationships, heavy pipelines, concurrent writes to one document, all from the same driver.<br><br>Questions. About five minutes. If the room is quiet, seed one: how would we size the window for our data? What does the validation gate look like for our types? Which of our pipelines moves to $sql first?</aside>
   </section>
+  <section>
+    <div class="eyebrow">Segment 6 · More tools <span class="clock">1:25</span></div>
+    <h2>More tools</h2>
+    <p class="lede">mongotools, open-source scripts for your own migration. <strong>Two help you plan, one moves the data.</strong></p>
+    <div class="body"><div class="cards">
+      <div class="card cool"><h3>Plan: mongoserverStatus.sh</h3><p>Samples serverStatus once, or streams it on an interval. Op mix, connections, load, saved as JSON.</p></div>
+      <div class="card cool"><h3>Plan: mongoProfileExport.sh</h3><p>Turns on the profiler, exports every query the app runs. The real operators and shapes to check.</p></div>
+      <div class="card"><h3>Before cutover: mongoPrepare.py</h3><p>Checks ORDS, the Oracle user, the MongoDB source and the MongoDB API before you start.</p></div>
+      <div class="card hot"><h3>Door B: mongoDump.sh</h3><p>mongodump, then mongorestore into Oracle. Parallel workers, TLS, appends to existing collections.</p></div>
+    </div></div>
+    <div class="takeaway links">
+      <p><b>Scripts</b> <a href="https://github.com/oramatt/mongotools">github.com/oramatt/mongotools</a> · <a href="https://github.com/oramatt/mongotools/wiki">guides on the wiki</a></p>
+      <p><b>LiveLabs</b> <a href="https://livelabs.oracle.com/ords/dbpm/r/livelabs/view-workshop?wid=4289">Developer journey</a> · <a href="https://livelabs.oracle.com/ords/dbpm/r/livelabs/view-workshop?wid=4294">Lift and shift</a> · <a href="https://livelabs.oracle.com/ords/dbpm/r/livelabs/view-workshop?wid=4288">MongoDB-compatible app</a> · <b>Docs</b> <a href="https://docs.oracle.com/en/database/oracle/mongodb-api/">Oracle Database API for MongoDB</a></p>
+      <p><b>Account team</b> Code scanning and assessment tooling: ask your Oracle account team.</p>
+    </div>
+    <aside class="notes">One last slide for the road. Everything today ran in the lab. For your own estate, there's a set of open-source scripts from Matt DeMarco at Oracle: mongotools, on GitHub, under the Universal Permissive License.<br><br>Two of them are for planning, and you can run them long before you pick a door. mongoserverStatus.sh samples serverStatus, once or on an interval, and saves it as JSON: the op counters, connections, how busy the server is. That's your workload profile for sizing. mongoProfileExport.sh turns on the profiler at level 2, captures every query, and exports it. That's the list of operators and query shapes the app really runs, which is exactly what you check for compatibility. Level 2 costs something, so run it for a short window, or on a secondary, then turn it off; the script does both.<br><br>mongoPrepare.py is the preflight: is ORDS up, does the Oracle user have its roles, can you reach the MongoDB source, does the MongoDB API accept a write.<br><br>mongoDump.sh is door B. It's the dump and restore we ran in D3, wrapped in a menu: mongodump out, mongorestore into the Oracle schema, with parallel workers per collection, TLS, and appends rather than overwrites.<br><br>The wiki has the guides around it: the migration flow, ORDS setup for the MongoDB API, TLS, a load balancer in front of ORDS, and moving server-side JavaScript.<br><br>Below the cards, the rest of the kit. Three free LiveLabs: a developer journey on 26ai, a lift and shift migration, and building a MongoDB-compatible app on Autonomous JSON Database. And the Oracle Database API for MongoDB docs.<br><br>One more: Oracle has code scanning and assessment tooling for MongoDB apps that isn't public yet. Your Oracle account team can run it with you.<br><br>Land: two scripts to plan with, one to move the data, and labs to practice on. Links are on the slide.</aside>
+  </section>
 </section>
 
 </div></div>

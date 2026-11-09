@@ -91,6 +91,9 @@ html, body, .reveal-viewport {
   color: var(--muted);
 }
 .takeaway strong { color: var(--gold); }
+.takeaway.links { display: flex; flex-direction: column; gap: 4px; font-size: 20px; }
+.takeaway.links b { color: var(--ink); margin-right: 8px; }
+.takeaway a { color: var(--cool); text-decoration: none; border-bottom: 1px solid currentColor; }
 
 /* ---------- Figures (inline SVG from build_figs.py) ---------- */
 .reveal figure { margin: 0; }
