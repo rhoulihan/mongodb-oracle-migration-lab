@@ -31,8 +31,8 @@ there; the speaker notes and Claude's terminal stay on your laptop.
 
 - **Slides:** next and back as usual. Beside the speaker view's timer, a green
   countdown shows the time in the bank before the slide's planned clock
-  (credit carries over) and a red count shows overtime. Press **Reset** when
-  you start.
+  (credit carries over) and a red count shows overtime. The timer waits at
+  zero until your first advance, so there's nothing to press when you start.
 - **On a demo slide, next starts the demo.** The console opens on that demo,
   and step 1's window comes to the front of the shared display.
 - **Each next runs one step**, its window in front: console steps press the
@@ -375,7 +375,7 @@ server and no network: Reveal.js 5.1.0 and the fonts are in the repo.
 - **Keys:** arrows or a clicker walk every slide in order; **S** opens the
   speaker view (notes, timer, next slide). In the speaker view the timer stays
   pinned at the top with the pace beside it (green: time in the bank before the
-  slide's planned clock; red: overtime; **Reset** zeroes both), **A-** / **A+**
+  slide's planned clock; red: overtime; the timer starts on the first advance, and **Reset** zeroes it), **A-** / **A+**
   size the notes, and the bars between panes drag to resize them (double-click a
   bar to reset). Both settings are remembered. On a `data-demo` slide, next
   starts that demo when the autopilot runs (see [Run the session hands-off](#run-the-session-hands-off)).

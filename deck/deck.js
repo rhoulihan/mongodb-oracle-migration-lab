@@ -93,6 +93,8 @@
     '.dk-pace { margin-left: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }',
     '.dk-pace.under { color: #16a34a; }',
     '.dk-pace.over { color: #C74634; }',
+    '.dk-pace.ready { color: #94a3b8; font-weight: 600; }',
+    '.dk-held .timer > span:not(.dk-pace) { opacity: 0.45; }',
     '.dk-font .dk-reset { margin-left: 10px; }'
   ].join('\n');
 
@@ -118,6 +120,32 @@
      time banked on earlier slides. Past it: a red overtime count. It reads the plugin's own
      timer, so the Reset button (or a click on the time block) zeroes both. */
   var SESSION_MIN = 90;
+
+  /* The speaker-view timer waits for the presenter's first advance (a slide or a
+     fragment), so opening the deck early does not eat into the plan. Until then the
+     plugin's timer is held at zero (a click on its time block zeroes it). Reset
+     starts it too. */
+  var timerStarted = false, holdTimers = [];
+  function startTimer() {
+    if (timerStarted) return;
+    timerStarted = true;
+    holdTimers.forEach(function (h) {
+      h.win.clearInterval(h.id);
+      h.el.click();
+      h.el.classList.remove('dk-held');
+    });
+    holdTimers = [];
+  }
+  function holdTimer(win, doc) {
+    if (timerStarted) return;
+    var el = doc.querySelector('.speaker-controls-time');
+    if (!el) return;
+    el.classList.add('dk-held');
+    el.click();
+    holdTimers.push({ win: win, el: el, id: win.setInterval(function () { el.click(); }, 250) });
+  }
+  Reveal.on('slidechanged', startTimer);
+  Reveal.on('fragmentshown', startTimer);
   function pace(win, doc) {
     var timer = doc.querySelector('.speaker-controls-time .timer');
     if (!timer) return;
@@ -127,6 +155,11 @@
     timer.appendChild(el);
     var plan = targets();
     function tick() {
+      if (!timerStarted) {
+        el.className = 'dk-pace ready';
+        el.textContent = 'starts on the first advance';
+        return;
+      }
       var v = ['.hours-value', '.minutes-value', '.seconds-value'].map(function (q) {
         var n = timer.querySelector(q);
         return n ? Math.abs(parseInt(n.textContent.replace(/[^\d-]/g, ''), 10)) || 0 : 0;
@@ -159,7 +192,7 @@
     font.className = 'dk-font';
     font.innerHTML = '<button type="button" title="Smaller notes">A-</button>' +
       '<output></output><button type="button" title="Larger notes">A+</button>' +
-      '<button type="button" class="dk-reset" title="Zero the timer: press when the session starts">Reset</button>';
+      '<button type="button" class="dk-reset" title="Zero the timer (it starts on its own at the first advance)">Reset</button>';
     var out = font.querySelector('output');
     function setScale(s) {
       scale = Math.min(2.5, Math.max(0.6, Math.round(s * 10) / 10));
@@ -173,12 +206,14 @@
     // Reset: the plugin zeroes its timer on a click of the time block.
     buttons[2].addEventListener('click', function (ev) {
       ev.stopPropagation();
-      doc.querySelector('.speaker-controls-time').click();
+      if (timerStarted) doc.querySelector('.speaker-controls-time').click();
+      else startTimer();
     });
     font.addEventListener('click', function (ev) { ev.stopPropagation(); }); // the time block resets the timer on click
     font.addEventListener('mousedown', function (ev) { ev.preventDefault(); }); // keep keys going to the deck
     doc.querySelector('.speaker-controls-time').appendChild(font);
     setScale(scale);
+    holdTimer(win, doc);
     pace(win, doc);
     // The clicker in the speaker notes: during a demo, next is a demo step.
     win.addEventListener('keydown', function (ev) { onNextKey(ev, 'notes'); }, true);
