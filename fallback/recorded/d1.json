@@ -2,7 +2,7 @@
   "id": "d1",
   "steps": {
     "scan": {
-      "at": "2026-11-04T21:59:18.529Z",
+      "at": "2026-11-09T13:41:57.910Z",
       "result": {
         "ok": true,
         "summary": "order service: 8 operators (0 unsupported, 0 caveat, 8 supported); demo pipelines: 28 operators (1 unsupported, 2 caveat, 25 supported)",
@@ -397,8 +397,151 @@
         "detail": "Scripted operator scan (built for this lab): the order service (app/**/*.mjs)\nMatrix: oracle-ai-dev-marketplace/skills/mongodb-api-dev/references/compat-matrix.md, copied 2026-11-01, plus findings measured in this lab\noperator  on Oracle  basis                 used in        note\n--------  ---------  --------------------  -------------  ----\n$each     supported  measured in this lab  app/store.mjs  Inside $push.\n$in       supported  measured in this lab  app/store.mjs\n$inc      supported  measured in this lab  app/store.mjs  The order service and the Top-N counters use it in every demo.\n$ne       supported  measured in this lab  app/store.mjs\n$push     supported  measured in this lab  app/store.mjs  With $each, $sort and $slice (the Top-N array).\n$set      supported  measured in this lab  app/store.mjs  The order service's update and the D6 pipeline stage both run.\n$slice    supported  measured in this lab  app/store.mjs  Inside $push: keeps the Top 10.\n$sort     supported  measured in this lab  app/store.mjs  As a $push modifier and as a pipeline stage.\n\nThe demo pipelines you will see in D5 and D6 (demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs)\noperator          on Oracle    basis                 used in                                               note\n----------------  -----------  --------------------  ----------------------------------------------------  ----\n$setWindowFields  unsupported  measured in this lab  demos/d6-sql/queries.mjs                              \"Aggregate stage $setWindowFields not supported\". D6 ranks with $group + $topN instead.\n$lookup           caveat       compat-matrix.md      demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  The let field raises an error; a localField that is missing from an input document or holds an array raises an error.\n$rank             caveat       measured in this lab  demos/d6-sql/queries.mjs                              Only runs inside $setWindowFields, which is not supported. MongoDB's $rank also takes one sort key only.\n$add              supported    measured in this lab  demos/d6-sql/queries.mjs\n$arrayElemAt      supported    measured in this lab  demos/d5-topn/variants.mjs\n$cond             supported    measured in this lab  demos/d6-sql/queries.mjs\n$eq               supported    measured in this lab  demos/d6-sql/queries.mjs\n$first            supported    measured in this lab  demos/d6-sql/queries.mjs\n$group            supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$gte              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$in               supported    measured in this lab  demos/d5-topn/variants.mjs\n$inc              supported    measured in this lab  demos/d5-topn/variants.mjs                            The order service and the Top-N counters use it in every demo.\n$limit            supported    measured in this lab  demos/d5-topn/variants.mjs\n$lt               supported    measured in this lab  demos/d6-sql/queries.mjs\n$lte              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$match            supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$multiply         supported    measured in this lab  demos/d6-sql/queries.mjs\n$ne               supported    measured in this lab  demos/d5-topn/variants.mjs\n$project          supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$push             supported    measured in this lab  demos/d5-topn/variants.mjs                            With $each, $sort and $slice (the Top-N array).\n$set              supported    measured in this lab  demos/d6-sql/queries.mjs                              The order service's update and the D6 pipeline stage both run.\n$setOnInsert      supported    not listed            demos/d5-topn/variants.mjs                            Not in the matrix (it says full CRUD and most stages work): prove it on the target.\n$sort             supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  As a $push modifier and as a pipeline stage.\n$sql              supported    compat-matrix.md      demos/d6-sql/queries.mjs                              Oracle-only stage: SQL inside the pipeline (MongoDB itself has no such stage).\n$sum              supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs\n$top              supported    measured in this lab  demos/d6-sql/queries.mjs\n$topN             supported    measured in this lab  demos/d6-sql/queries.mjs                              The portable rank in D6.\n$unwind           supported    measured in this lab  demos/d5-topn/variants.mjs, demos/d6-sql/queries.mjs  Including includeArrayIndex."
       }
     },
+    "profile-on": {
+      "at": "2026-11-09T13:41:58.378Z",
+      "result": {
+        "ok": true,
+        "summary": "profiling level 2 on telco: every operation is recorded in system.profile"
+      }
+    },
+    "capture": {
+      "at": "2026-11-09T13:42:05.556Z",
+      "result": {
+        "ok": true,
+        "summary": "profiler: 184 operations. Order service: 9 operators, 2 the code scan missed ($gte, $lt: built at run time). Reporting script (stand-in): 8 operators, 6 that no app code uses ($group, $limit, $lookup, $match, $sum, $unwind). Profiling off, traffic undone",
+        "panes": {
+          "left": [
+            {
+              "operator": "$lookup",
+              "on Oracle": "caveat",
+              "client": "report (stand-in)",
+              "in code scan": "no",
+              "note": "The let field raises an error; a localField that is missing from an input document or holds an array raises an error."
+            },
+            {
+              "operator": "$each",
+              "on Oracle": "supported",
+              "client": "order-service",
+              "in code scan": "yes",
+              "note": "Inside $push."
+            },
+            {
+              "operator": "$group",
+              "on Oracle": "supported",
+              "client": "report (stand-in)",
+              "in code scan": "no",
+              "note": ""
+            },
+            {
+              "operator": "$gte",
+              "on Oracle": "supported",
+              "client": "report (stand-in), order-service",
+              "in code scan": "no",
+              "note": ""
+            },
+            {
+              "operator": "$in",
+              "on Oracle": "supported",
+              "client": "order-service",
+              "in code scan": "yes",
+              "note": ""
+            },
+            {
+              "operator": "$inc",
+              "on Oracle": "supported",
+              "client": "order-service",
+              "in code scan": "yes",
+              "note": "The order service and the Top-N counters use it in every demo."
+            },
+            {
+              "operator": "$limit",
+              "on Oracle": "supported",
+              "client": "report (stand-in)",
+              "in code scan": "no",
+              "note": ""
+            },
+            {
+              "operator": "$lt",
+              "on Oracle": "supported",
+              "client": "order-service",
+              "in code scan": "no",
+              "note": ""
+            },
+            {
+              "operator": "$match",
+              "on Oracle": "supported",
+              "client": "report (stand-in)",
+              "in code scan": "no",
+              "note": ""
+            },
+            {
+              "operator": "$push",
+              "on Oracle": "supported",
+              "client": "order-service",
+              "in code scan": "yes",
+              "note": "With $each, $sort and $slice (the Top-N array)."
+            },
+            {
+              "operator": "$set",
+              "on Oracle": "supported",
+              "client": "order-service",
+              "in code scan": "yes",
+              "note": "The order service's update and the D6 pipeline stage both run."
+            },
+            {
+              "operator": "$slice",
+              "on Oracle": "supported",
+              "client": "order-service",
+              "in code scan": "yes",
+              "note": "Inside $push: keeps the Top 10."
+            },
+            {
+              "operator": "$sort",
+              "on Oracle": "supported",
+              "client": "report (stand-in), order-service",
+              "in code scan": "yes",
+              "note": "As a $push modifier and as a pipeline stage."
+            },
+            {
+              "operator": "$sum",
+              "on Oracle": "supported",
+              "client": "report (stand-in)",
+              "in code scan": "no",
+              "note": ""
+            },
+            {
+              "operator": "$unwind",
+              "on Oracle": "supported",
+              "client": "report (stand-in)",
+              "in code scan": "no",
+              "note": "Including includeArrayIndex."
+            }
+          ],
+          "right": [
+            {
+              "operator": "$ne",
+              "used in": "app/store.mjs"
+            }
+          ]
+        },
+        "labels": {
+          "left": "Seen by the profiler",
+          "right": "In the code, not seen in this run"
+        },
+        "metrics": {
+          "operations": 184,
+          "operators": 15,
+          "missedByScan": 2,
+          "reportOnly": 6,
+          "ordersPlaced": 20,
+          "statusUpdates": 8,
+          "reportRows": 20
+        },
+        "detail": "Profiler capture (the mongoProfileExport.sh method): 20 orders and 8 status updates\nthrough the order service (appName order-service), reads back, one device swap, and one aggregate from\nnightly-report (Stand-in for a reporting script). Profiling is off again; the orders, their events and\nregionTopDevices are back as they were.\n\noperator  on Oracle  basis                 used in                        note\n--------  ---------  --------------------  -----------------------------  ----\n$lookup   caveat     compat-matrix.md      nightly-report                 The let field raises an error; a localField that is missing from an input document or holds an array raises an error.\n$each     supported  measured in this lab  order-service                  Inside $push.\n$group    supported  measured in this lab  nightly-report\n$gte      supported  measured in this lab  nightly-report, order-service\n$in       supported  measured in this lab  order-service\n$inc      supported  measured in this lab  order-service                  The order service and the Top-N counters use it in every demo.\n$limit    supported  measured in this lab  nightly-report\n$lt       supported  measured in this lab  order-service\n$match    supported  measured in this lab  nightly-report\n$push     supported  measured in this lab  order-service                  With $each, $sort and $slice (the Top-N array).\n$set      supported  measured in this lab  order-service                  The order service's update and the D6 pipeline stage both run.\n$slice    supported  measured in this lab  order-service                  Inside $push: keeps the Top 10.\n$sort     supported  measured in this lab  nightly-report, order-service  As a $push modifier and as a pipeline stage.\n$sum      supported  measured in this lab  nightly-report\n$unwind   supported  measured in this lab  nightly-report                 Including includeArrayIndex."
+      }
+    },
     "census": {
-      "at": "2026-11-04T21:59:23.158Z",
+      "at": "2026-11-09T13:42:05.736Z",
       "result": {
         "ok": true,
         "summary": "60 fields in 8 collections, 8 landmines: catalog.price, catalog.skuPattern, orders.lines, orders.lines.price, orders.total, carts.items, orderEvents.ts, regionTopDevices.top",

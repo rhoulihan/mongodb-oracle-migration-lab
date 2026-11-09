@@ -7,6 +7,12 @@
 //           the reference matrix plus this lab's own measured findings). A
 //           second table covers the pipelines the audience meets later in D5
 //           and D6.
+//   profile-on  (terminal) Profiling level 2 on the source database, the way
+//           mongotools' mongoProfileExport.sh does it.
+//   capture The operators the server actually ran: real order-service traffic
+//           and a stand-in reporting script, read back from system.profile,
+//           classified with the same matrix, and compared with the code scan
+//           (profile.mjs). Profiling goes off and the traffic is undone.
 //   census  The BSON types per field on the MongoDB source, with the types
 //           that change meaning on Oracle flagged as landmines: regex,
 //           Timestamp, Decimal128, and arrays (where $type
@@ -15,11 +21,13 @@
 // No advisor step: Oracle's MongoDB Compatibility Advisor does not run
 // offline inside this stack (docs/spikes/d1-advisor.md).
 //
-// D1 reads only. Its starting state is a generated MongoDB source; setup
-// checks for it and reset has nothing to undo.
+// D1 leaves the source as it found it. Its starting state is a generated
+// MongoDB source with profiling off; setup checks for it, and reset turns
+// profiling off and drops system.profile.
 import { COLLECTIONS } from '../../oracle/prep.mjs';
 import { typeCensus } from '../d3-dump-restore/typediff.mjs';
 import { classify, formatOperators, loadMatrix, rowsOf, scanOperators } from './opscan.mjs';
+import { APP_NAME, capture, extractOperators, PROFILE_ON_CMD, profilerLevel, profilerOff, REPORT_LABEL, REPORT_NAME } from './profile.mjs';
 
 export const APP_GLOBS = ['app/**/*.mjs'];
 export const DEMO_GLOBS = ['demos/d5-topn/variants.mjs', 'demos/d6-sql/queries.mjs'];
@@ -36,6 +44,21 @@ async function sourceReady(ctx) {
 
 async function startingState(ctx) {
   if (!(await sourceReady(ctx))) throw new Error(EMPTY_HINT);
+  await profilerOff(await ctx.mongoSrc());
+}
+
+const RESET = 'run ./lab.sh reset d1';
+
+/** The capture's operators, classified, with the clients that sent each and whether the code scan has it. */
+function captureRows(ops, codeOps, matrix) {
+  const c = classify(ops.map((o) => ({ op: o.op, files: o.clients })), matrix);
+  return rowsOf(c).map((r) => ({
+    operator: r.op,
+    'on Oracle': r.status,
+    client: r.files.map((f) => (f === REPORT_NAME ? 'report (stand-in)' : f)).join(', '),
+    'in code scan': codeOps.has(r.op) ? 'yes' : 'no',
+    note: r.note,
+  }));
 }
 
 const counts = (c) => `${c.unsupported.length} unsupported, ${c.caveat.length} caveat, ${c.supported.length} supported`;
@@ -74,7 +97,7 @@ export default {
   id: 'd1',
   title: 'Compatibility check and type census',
   setup: startingState,
-  async reset() {},
+  async reset(ctx) { await profilerOff(await ctx.mongoSrc()); },
   steps: [
     {
       id: 'scan',
@@ -103,6 +126,71 @@ export default {
             '',
             `The demo pipelines you will see in D5 and D6 (${DEMO_GLOBS.join(', ')})`,
             formatOperators(demo),
+          ].join('\n'),
+        };
+      },
+    },
+    {
+      id: 'profile-on',
+      title: 'Turn on the profiler (level 2) on the MongoDB source',
+      lane: 'terminal',
+      command: PROFILE_ON_CMD,
+      async run(ctx) {
+        await (await ctx.mongoSrc()).command({ profile: 2 });
+        return { ok: true, summary: 'profiling level 2 on telco: every operation is recorded in system.profile' };
+      },
+      async verify(ctx) {
+        const was = await profilerLevel(await ctx.mongoSrc());
+        return was === 2
+          ? { ok: true, summary: 'profiling level 2 on telco: every operation is recorded in system.profile' }
+          : { ok: false, summary: `profiling level is ${was}, not 2: run ${PROFILE_ON_CMD}` };
+      },
+    },
+    {
+      id: 'capture',
+      title: 'Capture live traffic: what the server actually runs',
+      lane: 'console',
+      async run(ctx) {
+        let r;
+        try {
+          r = await capture(ctx);
+        } catch (err) {
+          return { ok: false, summary: `${err.message}` };
+        }
+        if (r.failed.length) return { ok: false, summary: `${r.failed.length} app calls failed (${r.failed[0]}): ${RESET}` };
+        const matrix = loadMatrix();
+        const code = await scanOperators(APP_GLOBS);
+        const codeOps = new Set(code.map((o) => o.op));
+        const ops = extractOperators(r.docs);
+        const seen = new Set(ops.map((o) => o.op));
+        const rows = captureRows(ops, codeOps, matrix);
+        const unused = code.filter((o) => !seen.has(o.op)).map((o) => ({ operator: o.op, 'used in': o.files.join(', ') }));
+        const clients = new Set(ops.flatMap((o) => o.clients));
+        const by = (name) => ops.filter((o) => o.clients.includes(name)).map((o) => o.op);
+        const appOps = by(APP_NAME), reportOps = by(REPORT_NAME);
+        // Operators the order service sent that the static scan did not find:
+        // query documents built at run time (store.mjs: placedAt.$gte = from).
+        const missed = appOps.filter((op) => !codeOps.has(op));
+        const reportOnly = reportOps.filter((op) => !codeOps.has(op) && !appOps.includes(op));
+        return {
+          ok: clients.has(APP_NAME) && clients.has(REPORT_NAME) && appOps.length > 0,
+          summary: `profiler: ${r.docs.length} operations. Order service: ${appOps.length} operators, ` +
+            (missed.length ? `${missed.length} the code scan missed (${missed.join(', ')}: built at run time)` : 'all in the code scan') +
+            `. Reporting script (stand-in): ${reportOps.length} operators, ${reportOnly.length} that no app code uses` +
+            (reportOnly.length ? ` (${reportOnly.join(', ')})` : '') + '. Profiling off, traffic undone',
+          panes: { left: rows, right: unused.length ? unused : 'every operator in the code ran' },
+          labels: { left: 'Seen by the profiler', right: 'In the code, not seen in this run' },
+          metrics: {
+            operations: r.docs.length, operators: ops.length, missedByScan: missed.length, reportOnly: reportOnly.length,
+            ordersPlaced: r.placed, statusUpdates: r.updated, reportRows: r.reportRows,
+          },
+          detail: [
+            `Profiler capture (the mongoProfileExport.sh method): ${r.placed} orders and ${r.updated} status updates`,
+            `through the order service (appName ${APP_NAME}), reads back, one device swap, and one aggregate from`,
+            `${REPORT_NAME} (${REPORT_LABEL}). Profiling is off again; the orders, their events and`,
+            'regionTopDevices are back as they were.',
+            '',
+            formatOperators(classify(ops.map((o) => ({ op: o.op, files: o.clients })), matrix)),
           ].join('\n'),
         };
       },

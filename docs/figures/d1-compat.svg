@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="390" viewBox="0 0 960 390" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="550" viewBox="0 0 960 550" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
 <defs><marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker></defs>
 <rect width="100%" height="100%" fill="#ffffff"/>
 <text x="24" y="36.0" font-size="18" fill="#C74634" font-weight="700">Demo 1: will it run, and will the data come across?</text>
-<text x="24" y="58.0" font-size="12.5" fill="#5b6570">Two read-only checks against the source, before anything moves.</text>
-<text x="36" y="90.0" font-size="12" fill="#C74634" font-weight="700">Will the app's queries run on the Oracle API for MongoDB?</text>
+<text x="24" y="58.0" font-size="12.5" fill="#5b6570">Three checks against the source, before anything moves. The source ends as it started.</text>
+<text x="36" y="90.0" font-size="12" fill="#C74634" font-weight="700">What does the app's code use, and will it run on the Oracle API for MongoDB?</text>
 <rect x="36" y="102" width="250" height="108" rx="6" fill="#ffffff" stroke="#334155" stroke-width="1.6"/>
 <rect x="36" y="102" width="5" height="108" rx="2" fill="#334155"/>
 <text x="52" y="129.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Order service + pipelines</text>
@@ -23,26 +23,47 @@
 <rect x="844" y="112" width="72" height="26" rx="13" fill="#fdf6f5" stroke="#C74634" stroke-width="1.4"/>
 <text x="880.0" y="129.5" font-size="10" fill="#C74634" font-weight="700" text-anchor="middle">unsupported</text>
 <text x="690" y="160.0" font-size="11.5" fill="#1a1a1a">Order service: 8 of 8 supported</text>
-<text x="690" y="177.0" font-size="11.5" fill="#1a1a1a">Demo pipelines: 21 supported,</text>
+<text x="690" y="177.0" font-size="11.5" fill="#1a1a1a">Demo pipelines: 25 supported,</text>
 <text x="690" y="194.0" font-size="11.5" fill="#1a1a1a">2 caveat, 1 unsupported</text>
-<text x="36" y="250.0" font-size="12" fill="#C74634" font-weight="700">Will the data come across as it is?</text>
+<text x="36" y="250.0" font-size="12" fill="#C74634" font-weight="700">What does the server actually run, from every client?</text>
 <rect x="36" y="262" width="250" height="108" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
 <rect x="36" y="262" width="5" height="108" rx="2" fill="#16a34a"/>
-<text x="52" y="289.0" font-size="13.5" fill="#1a1a1a" font-weight="700">MongoDB source</text>
-<text x="52" y="312.0" font-size="11.5" fill="#5b6570">8 collections, database telco</text>
+<text x="52" y="289.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Live traffic, profiler on</text>
+<text x="52" y="312.0" font-size="11" fill="#5b6570">the order service over HTTP and a</text>
+<text x="52" y="327.9" font-size="11" fill="#5b6570">stand-in reporting script;</text>
+<text x="52" y="343.9" font-size="11" fill="#5b6570">db.setProfilingLevel(2)</text>
 <rect x="355" y="262" width="250" height="108" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
 <rect x="355" y="262" width="5" height="108" rx="2" fill="#2563eb"/>
-<text x="371" y="289.0" font-size="13.5" fill="#1a1a1a" font-weight="700">BSON type census</text>
-<text x="371" y="312.0" font-size="11.5" fill="#5b6570">the types seen in every field</text>
-<text x="371" y="328.7" font-size="11.5" fill="#5b6570">of every collection</text>
-<rect x="674" y="262" width="250" height="108" rx="6" fill="#ffffff" stroke="#C74634" stroke-width="1.6"/>
-<rect x="674" y="262" width="5" height="108" rx="2" fill="#C74634"/>
-<text x="690" y="289.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Landmines flagged</text>
-<text x="690" y="312.0" font-size="11" fill="#5b6570">regex (catalog.skuPattern), Timestamp,</text>
-<text x="690" y="327.9" font-size="11" fill="#5b6570">Decimal128 trailing zeros, and arrays:</text>
-<text x="690" y="343.9" font-size="11" fill="#5b6570">$type does not match their elements</text>
+<text x="371" y="289.0" font-size="13.5" fill="#1a1a1a" font-weight="700">system.profile</text>
+<text x="371" y="312.0" font-size="11" fill="#5b6570">operators per client, same matrix;</text>
+<text x="371" y="327.9" font-size="11" fill="#5b6570">then profiling off and the</text>
+<text x="371" y="343.9" font-size="11" fill="#5b6570">traffic undone</text>
+<rect x="674" y="262" width="250" height="108" rx="6" fill="#ffffff" stroke="#d97706" stroke-width="1.6"/>
+<rect x="674" y="262" width="5" height="108" rx="2" fill="#d97706"/>
+<text x="690" y="289.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Beyond the code scan</text>
+<text x="690" y="312.0" font-size="11" fill="#5b6570">$gte, $lt: built at run time</text>
+<text x="690" y="327.9" font-size="11" fill="#5b6570">$lookup (caveat), $group, $unwind:</text>
+<text x="690" y="343.9" font-size="11" fill="#5b6570">only the report sends them</text>
+<text x="36" y="410.0" font-size="12" fill="#C74634" font-weight="700">Will the data come across as it is?</text>
+<rect x="36" y="422" width="250" height="108" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.6"/>
+<rect x="36" y="422" width="5" height="108" rx="2" fill="#16a34a"/>
+<text x="52" y="449.0" font-size="13.5" fill="#1a1a1a" font-weight="700">MongoDB source</text>
+<text x="52" y="472.0" font-size="11.5" fill="#5b6570">8 collections, database telco</text>
+<rect x="355" y="422" width="250" height="108" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="1.6"/>
+<rect x="355" y="422" width="5" height="108" rx="2" fill="#2563eb"/>
+<text x="371" y="449.0" font-size="13.5" fill="#1a1a1a" font-weight="700">BSON type census</text>
+<text x="371" y="472.0" font-size="11.5" fill="#5b6570">the types seen in every field</text>
+<text x="371" y="488.7" font-size="11.5" fill="#5b6570">of every collection</text>
+<rect x="674" y="422" width="250" height="108" rx="6" fill="#ffffff" stroke="#C74634" stroke-width="1.6"/>
+<rect x="674" y="422" width="5" height="108" rx="2" fill="#C74634"/>
+<text x="690" y="449.0" font-size="13.5" fill="#1a1a1a" font-weight="700">Landmines flagged</text>
+<text x="690" y="472.0" font-size="11" fill="#5b6570">regex (catalog.skuPattern), Timestamp,</text>
+<text x="690" y="487.9" font-size="11" fill="#5b6570">Decimal128 trailing zeros, and arrays:</text>
+<text x="690" y="503.9" font-size="11" fill="#5b6570">$type does not match their elements</text>
 <path d="M286,156 L355,156" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
 <path d="M605,156 L674,156" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
 <path d="M286,316 L355,316" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
 <path d="M605,316 L674,316" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M286,476 L355,476" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
+<path d="M605,476 L674,476" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#ar)"/>
 </svg>

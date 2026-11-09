@@ -1,0 +1,3360 @@
+[
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S001155"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0059",
+      "SKU-PLN-0035"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 249,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R04"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R04",
+    "lines.sku": "SKU-DEV-0059"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 250,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S002414"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0055",
+      "SKU-PLN-0049"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 251,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R02"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R02",
+    "lines.sku": "SKU-DEV-0055"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 252,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S001825"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0103",
+      "SKU-PLN-0048"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 253,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R06"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R06",
+    "lines.sku": "SKU-DEV-0103"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 254,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S002334"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0046",
+      "SKU-PLN-0031"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 255,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R08"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R08",
+    "lines.sku": "SKU-DEV-0046"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 256,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S002250"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0037",
+      "SKU-PLN-0014"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 257,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R05"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": "R05",
+    "top.sku": "SKU-DEV-0037"
+   },
+   "u": {
+    "$inc": {
+     "top.$.units": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": "R05"
+   },
+   "u": {
+    "$push": {
+     "top": {
+      "$each": [],
+      "$sort": {
+       "units": -1,
+       "sku": 1
+      },
+      "$slice": 10
+     }
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 260,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S004695"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0050",
+      "SKU-PLN-0024"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 261,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R06"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R06",
+    "lines.sku": "SKU-DEV-0050"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "getmore",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "getMore": 7640262652849732000,
+   "collection": "orders",
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 262,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S004828"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0022",
+      "SKU-PLN-0032"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 263,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R07"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R07",
+    "lines.sku": "SKU-DEV-0022"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 264,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S002985"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0063",
+      "SKU-PLN-0031"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 265,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R07"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R07",
+    "lines.sku": "SKU-DEV-0063"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "getmore",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "getMore": 6387953044184217000,
+   "collection": "orders",
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 266,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S003415"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0109",
+      "SKU-PLN-0056"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 267,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R03"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R03",
+    "lines.sku": "SKU-DEV-0109"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 268,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S001606"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0115",
+      "SKU-PLN-0037"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 269,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R04"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R04",
+    "lines.sku": "SKU-DEV-0115"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 270,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S002787"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0045",
+      "SKU-PLN-0016"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 271,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R05"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R05",
+    "lines.sku": "SKU-DEV-0045"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "getmore",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "getMore": 4613253035903563000,
+   "collection": "orders",
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 272,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S003608"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0088",
+      "SKU-PLN-0014"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 273,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R05"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R05",
+    "lines.sku": "SKU-DEV-0088"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 274,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S000319"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0033",
+      "SKU-PLN-0033"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 275,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R05"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": "R05",
+    "top.sku": "SKU-DEV-0033"
+   },
+   "u": {
+    "$inc": {
+     "top.$.units": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": "R05"
+   },
+   "u": {
+    "$push": {
+     "top": {
+      "$each": [],
+      "$sort": {
+       "units": -1,
+       "sku": 1
+      },
+      "$slice": 10
+     }
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 278,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S001679"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0094",
+      "SKU-PLN-0012"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 279,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R02"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R02",
+    "lines.sku": "SKU-DEV-0094"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 280,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S002031"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0119",
+      "SKU-PLN-0060"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 281,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R01"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R01",
+    "lines.sku": "SKU-DEV-0119"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 282,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S001442"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0076",
+      "SKU-PLN-0019"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 283,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R06"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R06",
+    "lines.sku": "SKU-DEV-0076"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 284,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S003721"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0034",
+      "SKU-PLN-0011"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 285,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R03"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R03",
+    "lines.sku": "SKU-DEV-0034"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "getmore",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "getMore": 2538041991610156500,
+   "collection": "orders",
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 286,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S003631"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0019",
+      "SKU-PLN-0040"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 287,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R07"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R07",
+    "lines.sku": "SKU-DEV-0019"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 288,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S000206"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0037",
+      "SKU-PLN-0029"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 289,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R04"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R04",
+    "lines.sku": "SKU-DEV-0037"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "getmore",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "getMore": 1544096088200594400,
+   "collection": "orders",
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 290,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.subscribers",
+  "appName": "order-service",
+  "command": {
+   "find": "subscribers",
+   "filter": {
+    "_id": "S000646"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0106",
+      "SKU-PLN-0024"
+     ]
+    }
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "insert": "orders",
+   "ordered": true,
+   "txnNumber": 291,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R06"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R06",
+    "lines.sku": "SKU-DEV-0106"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 292,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca671ce875694a3d9451"
+    }
+   },
+   "projection": {
+    "region": 1
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": {
+     "$oid": "6af1ca671ce875694a3d9451"
+    }
+   },
+   "u": {
+    "$set": {
+     "status": "provisioned"
+    },
+    "$inc": {
+     "version": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 294,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca671ce875694a3d9451"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9453"
+    }
+   },
+   "projection": {
+    "region": 1
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9453"
+    }
+   },
+   "u": {
+    "$set": {
+     "status": "provisioned"
+    },
+    "$inc": {
+     "version": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 296,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9453"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9455"
+    }
+   },
+   "projection": {
+    "region": 1
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9455"
+    }
+   },
+   "u": {
+    "$set": {
+     "status": "provisioned"
+    },
+    "$inc": {
+     "version": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 298,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9455"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9457"
+    }
+   },
+   "projection": {
+    "region": 1
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9457"
+    }
+   },
+   "u": {
+    "$set": {
+     "status": "provisioned"
+    },
+    "$inc": {
+     "version": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 300,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9457"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9459"
+    }
+   },
+   "projection": {
+    "region": 1
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9459"
+    }
+   },
+   "u": {
+    "$set": {
+     "status": "provisioned"
+    },
+    "$inc": {
+     "version": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 302,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9459"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca691ce875694a3d945b"
+    }
+   },
+   "projection": {
+    "region": 1
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": {
+     "$oid": "6af1ca691ce875694a3d945b"
+    }
+   },
+   "u": {
+    "$set": {
+     "status": "provisioned"
+    },
+    "$inc": {
+     "version": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 304,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca691ce875694a3d945b"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca691ce875694a3d945d"
+    }
+   },
+   "projection": {
+    "region": 1
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": {
+     "$oid": "6af1ca691ce875694a3d945d"
+    }
+   },
+   "u": {
+    "$set": {
+     "status": "provisioned"
+    },
+    "$inc": {
+     "version": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 306,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca691ce875694a3d945d"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca691ce875694a3d945f"
+    }
+   },
+   "projection": {
+    "region": 1
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": {
+     "$oid": "6af1ca691ce875694a3d945f"
+    }
+   },
+   "u": {
+    "$set": {
+     "status": "provisioned"
+    },
+    "$inc": {
+     "version": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "insert",
+  "ns": "telco.orderEvents",
+  "appName": "order-service",
+  "command": {
+   "insert": "orderEvents",
+   "ordered": true,
+   "txnNumber": 308,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca691ce875694a3d945f"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca671ce875694a3d9451"
+    }
+   },
+   "projection": {
+    "region": 1
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca671ce875694a3d9451"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": "SKU-DEV-0001",
+    "kind": "device"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": {
+     "$oid": "6af1ca671ce875694a3d9451"
+    },
+    "lines.sku": "SKU-DEV-0059"
+   },
+   "u": {
+    "$set": {
+     "lines.$.sku": "SKU-DEV-0001",
+     "lines.$.price": {
+      "$numberDecimal": "453.99"
+     },
+     "total": {
+      "$numberDecimal": "926.98"
+     }
+    },
+    "$inc": {
+     "version": 1
+    }
+   },
+   "multi": false,
+   "upsert": false
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "region": "R04"
+   },
+   "projection": {
+    "lines": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "getmore",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "getMore": 1124488295499094000,
+   "collection": "orders",
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.catalog",
+  "appName": "order-service",
+  "command": {
+   "find": "catalog",
+   "filter": {
+    "_id": {
+     "$in": [
+      "SKU-DEV-0022",
+      "SKU-DEV-0023",
+      "SKU-DEV-0024",
+      "SKU-DEV-0025",
+      "SKU-DEV-0026",
+      "SKU-DEV-0027",
+      "SKU-DEV-0028",
+      "SKU-DEV-0030",
+      "SKU-DEV-0029",
+      "SKU-DEV-0031"
+     ]
+    }
+   },
+   "projection": {
+    "name": 1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "update",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "q": {
+    "_id": "R04"
+   },
+   "u": {
+    "$set": {
+     "top": [
+      {
+       "sku": "SKU-DEV-0022",
+       "name": "Motorola Moto G 64GB Green",
+       "units": 3231
+      },
+      {
+       "sku": "SKU-DEV-0023",
+       "name": "OnePlus Nord 256GB Blue",
+       "units": 1709
+      },
+      {
+       "sku": "SKU-DEV-0024",
+       "name": "Nokia XR21 128GB Green",
+       "units": 1205
+      },
+      {
+       "sku": "SKU-DEV-0025",
+       "name": "Apple iPad Air 128GB Blue",
+       "units": 945
+      },
+      {
+       "sku": "SKU-DEV-0026",
+       "name": "Samsung Galaxy A56 256GB Green",
+       "units": 739
+      },
+      {
+       "sku": "SKU-DEV-0027",
+       "name": "Google Pixel 10 128GB Blue",
+       "units": 645
+      },
+      {
+       "sku": "SKU-DEV-0028",
+       "name": "Motorola Moto G 256GB Blue",
+       "units": 531
+      },
+      {
+       "sku": "SKU-DEV-0030",
+       "name": "Nokia G42 64GB Silver",
+       "units": 469
+      },
+      {
+       "sku": "SKU-DEV-0029",
+       "name": "OnePlus Nord 64GB Black",
+       "units": 468
+      },
+      {
+       "sku": "SKU-DEV-0031",
+       "name": "Apple iPhone 17 512GB Black",
+       "units": 436
+      }
+     ]
+    }
+   },
+   "multi": false,
+   "upsert": true
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca671ce875694a3d9451"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca671ce875694a3d9451"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "subscriber.id": "S001155",
+    "placedAt": {
+     "$gte": {
+      "$date": "2025-11-09T13:28:14.605Z"
+     },
+     "$lt": {
+      "$date": "2026-11-10T13:28:14.606Z"
+     }
+    }
+   },
+   "sort": {
+    "placedAt": -1,
+    "_id": -1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R04"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9453"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "subscriber.id": "S002414",
+    "placedAt": {
+     "$gte": {
+      "$date": "2025-11-09T13:28:14.612Z"
+     },
+     "$lt": {
+      "$date": "2026-11-10T13:28:14.613Z"
+     }
+    }
+   },
+   "sort": {
+    "placedAt": -1,
+    "_id": -1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R02"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9455"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "subscriber.id": "S001825",
+    "placedAt": {
+     "$gte": {
+      "$date": "2025-11-09T13:28:14.620Z"
+     },
+     "$lt": {
+      "$date": "2026-11-10T13:28:14.620Z"
+     }
+    }
+   },
+   "sort": {
+    "placedAt": -1,
+    "_id": -1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R06"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9457"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "subscriber.id": "S002334",
+    "placedAt": {
+     "$gte": {
+      "$date": "2025-11-09T13:28:14.628Z"
+     },
+     "$lt": {
+      "$date": "2026-11-10T13:28:14.628Z"
+     }
+    }
+   },
+   "sort": {
+    "placedAt": -1,
+    "_id": -1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R08"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "_id": {
+     "$oid": "6af1ca681ce875694a3d9459"
+    }
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.orders",
+  "appName": "order-service",
+  "command": {
+   "find": "orders",
+   "filter": {
+    "subscriber.id": "S002250",
+    "placedAt": {
+     "$gte": {
+      "$date": "2025-11-09T13:28:14.636Z"
+     },
+     "$lt": {
+      "$date": "2026-11-10T13:28:14.636Z"
+     }
+    }
+   },
+   "sort": {
+    "placedAt": -1,
+    "_id": -1
+   },
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "query",
+  "ns": "telco.regionTopDevices",
+  "appName": "order-service",
+  "command": {
+   "find": "regionTopDevices",
+   "filter": {
+    "_id": "R05"
+   },
+   "limit": 1,
+   "singleBatch": true,
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ },
+ {
+  "op": "command",
+  "ns": "telco.orders",
+  "appName": "nightly-report",
+  "command": {
+   "aggregate": "orders",
+   "pipeline": [
+    {
+     "$match": {
+      "placedAt": {
+       "$gte": {
+        "$date": "2026-08-11T13:28:07.613Z"
+       }
+      }
+     }
+    },
+    {
+     "$unwind": "$lines"
+    },
+    {
+     "$match": {
+      "lines.kind": "device"
+     }
+    },
+    {
+     "$group": {
+      "_id": {
+       "region": "$region",
+       "sku": "$lines.sku"
+      },
+      "units": {
+       "$sum": "$lines.qty"
+      }
+     }
+    },
+    {
+     "$lookup": {
+      "from": "catalog",
+      "localField": "_id.sku",
+      "foreignField": "_id",
+      "as": "product"
+     }
+    },
+    {
+     "$sort": {
+      "units": -1
+     }
+    },
+    {
+     "$limit": 20
+    }
+   ],
+   "cursor": {},
+   "$readPreference": {
+    "mode": "primaryPreferred"
+   },
+   "$db": "telco"
+  }
+ }
+]

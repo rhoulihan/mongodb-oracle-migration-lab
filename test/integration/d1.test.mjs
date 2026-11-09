@@ -1,31 +1,59 @@
 // D1 against the live MongoDB source: setup, every step, then the findings
-// the session promises. D1 reads only; it changes nothing.
+// the session promises. D1 leaves the source as it found it: its profiler
+// capture undoes its own traffic and turns profiling off.
 import { afterAll, beforeAll, describe, expect, test } from './live.mjs';
 import { createContext, runDemo } from '../../demos/contract.mjs';
 import d1 from '../../demos/d1-compat/index.mjs';
+import { hashDocs } from '../../lib/compare.mjs';
 
-let ctx, results, ms;
+let ctx, results, ms, before, after;
+
+async function snapshot(src) {
+  return {
+    orders: await src.collection('orders').countDocuments(),
+    topDevices: hashDocs(await src.collection('regionTopDevices').find().sort({ _id: 1 }).toArray()),
+    profiling: (await src.command({ profile: -1 })).was,
+  };
+}
 const result = (id) => results[d1.steps.findIndex((s) => s.id === id)];
 
 beforeAll(async () => {
   ctx = createContext();
+  before = await snapshot(await ctx.mongoSrc());
   const t = Date.now();
   await d1.setup(ctx);
   results = await runDemo(d1, { ctx });
   ms = Date.now() - t;
-}, 120_000);
+  after = await snapshot(await ctx.mongoSrc());
+}, 180_000);
 
 afterAll(async () => { await ctx.close(); });
 
 describe('D1 compatibility check and type census', () => {
-  test('the steps are scan and census, both console steps (no offline advisor)', () => {
-    expect(d1.steps.map((s) => [s.id, s.lane])).toEqual([['scan', 'console'], ['census', 'console']]);
+  test('the steps: scan, profiler on (terminal), capture, census (no offline advisor)', () => {
+    expect(d1.steps.map((s) => [s.id, s.lane])).toEqual([
+      ['scan', 'console'], ['profile-on', 'terminal'], ['capture', 'console'], ['census', 'console'],
+    ]);
     expect(d1.steps[0].title).toMatch(/Scripted operator scan \(built for this lab\)/);
   });
 
-  test('every step passes, in under 30 s', () => {
+  test('every step passes, in under 60 s', () => {
     expect(results.map((r) => [r.ok, r.summary])).toEqual(d1.steps.map(() => [true, expect.any(String)]));
-    expect(ms).toBeLessThan(30_000);
+    expect(ms).toBeLessThan(60_000);
+  });
+
+  test('the source ends as it started: same orders, same Top-N, profiling off', () => {
+    expect(after).toEqual({ ...before, profiling: 0 });
+  });
+
+  test('capture: the profiler sees what the code scan misses', () => {
+    const r = result('capture');
+    const row = (op) => r.panes.left.find((x) => x.operator === op);
+    expect(row('$gte')['in code scan']).toBe('no');
+    expect(row('$gte').client).toMatch(/order-service/);
+    expect(row('$lookup')).toMatchObject({ 'on Oracle': 'caveat', client: 'report (stand-in)', 'in code scan': 'no' });
+    expect(row('$inc')).toMatchObject({ client: 'order-service', 'in code scan': 'yes' });
+    expect(r.summary).toMatch(/Profiling off, traffic undone/);
   });
 
   test('scan: the app operators are classified; $inc is supported', () => {

@@ -128,18 +128,26 @@ fault: no time goes on screen until the results are proven equal.
 
 ### D1: Compatibility check and type census
 
-Segment 1, slide 8 (clock 0:10, 3 min). Console only, read only.
+Segment 1, slide 8 (clock 0:10, 4 min). Leaves the source as it found it.
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
 | 1 | console | Scripted operator scan (built for this lab) | Operators sorted into supported, caveat and unsupported, for the app and for the D5/D6 pipelines. Say: not Oracle's advisor |
-| 2 | console | BSON type census on the MongoDB source | `!!` landmine rows: regex `skuPattern`, Timestamp `ts`, Decimal128, arrays |
+| 2 | terminal | `./lab.sh mongosh src --quiet --eval 'db.setProfilingLevel(2)'` | `{ was: 0, ... ok: 1 }`. Mark done: profiling level 2 on telco |
+| 3 | console | Capture live traffic: what the server actually runs | About 15 s. 184 operations. Order service: `$gte` and `$lt` the code scan missed (built at run time). Reporting script (a stand-in, say so): `$lookup` (caveat), `$group`, `$unwind`, ... that no app code uses. Profiling off, traffic undone |
+| 4 | console | BSON type census on the MongoDB source | `!!` landmine rows: regex `skuPattern`, Timestamp `ts`, Decimal128, arrays |
 
-Reset after: none.
+Say at step 3: this is the method of `mongoProfileExport.sh` in mongotools
+(the More tools slide). The code tells you what was written; the profiler
+tells you what runs, from every client. On a real estate, profile a
+secondary or a short window: level 2 has a cost.
+
+Reset after: none. The autopilot runs `./lab.sh reset d1` in the background
+anyway (profiling off), in case step 3 was skipped.
 
 ### D2: Age out
 
-Segment 2, slide 16 (clock 0:22, 4 min).
+Segment 2, slide 16 (clock 0:23, 4 min).
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
@@ -155,7 +163,7 @@ restore check fails.
 
 ### D3: Dump, restore, prove it
 
-Segment 3, slide 23 (clock 0:36, 4 min).
+Segment 3, slide 23 (clock 0:37, 4 min).
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
@@ -171,18 +179,21 @@ Reset after: none. D4's first step reloads Oracle from a fresh dump.
 
 ### D4: Live sync and cutover
 
-Segment 4, slide 30 (clock 0:50, 4 min). Say first: the replicator is a
+Segment 4, slide 30 (clock 0:51, 4 min). Say first: the replicator is a
 **stand-in for Oracle GoldenGate**, not GoldenGate.
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
 | 1 | console | Initial load: MongoDB copied to Oracle | About a minute: same orders count on both sides |
 | 2 | terminal | `./lab.sh repl fwd` | The log ends in `ready`. Mark done: forward replicator running |
-| 3 | console | Write to MongoDB through the app, watch the lag | About 20 s of steady writes (25/s). The lag stays live while they flow; read p50 and p95 off the summary (Mac: about 20 and 30 ms). Every new order lands on Oracle |
-| 4 | terminal | `./lab.sh repl stop && ./lab.sh app-uri oracle` | Drains to lag 0, stops; the app flips. Mark done: same counts |
+| 3 | console | Write to MongoDB through the app, watch the lag | About 20 s of steady writes (25/s). The lag stays live while they flow; read p50 and p95 off the summary (Mac: about 20 and 30 ms). Every new order lands on Oracle. MongoDB serverStatus: +900 inserts, +158 updates |
+| 4 | terminal | `./lab.sh repl stop && ./lab.sh app-uri oracle` | Drains to lag 0, stops; the app flips. Mark done: same counts, then 3 s of serverStatus on MongoDB: +0 inserts, +0 updates, "nothing still writes to blue" |
 | 5 | terminal | `./lab.sh repl rev` | `ready`. The first reverse lag can read about 49 s: those are Oracle's TTL deletes from the forward phase |
-| 6 | console | Write to Oracle through the app, watch it land in MongoDB | Every new order shows up on MongoDB |
+| 6 | console | Write to Oracle through the app, watch it land in MongoDB | Every new order shows up on MongoDB. MongoDB serverStatus: +392 updates, all from the reverse replicator |
 | 7 | console | No lost or duplicated writes: counts and hashes on both sides | Same count and sha-256 on both sides. Say: the hash is a fingerprint of every document and field, exact types, so one changed, lost or doubled write shows |
+
+Say at step 4: that's the `mongoserverStatus.sh` method from mongotools.
+Before you trust a cutover, watch the old side's write counters go flat.
 
 **Reset after: `./lab.sh reset d4`**, before anything else. It stops the
 replicator, drops the capture objects and points the app back at MongoDB.
@@ -192,7 +203,7 @@ orders to the source; `./lab.sh generate` puts that back.
 
 ### D5: Top-N counter, three ways
 
-Segment 5, slide 35 (clock 1:00, 4 min).
+Segment 5, slide 35 (clock 1:01, 4 min).
 
 | # | Lane | Do | Expect |
 |---|---|---|---|
@@ -207,10 +218,10 @@ If step 1 fails: `./lab.sh reset d5`. Reset after: none.
 
 ### D6: Pipeline vs $sql
 
-Segment 5, slide 39 (clock 1:08, 4 min).
+Segment 5, slide 39 (clock 1:09, 4 min).
 
 **Setup timing.** Click D6 step 1 right after D5's last step, and no later
-than clock 1:05. If D5 runs long, click **Skip to result** on its remaining
+than clock 1:06. If D5 runs long, click **Skip to result** on its remaining
 steps so D6 setup starts on time. If setup is still running when you reach
 slide 39, talk the `$setWindowFields` compatibility note (slide 39 notes)
 until it finishes. Measure the Mac's setup time at rehearsal (section 3).
@@ -233,7 +244,7 @@ demo. Reset after: none.
 
 ### D7: ETags, two agents, one order
 
-Segment 5, slide 44 (clock 1:15, 3 min). Terminal A on the left, B on the
+Segment 5, slide 44 (clock 1:16, 3 min). Terminal A on the left, B on the
 right.
 
 | # | Lane | Do | Expect |

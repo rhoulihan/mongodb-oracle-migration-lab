@@ -201,24 +201,28 @@ def drive_workflow():
 
 
 def d1_compat():
-    f = Fig("d1-compat", 390, "Demo 1: will it run, and will the data come across?",
-            "Two read-only checks against the source, before anything moves.")
+    f = Fig("d1-compat", 550, "Demo 1: will it run, and will the data come across?",
+            "Three checks against the source, before anything moves. The source ends as it started.")
     cols = [36, 355, 674]; cw = 250
-    f.text(36, 90, "Will the app's queries run on the Oracle API for MongoDB?", 12, RED, w=700)
+    f.text(36, 90, "What does the app's code use, and will it run on the Oracle API for MongoDB?", 12, RED, w=700)
     f.card(cols[0], 102, cw, 108, "Order service + pipelines", ["app/**/*.mjs and the D5 and", "D6 aggregation stages"], accent=SLATE)
     f.card(cols[1], 102, cw, 108, "Operator scan", ["lists every $ operator, looks it", "up in the compatibility matrix"], accent=BLUE)
     f.box(cols[2], 102, cw, 108, stroke=SLATE, accent=SLATE)
     f.pill(cols[2] + 14, 112, 72, "supported", GREEN, GREENSOFT, size=10)
     f.pill(cols[2] + 92, 112, 72, "caveat", AMBER, AMBERSOFT, size=10)
     f.pill(cols[2] + 170, 112, 72, "unsupported", RED, REDSOFT, size=10)
-    f.text(cols[2] + 16, 160, ["Order service: 8 of 8 supported", "Demo pipelines: 21 supported,", "2 caveat, 1 unsupported"], 11.5, INK, dy=17)
-    f.text(36, 250, "Will the data come across as it is?", 12, RED, w=700)
-    f.card(cols[0], 262, cw, 108, "MongoDB source", ["8 collections, database telco"], accent=GREEN)
-    f.card(cols[1], 262, cw, 108, "BSON type census", ["the types seen in every field", "of every collection"], accent=BLUE)
-    f.card(cols[2], 262, cw, 108, "Landmines flagged", ["regex (catalog.skuPattern), Timestamp,",
+    f.text(cols[2] + 16, 160, ["Order service: 8 of 8 supported", "Demo pipelines: 25 supported,", "2 caveat, 1 unsupported"], 11.5, INK, dy=17)
+    f.text(36, 250, "What does the server actually run, from every client?", 12, RED, w=700)
+    f.card(cols[0], 262, cw, 108, "Live traffic, profiler on", ["the order service over HTTP and a", "stand-in reporting script;", "db.setProfilingLevel(2)"], accent=GREEN, size=11)
+    f.card(cols[1], 262, cw, 108, "system.profile", ["operators per client, same matrix;", "then profiling off and the", "traffic undone"], accent=BLUE, size=11)
+    f.card(cols[2], 262, cw, 108, "Beyond the code scan", ["$gte, $lt: built at run time", "$lookup (caveat), $group, $unwind:", "only the report sends them"], accent=AMBER, size=11)
+    f.text(36, 410, "Will the data come across as it is?", 12, RED, w=700)
+    f.card(cols[0], 422, cw, 108, "MongoDB source", ["8 collections, database telco"], accent=GREEN)
+    f.card(cols[1], 422, cw, 108, "BSON type census", ["the types seen in every field", "of every collection"], accent=BLUE)
+    f.card(cols[2], 422, cw, 108, "Landmines flagged", ["regex (catalog.skuPattern), Timestamp,",
                                                         "Decimal128 trailing zeros, and arrays:",
                                                         "$type does not match their elements"], accent=RED, size=11)
-    for y in (156, 316):
+    for y in (156, 316, 476):
         f.path([(cols[0] + cw, y), (cols[1], y)], BLUE)
         f.path([(cols[1] + cw, y), (cols[2], y)], BLUE)
     f.save()

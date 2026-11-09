@@ -25,7 +25,9 @@ import { createStore } from './store.mjs';
 import { ageoutCutoff, makeRouter } from './router.mjs';
 
 // promoteLongs:false keeps Int64 fields (orders.version) as Long end to end.
-const newClient = (uri) => new MongoClient(uri, { promoteLongs: false, serverSelectionTimeoutMS: 5000 });
+// appName tags every operation in the MongoDB profiler (D1's capture step).
+export const APP_NAME = 'order-service';
+const newClient = (uri) => new MongoClient(uri, { appName: APP_NAME, promoteLongs: false, serverSelectionTimeoutMS: 5000 });
 
 /**
  * The live backend: its client(s) and store, replaceable at runtime. A spec

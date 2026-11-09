@@ -2,745 +2,751 @@
   "id": "d4",
   "steps": {
     "setup": {
-      "at": "2026-11-04T22:01:14.614Z",
+      "at": "2026-11-09T13:42:36.350Z",
       "result": {
         "ok": true,
-        "summary": "initial load done: 200000 orders on MongoDB and on Oracle; Oracle captures its own changes for the way back",
+        "summary": "initial load done: 200550 orders on MongoDB and on Oracle; Oracle captures its own changes for the way back",
         "metrics": {
-          "orders": 200000
+          "orders": 200550
         }
       }
     },
     "start-forward": {
-      "at": "2026-11-04T22:01:21.729Z",
+      "at": "2026-11-09T13:42:38.118Z",
       "result": {
         "ok": true,
-        "summary": "forward replicator running: 22 changes applied, lag 0 ms"
+        "summary": "forward replicator running: 21 changes applied, lag 0 ms"
       }
     },
     "write-blue": {
-      "at": "2026-11-04T22:01:47.451Z",
+      "at": "2026-11-09T13:42:59.866Z",
       "result": {
         "ok": true,
-        "summary": "400 new and 100 updated orders on MongoDB at 25 writes/s for 20 s, lag under load p50 24 ms, p95 41 ms, max 61 ms; 400 of the new orders are on Oracle, now caught up",
+        "summary": "400 new and 100 updated orders on MongoDB at 25 writes/s for 20 s, lag under load p50 31 ms, p95 43 ms, max 46 ms; 400 of the new orders are on Oracle, now caught up. MongoDB serverStatus: +900 inserts, +158 updates, +0 deletes",
         "metrics": {
           "placed": 400,
           "updated": 100,
           "landed": 400,
-          "lagP50Ms": 24,
-          "lagP95Ms": 41,
-          "lagMaxMs": 61,
-          "applied": 1102,
-          "writeMs": 19968
+          "mongoInserts": 900,
+          "mongoUpdates": 158,
+          "lagP50Ms": 31,
+          "lagP95Ms": 43,
+          "lagMaxMs": 46,
+          "applied": 1096,
+          "writeMs": 19974
         },
         "panes": {
           "left": [
             {
-              "t": 250,
+              "t": 251,
               "lagMs": 0,
-              "applied": 31
+              "applied": 21
             },
             {
               "t": 502,
-              "lagMs": 0,
-              "applied": 31
-            },
-            {
-              "t": 752,
-              "lagMs": 49,
-              "applied": 48
-            },
-            {
-              "t": 1003,
-              "lagMs": 30,
-              "applied": 64
-            },
-            {
-              "t": 1253,
-              "lagMs": 33,
-              "applied": 83
-            },
-            {
-              "t": 1504,
-              "lagMs": 33,
-              "applied": 100
-            },
-            {
-              "t": 1754,
-              "lagMs": 36,
-              "applied": 120
-            },
-            {
-              "t": 2004,
-              "lagMs": 36,
-              "applied": 120
-            },
-            {
-              "t": 2255,
-              "lagMs": 31,
-              "applied": 138
-            },
-            {
-              "t": 2507,
-              "lagMs": 39,
-              "applied": 155
-            },
-            {
-              "t": 2756,
-              "lagMs": 48,
-              "applied": 170
-            },
-            {
-              "t": 3005,
               "lagMs": 41,
-              "applied": 192
+              "applied": 38
             },
             {
-              "t": 3256,
-              "lagMs": 41,
-              "applied": 192
+              "t": 754,
+              "lagMs": 42,
+              "applied": 58
             },
             {
-              "t": 3506,
-              "lagMs": 33,
-              "applied": 210
+              "t": 1007,
+              "lagMs": 42,
+              "applied": 58
             },
             {
-              "t": 3758,
-              "lagMs": 31,
-              "applied": 228
-            },
-            {
-              "t": 4007,
+              "t": 1258,
               "lagMs": 32,
-              "applied": 245
+              "applied": 77
             },
             {
-              "t": 4258,
-              "lagMs": 28,
-              "applied": 260
+              "t": 1509,
+              "lagMs": 19,
+              "applied": 94
             },
             {
-              "t": 4509,
-              "lagMs": 28,
-              "applied": 276
+              "t": 1760,
+              "lagMs": 36,
+              "applied": 111
             },
             {
-              "t": 4761,
+              "t": 2009,
+              "lagMs": 33,
+              "applied": 131
+            },
+            {
+              "t": 2260,
+              "lagMs": 31,
+              "applied": 149
+            },
+            {
+              "t": 2512,
+              "lagMs": 31,
+              "applied": 149
+            },
+            {
+              "t": 2762,
+              "lagMs": 29,
+              "applied": 163
+            },
+            {
+              "t": 3012,
+              "lagMs": 33,
+              "applied": 181
+            },
+            {
+              "t": 3261,
+              "lagMs": 40,
+              "applied": 197
+            },
+            {
+              "t": 3512,
+              "lagMs": 19,
+              "applied": 217
+            },
+            {
+              "t": 3763,
               "lagMs": 27,
-              "applied": 290
+              "applied": 233
             },
             {
-              "t": 5013,
-              "lagMs": 23,
-              "applied": 304
+              "t": 4013,
+              "lagMs": 31,
+              "applied": 247
             },
             {
-              "t": 5264,
-              "lagMs": 23,
-              "applied": 304
+              "t": 4264,
+              "lagMs": 31,
+              "applied": 247
             },
             {
-              "t": 5514,
-              "lagMs": 26,
-              "applied": 320
-            },
-            {
-              "t": 5766,
-              "lagMs": 25,
-              "applied": 334
-            },
-            {
-              "t": 6015,
-              "lagMs": 23,
-              "applied": 348
-            },
-            {
-              "t": 6266,
-              "lagMs": 26,
-              "applied": 364
-            },
-            {
-              "t": 6517,
+              "t": 4515,
               "lagMs": 30,
-              "applied": 380
+              "applied": 265
             },
             {
-              "t": 6768,
-              "lagMs": 27,
-              "applied": 394
+              "t": 4766,
+              "lagMs": 19,
+              "applied": 279
             },
             {
-              "t": 7019,
-              "lagMs": 25,
-              "applied": 410
+              "t": 5016,
+              "lagMs": 29,
+              "applied": 293
             },
             {
-              "t": 7269,
+              "t": 5268,
               "lagMs": 24,
-              "applied": 424
+              "applied": 307
             },
             {
-              "t": 7521,
-              "lagMs": 24,
-              "applied": 424
+              "t": 5518,
+              "lagMs": 33,
+              "applied": 323
             },
             {
-              "t": 7770,
+              "t": 5769,
+              "lagMs": 29,
+              "applied": 340
+            },
+            {
+              "t": 6019,
               "lagMs": 22,
-              "applied": 440
+              "applied": 356
             },
             {
-              "t": 8021,
-              "lagMs": 23,
-              "applied": 454
+              "t": 6270,
+              "lagMs": 22,
+              "applied": 356
             },
             {
-              "t": 8271,
-              "lagMs": 23,
+              "t": 6521,
+              "lagMs": 31,
+              "applied": 372
+            },
+            {
+              "t": 6773,
+              "lagMs": 38,
+              "applied": 388
+            },
+            {
+              "t": 7023,
+              "lagMs": 34,
+              "applied": 406
+            },
+            {
+              "t": 7273,
+              "lagMs": 29,
+              "applied": 421
+            },
+            {
+              "t": 7524,
+              "lagMs": 29,
+              "applied": 421
+            },
+            {
+              "t": 7775,
+              "lagMs": 36,
+              "applied": 438
+            },
+            {
+              "t": 8026,
+              "lagMs": 31,
+              "applied": 453
+            },
+            {
+              "t": 8277,
+              "lagMs": 27,
               "applied": 468
             },
             {
-              "t": 8522,
-              "lagMs": 23,
-              "applied": 482
+              "t": 8527,
+              "lagMs": 30,
+              "applied": 484
             },
             {
-              "t": 8775,
-              "lagMs": 61,
-              "applied": 498
-            },
-            {
-              "t": 9024,
-              "lagMs": 31,
-              "applied": 515
-            },
-            {
-              "t": 9275,
+              "t": 8778,
               "lagMs": 29,
-              "applied": 533
+              "applied": 499
             },
             {
-              "t": 9525,
+              "t": 9027,
+              "lagMs": 34,
+              "applied": 514
+            },
+            {
+              "t": 9277,
+              "lagMs": 34,
+              "applied": 514
+            },
+            {
+              "t": 9527,
               "lagMs": 24,
-              "applied": 547
+              "applied": 532
             },
             {
-              "t": 9776,
-              "lagMs": 24,
-              "applied": 547
+              "t": 9778,
+              "lagMs": 26,
+              "applied": 546
             },
             {
-              "t": 10027,
-              "lagMs": 24,
-              "applied": 561
+              "t": 10028,
+              "lagMs": 25,
+              "applied": 560
             },
             {
-              "t": 10278,
-              "lagMs": 20,
-              "applied": 575
+              "t": 10280,
+              "lagMs": 29,
+              "applied": 574
             },
             {
               "t": 10531,
-              "lagMs": 24,
+              "lagMs": 22,
               "applied": 593
             },
             {
-              "t": 10783,
-              "lagMs": 19,
-              "applied": 607
+              "t": 10782,
+              "lagMs": 31,
+              "applied": 610
             },
             {
               "t": 11033,
-              "lagMs": 20,
-              "applied": 621
+              "lagMs": 31,
+              "applied": 610
             },
             {
-              "t": 11284,
-              "lagMs": 21,
-              "applied": 635
+              "t": 11285,
+              "lagMs": 35,
+              "applied": 625
             },
             {
               "t": 11536,
-              "lagMs": 23,
-              "applied": 649
+              "lagMs": 27,
+              "applied": 640
             },
             {
               "t": 11787,
-              "lagMs": 21,
-              "applied": 663
+              "lagMs": 43,
+              "applied": 655
             },
             {
-              "t": 12037,
-              "lagMs": 22,
-              "applied": 677
+              "t": 12036,
+              "lagMs": 38,
+              "applied": 671
             },
             {
-              "t": 12289,
-              "lagMs": 22,
-              "applied": 677
+              "t": 12286,
+              "lagMs": 17,
+              "applied": 687
             },
             {
-              "t": 12539,
-              "lagMs": 28,
-              "applied": 691
+              "t": 12536,
+              "lagMs": 17,
+              "applied": 687
             },
             {
-              "t": 12791,
-              "lagMs": 20,
-              "applied": 705
-            },
-            {
-              "t": 13043,
-              "lagMs": 19,
-              "applied": 719
-            },
-            {
-              "t": 13293,
-              "lagMs": 24,
-              "applied": 733
-            },
-            {
-              "t": 13547,
-              "lagMs": 21,
-              "applied": 747
-            },
-            {
-              "t": 13799,
-              "lagMs": 27,
-              "applied": 765
-            },
-            {
-              "t": 14051,
-              "lagMs": 22,
-              "applied": 781
-            },
-            {
-              "t": 14302,
-              "lagMs": 22,
-              "applied": 797
-            },
-            {
-              "t": 14553,
-              "lagMs": 22,
-              "applied": 797
-            },
-            {
-              "t": 14804,
-              "lagMs": 21,
-              "applied": 813
-            },
-            {
-              "t": 15055,
-              "lagMs": 20,
-              "applied": 827
-            },
-            {
-              "t": 15307,
-              "lagMs": 22,
-              "applied": 841
-            },
-            {
-              "t": 15558,
-              "lagMs": 21,
-              "applied": 855
-            },
-            {
-              "t": 15809,
-              "lagMs": 20,
-              "applied": 869
-            },
-            {
-              "t": 16060,
-              "lagMs": 31,
-              "applied": 885
-            },
-            {
-              "t": 16311,
-              "lagMs": 33,
-              "applied": 903
-            },
-            {
-              "t": 16562,
-              "lagMs": 33,
-              "applied": 903
-            },
-            {
-              "t": 16814,
-              "lagMs": 28,
-              "applied": 919
-            },
-            {
-              "t": 17065,
+              "t": 12787,
               "lagMs": 23,
-              "applied": 933
+              "applied": 701
             },
             {
-              "t": 17316,
-              "lagMs": 23,
-              "applied": 947
-            },
-            {
-              "t": 17566,
-              "lagMs": 20,
-              "applied": 961
-            },
-            {
-              "t": 17816,
-              "lagMs": 24,
-              "applied": 975
-            },
-            {
-              "t": 18068,
+              "t": 13037,
               "lagMs": 31,
-              "applied": 989
+              "applied": 715
             },
             {
-              "t": 18319,
-              "lagMs": 35,
-              "applied": 1003
+              "t": 13288,
+              "lagMs": 32,
+              "applied": 729
             },
             {
-              "t": 18570,
-              "lagMs": 35,
-              "applied": 1003
+              "t": 13538,
+              "lagMs": 37,
+              "applied": 743
             },
             {
-              "t": 18821,
+              "t": 13789,
               "lagMs": 26,
-              "applied": 1019
+              "applied": 759
             },
             {
-              "t": 19071,
+              "t": 14039,
+              "lagMs": 36,
+              "applied": 777
+            },
+            {
+              "t": 14290,
+              "lagMs": 34,
+              "applied": 792
+            },
+            {
+              "t": 14540,
+              "lagMs": 34,
+              "applied": 792
+            },
+            {
+              "t": 14791,
+              "lagMs": 31,
+              "applied": 809
+            },
+            {
+              "t": 15042,
+              "lagMs": 24,
+              "applied": 824
+            },
+            {
+              "t": 15293,
+              "lagMs": 16,
+              "applied": 839
+            },
+            {
+              "t": 15543,
+              "lagMs": 13,
+              "applied": 853
+            },
+            {
+              "t": 15794,
+              "lagMs": 35,
+              "applied": 873
+            },
+            {
+              "t": 16044,
+              "lagMs": 35,
+              "applied": 873
+            },
+            {
+              "t": 16294,
+              "lagMs": 35,
+              "applied": 891
+            },
+            {
+              "t": 16545,
+              "lagMs": 45,
+              "applied": 907
+            },
+            {
+              "t": 16797,
+              "lagMs": 35,
+              "applied": 923
+            },
+            {
+              "t": 17046,
+              "lagMs": 32,
+              "applied": 938
+            },
+            {
+              "t": 17296,
+              "lagMs": 32,
+              "applied": 938
+            },
+            {
+              "t": 17547,
+              "lagMs": 39,
+              "applied": 953
+            },
+            {
+              "t": 17797,
+              "lagMs": 42,
+              "applied": 969
+            },
+            {
+              "t": 18047,
+              "lagMs": 17,
+              "applied": 985
+            },
+            {
+              "t": 18300,
+              "lagMs": 34,
+              "applied": 999
+            },
+            {
+              "t": 18550,
               "lagMs": 27,
-              "applied": 1037
+              "applied": 1013
             },
             {
-              "t": 19322,
-              "lagMs": 25,
-              "applied": 1051
+              "t": 18800,
+              "lagMs": 41,
+              "applied": 1027
             },
             {
-              "t": 19572,
-              "lagMs": 24,
-              "applied": 1065
+              "t": 19050,
+              "lagMs": 41,
+              "applied": 1027
             },
             {
-              "t": 19822,
-              "lagMs": 22,
-              "applied": 1079
+              "t": 19303,
+              "lagMs": 44,
+              "applied": 1043
             },
             {
-              "t": 20073,
-              "lagMs": 24,
-              "applied": 1093
+              "t": 19553,
+              "lagMs": 42,
+              "applied": 1059
             },
             {
-              "t": 20324,
-              "lagMs": 121,
-              "applied": 1102
+              "t": 19804,
+              "lagMs": 46,
+              "applied": 1075
             },
             {
-              "t": 20574,
+              "t": 20055,
+              "lagMs": 46,
+              "applied": 1075
+            },
+            {
+              "t": 20306,
               "lagMs": 0,
-              "applied": 1102
+              "applied": 1092
             },
             {
-              "t": 20825,
+              "t": 20560,
               "lagMs": 0,
-              "applied": 1102
+              "applied": 1092
             },
             {
-              "t": 21077,
+              "t": 20809,
               "lagMs": 0,
-              "applied": 1102
+              "applied": 1096
+            },
+            {
+              "t": 21060,
+              "lagMs": 0,
+              "applied": 1096
+            },
+            {
+              "t": 21310,
+              "lagMs": 0,
+              "applied": 1096
+            },
+            {
+              "t": 21562,
+              "lagMs": 0,
+              "applied": 1096
             }
           ]
         },
-        "detail": "lag under load: 77 of 79 samples (every 250 ms) caught a change in flight\nlag over time: 0.3s 0ms, 1.3s 33ms, 2.3s 31ms, 3.3s 41ms, 4.3s 28ms, 5.3s 23ms, 6.3s 26ms, 7.3s 24ms, 8.3s 23ms, 9.3s 29ms, 10.3s 20ms, 11.3s 21ms, 12.3s 22ms, 13.3s 24ms, 14.3s 22ms, 15.3s 22ms, 16.3s 33ms, 17.3s 23ms, 18.3s 35ms, 19.3s 25ms, 20.3s 121ms"
+        "detail": "lag under load: 78 of 79 samples (every 250 ms) caught a change in flight\nlag over time: 0.3s 0ms, 1.3s 32ms, 2.3s 31ms, 3.3s 40ms, 4.3s 31ms, 5.3s 24ms, 6.3s 22ms, 7.3s 29ms, 8.3s 27ms, 9.3s 34ms, 10.3s 29ms, 11.3s 35ms, 12.3s 17ms, 13.3s 32ms, 14.3s 34ms, 15.3s 16ms, 16.3s 35ms, 17.3s 32ms, 18.3s 34ms, 19.3s 44ms, 20.3s 0ms, 21.3s 0ms"
       }
     },
     "cutover": {
-      "at": "2026-11-04T22:01:53.223Z",
+      "at": "2026-11-09T13:43:04.024Z",
       "result": {
         "ok": true,
-        "summary": "forward replicator stopped after 1109 changes; the app writes to Oracle; 200400 orders on both sides"
+        "summary": "forward replicator stopped after 1096 changes; the app writes to Oracle; 200950 orders on both sides. MongoDB serverStatus over 3 s: +0 inserts, +0 updates, +0 deletes: nothing still writes to blue",
+        "metrics": {
+          "orders": 200950,
+          "drainInserts": 0,
+          "drainUpdates": 0,
+          "drainDeletes": 0
+        }
       }
     },
     "start-reverse": {
-      "at": "2026-11-04T22:01:59.226Z",
+      "at": "2026-11-09T13:43:05.695Z",
       "result": {
         "ok": true,
         "summary": "reverse replicator running: 0 changes applied, lag 0 ms"
       }
     },
     "write-green": {
-      "at": "2026-11-04T22:02:15.885Z",
+      "at": "2026-11-09T13:43:17.172Z",
       "result": {
         "ok": true,
-        "summary": "150 new and 40 updated orders on Oracle at 19 writes/s for 10 s, lag under load p50 28 ms, p95 54 ms, max 55 ms; 150 of the new orders are back on MongoDB, now caught up",
+        "summary": "150 new and 40 updated orders on Oracle at 19 writes/s for 10 s, lag under load p50 22 ms, p95 68 ms, max 70 ms; 150 of the new orders are back on MongoDB, now caught up. MongoDB serverStatus: +0 inserts, +394 updates, +0 deletes, all from the reverse replicator",
         "metrics": {
           "placed": 150,
           "updated": 40,
           "landed": 150,
-          "lagP50Ms": 28,
-          "lagP95Ms": 54,
-          "lagMaxMs": 55,
-          "applied": 424,
-          "writeMs": 9955
+          "mongoInserts": 0,
+          "mongoUpdates": 394,
+          "lagP50Ms": 22,
+          "lagP95Ms": 68,
+          "lagMaxMs": 70,
+          "applied": 404,
+          "writeMs": 9965
         },
         "panes": {
           "left": [
             {
               "t": 250,
-              "lagMs": 0,
-              "applied": 0
+              "lagMs": 70,
+              "applied": 1
             },
             {
               "t": 500,
-              "lagMs": 36,
-              "applied": 10
+              "lagMs": 22,
+              "applied": 14
             },
             {
               "t": 751,
               "lagMs": 34,
-              "applied": 20
+              "applied": 24
             },
             {
-              "t": 1000,
+              "t": 1003,
+              "lagMs": 32,
+              "applied": 34
+            },
+            {
+              "t": 1254,
               "lagMs": 29,
-              "applied": 30
+              "applied": 44
             },
             {
-              "t": 1250,
-              "lagMs": 23,
-              "applied": 40
+              "t": 1505,
+              "lagMs": 25,
+              "applied": 54
             },
             {
-              "t": 1502,
-              "lagMs": 19,
-              "applied": 50
+              "t": 1755,
+              "lagMs": 30,
+              "applied": 66
             },
             {
-              "t": 1751,
-              "lagMs": 17,
-              "applied": 60
+              "t": 2006,
+              "lagMs": 30,
+              "applied": 78
             },
             {
-              "t": 2002,
-              "lagMs": 11,
-              "applied": 72
+              "t": 2256,
+              "lagMs": 34,
+              "applied": 90
             },
             {
-              "t": 2252,
-              "lagMs": 19,
-              "applied": 84
+              "t": 2506,
+              "lagMs": 25,
+              "applied": 100
             },
             {
-              "t": 2501,
-              "lagMs": 16,
-              "applied": 96
+              "t": 2757,
+              "lagMs": 25,
+              "applied": 100
             },
             {
-              "t": 2751,
-              "lagMs": 13,
-              "applied": 108
+              "t": 3007,
+              "lagMs": 24,
+              "applied": 114
             },
             {
-              "t": 3004,
-              "lagMs": 13,
-              "applied": 108
-            },
-            {
-              "t": 3257,
-              "lagMs": 12,
-              "applied": 120
+              "t": 3258,
+              "lagMs": 34,
+              "applied": 124
             },
             {
               "t": 3509,
-              "lagMs": 15,
-              "applied": 129
-            },
-            {
-              "t": 3760,
-              "lagMs": 11,
-              "applied": 141
-            },
-            {
-              "t": 4015,
-              "lagMs": 55,
-              "applied": 150
-            },
-            {
-              "t": 4266,
-              "lagMs": 53,
-              "applied": 160
-            },
-            {
-              "t": 4516,
-              "lagMs": 51,
-              "applied": 170
-            },
-            {
-              "t": 4766,
-              "lagMs": 47,
-              "applied": 180
-            },
-            {
-              "t": 5016,
-              "lagMs": 42,
-              "applied": 190
-            },
-            {
-              "t": 5269,
-              "lagMs": 42,
-              "applied": 202
-            },
-            {
-              "t": 5520,
-              "lagMs": 37,
-              "applied": 212
-            },
-            {
-              "t": 5770,
-              "lagMs": 37,
-              "applied": 224
-            },
-            {
-              "t": 6021,
-              "lagMs": 35,
-              "applied": 236
-            },
-            {
-              "t": 6271,
-              "lagMs": 27,
-              "applied": 248
-            },
-            {
-              "t": 6521,
               "lagMs": 28,
-              "applied": 258
+              "applied": 134
             },
             {
-              "t": 6771,
-              "lagMs": 21,
-              "applied": 268
+              "t": 3759,
+              "lagMs": 28,
+              "applied": 146
             },
             {
-              "t": 7022,
-              "lagMs": 17,
-              "applied": 280
+              "t": 4009,
+              "lagMs": 22,
+              "applied": 156
             },
             {
-              "t": 7274,
+              "t": 4260,
+              "lagMs": 25,
+              "applied": 166
+            },
+            {
+              "t": 4511,
+              "lagMs": 15,
+              "applied": 176
+            },
+            {
+              "t": 4762,
+              "lagMs": 9,
+              "applied": 186
+            },
+            {
+              "t": 5013,
+              "lagMs": 14,
+              "applied": 196
+            },
+            {
+              "t": 5264,
               "lagMs": 12,
-              "applied": 290
+              "applied": 208
             },
             {
-              "t": 7525,
-              "lagMs": 11,
-              "applied": 299
+              "t": 5515,
+              "lagMs": 8,
+              "applied": 217
+            },
+            {
+              "t": 5766,
+              "lagMs": 67,
+              "applied": 228
+            },
+            {
+              "t": 6016,
+              "lagMs": 16,
+              "applied": 242
+            },
+            {
+              "t": 6266,
+              "lagMs": 19,
+              "applied": 254
+            },
+            {
+              "t": 6517,
+              "lagMs": 13,
+              "applied": 264
+            },
+            {
+              "t": 6769,
+              "lagMs": 20,
+              "applied": 274
+            },
+            {
+              "t": 7020,
+              "lagMs": 19,
+              "applied": 286
+            },
+            {
+              "t": 7272,
+              "lagMs": 13,
+              "applied": 296
+            },
+            {
+              "t": 7523,
+              "lagMs": 65,
+              "applied": 304
             },
             {
               "t": 7774,
-              "lagMs": 54,
-              "applied": 310
+              "lagMs": 68,
+              "applied": 316
             },
             {
               "t": 8025,
-              "lagMs": 51,
-              "applied": 320
+              "lagMs": 18,
+              "applied": 328
             },
             {
-              "t": 8275,
-              "lagMs": 47,
-              "applied": 330
+              "t": 8276,
+              "lagMs": 18,
+              "applied": 328
             },
             {
               "t": 8526,
-              "lagMs": 43,
-              "applied": 340
+              "lagMs": 16,
+              "applied": 338
             },
             {
-              "t": 8780,
-              "lagMs": 37,
-              "applied": 350
+              "t": 8777,
+              "lagMs": 19,
+              "applied": 348
             },
             {
-              "t": 9031,
-              "lagMs": 32,
-              "applied": 360
+              "t": 9027,
+              "lagMs": 15,
+              "applied": 357
             },
             {
-              "t": 9282,
-              "lagMs": 27,
-              "applied": 370
+              "t": 9277,
+              "lagMs": 15,
+              "applied": 367
             },
             {
-              "t": 9535,
-              "lagMs": 27,
+              "t": 9529,
+              "lagMs": 13,
+              "applied": 378
+            },
+            {
+              "t": 9778,
+              "lagMs": 13,
               "applied": 387
             },
             {
-              "t": 9785,
-              "lagMs": 22,
+              "t": 10030,
+              "lagMs": 13,
               "applied": 397
             },
             {
-              "t": 10037,
-              "lagMs": 16,
-              "applied": 407
+              "t": 10281,
+              "lagMs": 127,
+              "applied": 404
             },
             {
-              "t": 10287,
-              "lagMs": 171,
-              "applied": 411
-            },
-            {
-              "t": 10538,
+              "t": 10531,
               "lagMs": 0,
-              "applied": 411
+              "applied": 404
             },
             {
-              "t": 10788,
+              "t": 10782,
               "lagMs": 0,
-              "applied": 411
+              "applied": 404
             },
             {
-              "t": 11040,
+              "t": 11033,
               "lagMs": 0,
-              "applied": 411
+              "applied": 404
             },
             {
-              "t": 11291,
-              "lagMs": 54,
-              "applied": 424
-            },
-            {
-              "t": 11541,
+              "t": 11284,
               "lagMs": 0,
-              "applied": 424
-            },
-            {
-              "t": 11792,
-              "lagMs": 0,
-              "applied": 424
-            },
-            {
-              "t": 12043,
-              "lagMs": 0,
-              "applied": 424
+              "applied": 404
             }
           ]
         },
-        "detail": "lag under load: 38 of 39 samples (every 250 ms) caught a change in flight\nlag over time: 0.3s 0ms, 1.3s 23ms, 2.3s 19ms, 3.3s 12ms, 4.3s 53ms, 5.3s 42ms, 6.3s 27ms, 7.3s 12ms, 8.3s 47ms, 9.3s 27ms, 10.3s 171ms, 11.3s 54ms"
+        "detail": "lag under load: 39 of 39 samples (every 250 ms) caught a change in flight\nlag over time: 0.3s 70ms, 1.3s 29ms, 2.3s 34ms, 3.3s 34ms, 4.3s 25ms, 5.3s 12ms, 6.3s 19ms, 7.3s 13ms, 8.3s 18ms, 9.3s 15ms, 10.3s 127ms, 11.3s 0ms"
       }
     },
     "verify": {
-      "at": "2026-11-04T22:02:44.079Z",
+      "at": "2026-11-09T13:43:37.536Z",
       "result": {
         "ok": true,
-        "summary": "all 8 collections match: 556350 documents, same counts, same sha-256 on both sides",
+        "summary": "all 8 collections match: 557358 documents, same counts, same sha-256 on both sides",
+        "verified": "sha-256 is a fingerprint of a whole collection: every document, in _id order, every field and value with its exact BSON type (Int32, Int64 and Double differ), keys sorted. One changed, lost or duplicated document gives a different hash. Each side is hashed on its own and only the fingerprints are compared. MongoDB documents are hashed in the form Oracle stores them (Decimal128 trailing zeros, the regex and Timestamp tags), and TTL collections only for documents not about to expire.",
         "panes": {
           "left": [
             {
@@ -789,43 +795,43 @@
             },
             {
               "coll": "orders",
-              "mongo": 200550,
-              "oracle": 200550,
-              "mongoHash": "afceb60f8e53c6bcae25dc3b05a9326826a58c716dd1c3551ed29f2b4cd9410d",
-              "oracleHash": "afceb60f8e53c6bcae25dc3b05a9326826a58c716dd1c3551ed29f2b4cd9410d",
+              "mongo": 201100,
+              "oracle": 201100,
+              "mongoHash": "ff7479d6bed8b21270a1de1fc7795c62af3be6ce860d5198df7bf817b4817899",
+              "oracleHash": "ff7479d6bed8b21270a1de1fc7795c62af3be6ce860d5198df7bf817b4817899",
               "equal": true,
               "ttl": null,
-              "mongoTotal": 200550,
-              "oracleTotal": 200550
+              "mongoTotal": 201100,
+              "oracleTotal": 201100
             },
             {
               "coll": "carts",
-              "mongo": 4914,
-              "oracle": 4914,
-              "mongoHash": "12ab3314569bff63d386cab57eb12a6c0b4660ef5b9b35d98362af441ca7f727",
-              "oracleHash": "12ab3314569bff63d386cab57eb12a6c0b4660ef5b9b35d98362af441ca7f727",
+              "mongo": 4806,
+              "oracle": 4806,
+              "mongoHash": "394de03e713af5aac2c60dbc5bb02e7c83e289a47bc13ee500bc88b54db5bd8b",
+              "oracleHash": "394de03e713af5aac2c60dbc5bb02e7c83e289a47bc13ee500bc88b54db5bd8b",
               "equal": true,
               "ttl": "updatedAt + 120s",
-              "mongoTotal": 4931,
-              "oracleTotal": 4942
+              "mongoTotal": 4824,
+              "oracleTotal": 4834
             },
             {
               "coll": "orderEvents",
-              "mongo": 300570,
-              "oracle": 300570,
-              "mongoHash": "f84d845dd31b9f6cddb83ac939e60b8a9e3b60cd037963cd890957917d7fe6bc",
-              "oracleHash": "f84d845dd31b9f6cddb83ac939e60b8a9e3b60cd037963cd890957917d7fe6bc",
+              "mongo": 301136,
+              "oracle": 301136,
+              "mongoHash": "83dd22c96aaa4de26dbf1e03df0e74d9ff9862df55d11537fd0b9419f551d895",
+              "oracleHash": "83dd22c96aaa4de26dbf1e03df0e74d9ff9862df55d11537fd0b9419f551d895",
               "equal": true,
               "ttl": "createdAt + 604800s",
-              "mongoTotal": 300591,
-              "oracleTotal": 300600
+              "mongoTotal": 301155,
+              "oracleTotal": 301155
             },
             {
               "coll": "regionTopDevices",
               "mongo": 8,
               "oracle": 8,
-              "mongoHash": "0b2e4612e2ab88557b38f5c297365c1040e16eb7b6320a64e34bc3c7fc2bd651",
-              "oracleHash": "0b2e4612e2ab88557b38f5c297365c1040e16eb7b6320a64e34bc3c7fc2bd651",
+              "mongoHash": "b57e0620b86e7ed2a4b74d218b43d65b8fb567068d4860fd1bf75ac05f032307",
+              "oracleHash": "b57e0620b86e7ed2a4b74d218b43d65b8fb567068d4860fd1bf75ac05f032307",
               "equal": true,
               "ttl": null,
               "mongoTotal": 8,
@@ -835,9 +841,9 @@
         },
         "metrics": {
           "collections": 8,
-          "documents": 556350
+          "documents": 557358
         },
-        "detail": "collection        MongoDB  Oracle  sha-256 (MongoDB)  sha-256 (Oracle)  match  note\n----------------  -------  ------  -----------------  ----------------  -----  ---------------------------------------------------------------------------------------------\nregions           8        8       19cf0dced645       19cf0dced645      yes\ncatalog           300      300     5c816c21a89e       5c816c21a89e      yes\naccounts          20000    20000   6e629eed68f2       6e629eed68f2      yes\nsubscribers       30000    30000   a19adbf6fc1a       a19adbf6fc1a      yes\norders            200550   200550  afceb60f8e53       afceb60f8e53      yes\ncarts             4914     4914    12ab3314569b       12ab3314569b      yes    TTL updatedAt + 120s: compared 4914 not near expiry (all: MongoDB 4931, Oracle 4942)\norderEvents       300570   300570  f84d845dd31b       f84d845dd31b      yes    TTL createdAt + 604800s: compared 300570 not near expiry (all: MongoDB 300591, Oracle 300600)\nregionTopDevices  8        8       0b2e4612e2ab       0b2e4612e2ab      yes"
+        "detail": "collection        MongoDB  Oracle  sha-256 (MongoDB)  sha-256 (Oracle)  match  note\n----------------  -------  ------  -----------------  ----------------  -----  ---------------------------------------------------------------------------------------------\nregions           8        8       19cf0dced645       19cf0dced645      yes\ncatalog           300      300     5c816c21a89e       5c816c21a89e      yes\naccounts          20000    20000   6e629eed68f2       6e629eed68f2      yes\nsubscribers       30000    30000   a19adbf6fc1a       a19adbf6fc1a      yes\norders            201100   201100  ff7479d6bed8       ff7479d6bed8      yes\ncarts             4806     4806    394de03e713a       394de03e713a      yes    TTL updatedAt + 120s: compared 4806 not near expiry (all: MongoDB 4824, Oracle 4834)\norderEvents       301136   301136  83dd22c96aaa       83dd22c96aaa      yes    TTL createdAt + 604800s: compared 301136 not near expiry (all: MongoDB 301155, Oracle 301155)\nregionTopDevices  8        8       b57e0620b86e       b57e0620b86e      yes\n\nsha-256 is a fingerprint of a whole collection: every document, in _id order, every field and value with its exact BSON type (Int32, Int64 and Double differ), keys sorted. One changed, lost or duplicated document gives a different hash. Each side is hashed on its own and only the fingerprints are compared. MongoDB documents are hashed in the form Oracle stores them (Decimal128 trailing zeros, the regex and Timestamp tags), and TTL collections only for documents not about to expire."
       }
     }
   }

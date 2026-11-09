@@ -431,11 +431,11 @@ gives the presenter). Every step must pass, twice in a row.
 
 ## Demo 1: compatibility check and type census
 
-<img src="docs/figures/d1-compat.svg" alt="Demo 1: the operator scan sorts operators into supported, caveat and unsupported; the type census flags landmines" width="100%">
+<img src="docs/figures/d1-compat.svg" alt="Demo 1: the operator scan sorts the code's operators into supported, caveat and unsupported; the profiler capture shows what the server runs from every client; the type census flags landmines" width="100%">
 
-`./lab.sh demo d1` runs it headless in a few seconds. It reads only: it needs
-a generated MongoDB source (`./lab.sh generate`) and nothing else, so
-`./lab.sh reset d1` has nothing to undo. Two console steps:
+`./lab.sh demo d1` runs it headless in about 20 seconds. It needs a generated
+MongoDB source (`./lab.sh generate`) and leaves it as it found it;
+`./lab.sh reset d1` only turns profiling off. Four steps:
 
 - `scan`: the scripted operator scan (built for this lab). It parses the
   order service (`app/**/*.mjs`) with acorn, lists every `$` operator it uses,
@@ -443,6 +443,17 @@ a generated MongoDB source (`./lab.sh generate`) and nothing else, so
   MongoDB. A second table does the same for the D5 and D6 pipelines. The
   lookup table is `demos/d1-compat/compat-matrix.json`: the oracle-ai-dev
   plugin's reference matrix plus findings measured in this lab, which win.
+- `profile-on` (terminal): `./lab.sh mongosh src --quiet --eval
+  'db.setProfilingLevel(2)'`, the method of `mongoProfileExport.sh` in
+  [mongotools](https://github.com/oramatt/mongotools).
+- `capture`: about 15 s of real traffic through the order service (appName
+  `order-service`) and one aggregate from a stand-in reporting script (appName
+  `nightly-report`), read back from `system.profile` and classified with the
+  same matrix (`demos/d1-compat/profile.mjs`). It finds what a code scan
+  can't: `$gte` and `$lt`, which the order service builds at run time, and the
+  report's `$lookup`, `$group` and `$unwind`, which no app code uses. Then
+  profiling goes off and the traffic is undone: its orders and their events
+  are deleted and `regionTopDevices` is put back.
 - `census`: the BSON types per field on the MongoDB source, with the
   landmines marked: regex, Timestamp, Decimal128 scale, and
   arrays (on Oracle, `$type` does not match an array's elements).
@@ -525,6 +536,13 @@ terminal commands, in order, with console steps between them:
 ./lab.sh repl stop && ./lab.sh app-uri oracle     # cutover: drain to lag 0, stop, flip the app
 ./lab.sh repl rev                                 # mig_changelog -> MongoDB, the fallback path
 ```
+
+The cutover's check reads `serverStatus` opcounters on MongoDB for 3 s after
+the flip and passes only on +0 inserts and +0 updates: nothing still writes
+to blue (the `mongoserverStatus.sh` method in
+[mongotools](https://github.com/oramatt/mongotools)). The write steps show
+the same counters: the app's writes on blue, then only the reverse
+replicator's (`demos/d4-bluegreen/opcounters.mjs`).
 
 - Forward reads the `telco` change stream (`fullDocument: 'updateLookup'`,
   exact BSON types) and writes `replaceOne` (upsert) or `deleteOne` by `_id`

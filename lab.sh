@@ -858,7 +858,7 @@ ap_end() {
   drive_clear_tmux
   ap_log "$AP_DEMO done: deck in front, tmux cleared"
   case "$AP_DEMO" in
-    d2|d4) ap_log "$AP_DEMO reset running in the background"
+    d1|d2|d4) ap_log "$AP_DEMO reset running in the background"
            ( ./lab.sh reset "$AP_DEMO" >/dev/null 2>&1 && ap_log "$AP_DEMO reset OK" || ap_log "FAIL  $AP_DEMO reset: run ./lab.sh reset $AP_DEMO" ) & ;;
     d5) if ap_plan d6; then
           local o; o="$(drive_console d6 "${AP_IDS[0]}" --nowait 2>&1)"

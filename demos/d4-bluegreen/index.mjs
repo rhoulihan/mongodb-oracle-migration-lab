@@ -5,6 +5,10 @@
 // MongoDB, so MongoDB stays a working fallback. The last step proves no write
 // was lost or duplicated: counts and hashes match on both sides.
 //
+// serverStatus opcounters on MongoDB (opcounters.mjs, the mongoserverStatus.sh
+// method) frame the cutover: writes while the app is on blue, none in the 3 s
+// after the flip, and only the reverse replicator's once the fallback runs.
+//
 // The replicator is a stand-in for Oracle GoldenGate, labeled as one in the
 // console and on every log line (replicator/). Presenter commands:
 //   ./lab.sh repl fwd     forward, MongoDB change stream -> Oracle API for MongoDB
@@ -28,6 +32,7 @@ import { startForward } from '../../replicator/forward.mjs';
 import { startReverse } from '../../replicator/reverse.mjs';
 import { compareSides, formatComparison } from '../../replicator/verify.mjs';
 import { placeOrders } from './traffic.mjs';
+import { delta, opcounters, sample, writesLine } from './opcounters.mjs';
 
 export { placeOrders, switchApp };
 
@@ -37,6 +42,7 @@ const STAND_IN = 'Stand-in for Oracle GoldenGate';
 // back, so the lag is measured while writes keep arriving.
 const BLUE = { orders: 400, updates: 100, concurrency: 4, seedOffset: 101, ratePerSec: 25 };
 const GREEN = { orders: 150, updates: 40, concurrency: 4, seedOffset: 202, ratePerSec: 19 };
+const DRAIN_MS = 3000;
 const fail = (summary) => ({ ok: false, summary });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -222,15 +228,18 @@ export default {
       title: 'Write to MongoDB through the app, watch the lag',
       lane: 'console',
       async run(ctx) {
+        const src = await ctx.mongoSrc();
+        const before = await opcounters(src);
         const r = await writeThrough(ctx, { dir: 'fwd', want: 'mongodb', plan: BLUE, label: 'forward' });
         if (!r.w) return r;
+        const blue = delta(before, await opcounters(src));
         const ora = await ctx.oraMongo();
         const landed = await ora.collection('orders').countDocuments({ _id: { $in: r.w.ids } });
         return {
           ok: landed === r.w.placed,
           summary: `${r.w.placed} new and ${r.w.updated} updated orders on MongoDB at ${loadLine(r.load)}; ` +
-            `${landed} of the new orders are on Oracle, now caught up`,
-          metrics: { placed: r.w.placed, updated: r.w.updated, landed, lagP50Ms: r.load.p50, lagP95Ms: r.load.p95, lagMaxMs: r.load.max, applied: r.s.applied, writeMs: r.w.ms },
+            `${landed} of the new orders are on Oracle, now caught up. MongoDB serverStatus: ${writesLine(blue)}`,
+          metrics: { placed: r.w.placed, updated: r.w.updated, landed, mongoInserts: blue.insert, mongoUpdates: blue.update, lagP50Ms: r.load.p50, lagP95Ms: r.load.p95, lagMaxMs: r.load.max, applied: r.s.applied, writeMs: r.w.ms },
           panes: { left: r.samples.map(({ at, ...x }) => x) },
           detail: `lag under load: ${r.load.measured} of ${r.load.samples} samples (every 250 ms) caught a change in flight\n` +
             `lag over time: ${lagLine(r.samples)}`,
@@ -254,9 +263,18 @@ export default {
         if (b !== 'oracle') return fail(`the order service still writes to ${b}: run ./lab.sh app-uri oracle`);
         const [m, o] = await Promise.all([await ctx.mongoSrc(), await ctx.oraMongo()]
           .map((db) => db.collection('orders').countDocuments()));
-        return m === o
-          ? { ok: true, summary: `forward replicator stopped after ${s?.applied ?? 0} changes; the app writes to Oracle; ${o} orders on both sides` }
-          : fail(`orders differ at the cutover (MongoDB ${m}, Oracle ${o}): ${RESET}`);
+        if (m !== o) return fail(`orders differ at the cutover (MongoDB ${m}, Oracle ${o}): ${RESET}`);
+        // Drained: nothing may still write to blue. Deletes are shown, not
+        // judged (TTL expiry on carts and orderEvents runs on its own).
+        const d = await sample(await ctx.mongoSrc(), DRAIN_MS);
+        const writes = d.insert + d.update;
+        return {
+          ok: writes === 0,
+          summary: `forward replicator stopped after ${s?.applied ?? 0} changes; the app writes to Oracle; ${o} orders on both sides. ` +
+            `MongoDB serverStatus over ${DRAIN_MS / 1000} s: ${writesLine(d)}: ` +
+            (writes === 0 ? 'nothing still writes to blue' : `something still writes to MongoDB: ${RESET}`),
+          metrics: { orders: o, drainInserts: d.insert, drainUpdates: d.update, drainDeletes: d.delete },
+        };
       },
     },
     {
@@ -283,15 +301,17 @@ export default {
       title: 'Write to Oracle through the app, watch it land in MongoDB',
       lane: 'console',
       async run(ctx) {
+        const src = await ctx.mongoSrc();
+        const before = await opcounters(src);
         const r = await writeThrough(ctx, { dir: 'rev', want: 'oracle', plan: GREEN, label: 'reverse' });
         if (!r.w) return r;
-        const src = await ctx.mongoSrc();
+        const back = delta(before, await opcounters(src));
         const landed = await src.collection('orders').countDocuments({ _id: { $in: r.w.ids } });
         return {
           ok: landed === r.w.placed,
           summary: `${r.w.placed} new and ${r.w.updated} updated orders on Oracle at ${loadLine(r.load)}; ` +
-            `${landed} of the new orders are back on MongoDB, now caught up`,
-          metrics: { placed: r.w.placed, updated: r.w.updated, landed, lagP50Ms: r.load.p50, lagP95Ms: r.load.p95, lagMaxMs: r.load.max, applied: r.s.applied, writeMs: r.w.ms },
+            `${landed} of the new orders are back on MongoDB, now caught up. MongoDB serverStatus: ${writesLine(back)}, all from the reverse replicator`,
+          metrics: { placed: r.w.placed, updated: r.w.updated, landed, mongoInserts: back.insert, mongoUpdates: back.update, lagP50Ms: r.load.p50, lagP95Ms: r.load.p95, lagMaxMs: r.load.max, applied: r.s.applied, writeMs: r.w.ms },
           panes: { left: r.samples.map(({ at, ...x }) => x) },
           detail: `lag under load: ${r.load.measured} of ${r.load.samples} samples (every 250 ms) caught a change in flight\n` +
             `lag over time: ${lagLine(r.samples)}`,
