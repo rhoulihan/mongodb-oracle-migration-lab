@@ -3,6 +3,8 @@
 //   URL hash: #d5/same-shape selects a demo and a step.
 //   ?theme=light|dark overrides the system theme (the button does too).
 
+import { wrapSql } from './sqlwrap.js';
+
 const $ = (id) => document.getElementById(id);
 const h = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -142,6 +144,26 @@ function paneBody(v, depth = 0) {
   return box;
 }
 
+// ---- Query and SQL frames: reflowed to their width ----------------------
+const rawText = new WeakMap(); // pre -> the text as the server sent it
+let charW = 0;
+function fit(pre) {
+  const raw = rawText.get(pre);
+  if (raw == null || !pre.clientWidth) return;
+  if (!charW) {
+    const probe = h('span', null, 'x'.repeat(20));
+    pre.append(probe);
+    charW = probe.getBoundingClientRect().width / 20;
+    probe.remove();
+  }
+  const cs = getComputedStyle(pre);
+  const cols = Math.floor((pre.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) / charW) - 1;
+  pre.textContent = wrapSql(raw, cols);
+}
+const fitAll = () => document.querySelectorAll('.qsql-frame pre').forEach(fit);
+let fitTimer = null;
+addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitAll, 100); });
+
 function pair(kind, left, right, labels, defaults, queries) {
   const hasL = left !== undefined, hasR = right !== undefined;
   if (!hasL && !hasR) return null;
@@ -165,7 +187,9 @@ function pair(kind, left, right, labels, defaults, queries) {
       : q.explain ? ['MongoDB explain', q.explain] : ['The SQL it runs', 'none: MongoDB runs it natively'];
     for (const [t, text] of [['Query', q.query], second]) {
       const f = h('div', 'qsql-frame');
-      f.append(h('h4', null, t), h('pre', null, text));
+      const pre = h('pre', null, text);
+      rawText.set(pre, String(text ?? ''));
+      f.append(h('h4', null, t), pre);
       grid.append(f);
     }
     grid.hidden = true;
@@ -177,6 +201,7 @@ function pair(kind, left, right, labels, defaults, queries) {
       b.addEventListener('click', () => {
         for (const [, e] of views) e.hidden = e !== el;
         for (const x of btns) x.classList.toggle('on', x === b);
+        if (el === grid) grid.querySelectorAll('pre').forEach(fit);
       });
       return b;
     });

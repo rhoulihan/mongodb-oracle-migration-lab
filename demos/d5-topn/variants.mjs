@@ -114,6 +114,10 @@ export const embedded = {
         { $push: { devices: { sku: l.sku, name: dev?.name ?? l.sku, units: qty } } });
     }
   },
+  /** The counter write alone, on a device the region already sold (D5 splits redo with it). */
+  async bumpCounter(db, region, sku, qty) {
+    await db.collection(EMBEDDED).updateOne({ _id: region, 'devices.sku': sku }, { $inc: { 'devices.$.units': new Int32(qty) } });
+  },
   /** The whole document, sorted and cut to 10 here, in the client. */
   async readDashboard(db, region) {
     const d = await db.collection(EMBEDDED).findOne({ _id: region });
@@ -177,6 +181,11 @@ export const lookup = {
         { $inc: { units: Number(l.qty) }, $setOnInsert: { region: order.region, sku: l.sku } }, { upsert: true });
     }
   },
+  /** The counter write alone, as placeOrder makes it (D5 splits redo with it). */
+  async bumpCounter(db, region, sku, qty) {
+    await db.collection(COUNTERS).updateOne({ _id: counterId(region, sku) },
+      { $inc: { units: qty }, $setOnInsert: { region, sku } }, { upsert: true });
+  },
   async readDashboard(db, region) {
     const rows = await db.collection(COUNTERS).aggregate(lookupPipeline(region)).toArray();
     // $sort carries the tie rule; the $lookup stage keeps the order.
@@ -232,6 +241,11 @@ export const converged = {
       await conn.rollback();
       throw err;
     }
+  },
+  /** The counter write alone, with its own commit (D5 splits redo with it). */
+  async bumpCounter(conn, region, sku, qty) {
+    await conn.execute(MERGE_SQL, { region, sku, qty });
+    await conn.commit();
   },
   async readDashboard(conn, region) {
     const r = await conn.execute(DASHBOARD_SQL, { region });

@@ -97,6 +97,41 @@ async function placeAll(ctx, v) {
   return { redoPerOrder: Math.round(s[Math.floor(s.length / 2)]), batches: perOrder.map(Math.round) };
 }
 
+/**
+ * The counter write's share of each order's redo: the same counter write
+ * placeOrder makes (its own commit included), +1 on the counters of the
+ * timed orders, in batches; each batch is undone (-1) untimed, so the counts
+ * end where they started. The order's share is the rest.
+ */
+async function counterSplit(ctx, v, total) {
+  const h = await handles(ctx);
+  const t = target(v, h);
+  const orders = (await seededOrders(h.db, { n: ORDERS, seed: ctx.config.seed })).slice(WARMUP, WARMUP + BATCH);
+  const lines = orders.flatMap((o) => o.lines.filter((l) => l.kind === 'device').map((l) => [o.region, l.sku]));
+  const bump = async (qty) => { for (const [r, sku] of lines) await v.bumpCounter(t, r, sku, qty); };
+  await bump(1); await bump(-1); // warmup
+  const per = [];
+  for (let i = 0; i < 5; i++) {
+    const { redo } = await sysRedoBytes(h.conn, () => bump(1));
+    await bump(-1);
+    per.push(redo / orders.length);
+  }
+  per.sort((a, b) => a - b);
+  const counter = Math.round(per[2]);
+  return { counterRedo: counter, orderRedo: total - counter };
+}
+
+/** Average stored size of one counter: (b)'s JSON document, (c)'s row. */
+async function counterBytes(conn) {
+  const q = async (sql) => Math.round(Number((await conn.execute(sql)).rows[0][0]));
+  return {
+    doc: await q('select avg(vsize(data)) from "deviceSales"'),
+    row: await q('select avg(vsize(region_id) + vsize(sku) + vsize(units)) from device_sales'),
+  };
+}
+
+const split = (r) => `the order ${r.orderRedo} + the counter ${r.counterRedo}`;
+
 async function readAll(ctx, v) {
   const h = await handles(ctx);
   const t = target(v, h);
@@ -117,6 +152,7 @@ async function runVariant(ctx, v) {
   await restoreBaseline(ctx);
   const write = await placeAll(ctx, v);
   const read = await readAll(ctx, v);
+  Object.assign(write, await counterSplit(ctx, v, write.redoPerOrder));
   const { plan, ...query } = await readPlan(ctx, v);
   const res = { ...write, ...read, plan, query };
   last.set(v.id, res);
@@ -200,10 +236,10 @@ export default {
         const size = BSON.calculateObjectSize(doc);
         return {
           ok: r.redoPerOrder > 0,
-          summary: `${ORDERS} orders placed. Each order writes ${r.redoPerOrder} bytes of redo: the order plus one $inc in its region's ` +
-            `document (${SHOW_REGION}: ${doc.devices.length} devices, ${size} bytes). The read fetches the whole document; ` +
-            'the client sorts it and keeps the top 10',
-          metrics: { redoPerOrder: r.redoPerOrder, batches: r.batches, docBytes: size, readMs: r.readMs },
+          summary: `${ORDERS} orders placed. Each order writes ${r.redoPerOrder} bytes of redo (${split(r)}): ` +
+            `one $inc rewrites its region's whole document (${SHOW_REGION}: ${doc.devices.length} devices, ${size} bytes). ` +
+            'The read fetches the whole document; the client sorts it and keeps the top 10',
+          metrics: { redoPerOrder: r.redoPerOrder, orderRedo: r.orderRedo, counterRedo: r.counterRedo, batches: r.batches, docBytes: size, readMs: r.readMs },
           panes: { left: r.docs.find((d) => d._id === SHOW_REGION) },
           plan: { left: r.plan },
           query: { left: r.query },
@@ -218,19 +254,21 @@ export default {
       async run(ctx) {
         const r = await runVariant(ctx, lookup);
         const ok = planChecks.lookup(r.plan);
+        const { doc } = await counterBytes((await handles(ctx)).conn);
         return {
           ok,
           // No word about hiding: the console marks the read time hidden while
           // it is, and after same-shape reveals it this summary must still read true.
-          summary: `Each order writes ${r.redoPerOrder} bytes of redo: the order plus $inc on one counter document. ` +
+          summary: `Each order writes ${r.redoPerOrder} bytes of redo (${split(r)}, each with its own commit): ` +
+            `the $inc rewrites a whole counter document (${doc} bytes of JSON) and its etag, and moves its index entry. ` +
             'The read is an aggregation pipeline the app owns ($match, $sort, $limit, $lookup the name): ' +
             'change the model, and the app code changes with it' +
             (ok ? '' : '; the plan does not show a read of the deviceSales counters'),
-          metrics: { redoPerOrder: r.redoPerOrder, batches: r.batches, readMs: r.readMs },
+          metrics: { redoPerOrder: r.redoPerOrder, orderRedo: r.orderRedo, counterRedo: r.counterRedo, batches: r.batches, docBytes: doc, readMs: r.readMs },
           panes: { left: r.docs.find((d) => d._id === SHOW_REGION) },
           plan: { left: r.plan },
           query: { left: r.query },
-          detail: `read plan:\n${r.plan}`,
+          detail: `redo per order, by batch of ${BATCH}: ${r.batches.join(', ')}\nread plan:\n${r.plan}`,
         };
       },
     },
@@ -242,20 +280,24 @@ export default {
         const r = await runVariant(ctx, converged);
         const ok = planChecks.converged(r.plan);
         // (b) keeps the same counts in documents: its redo is the comparison.
-        const base = last.get('lookup')?.redoPerOrder;
+        const b = last.get('lookup');
+        const bytes = await counterBytes((await handles(ctx)).conn);
         const doc = r.docs.find((d) => d._id === SHOW_REGION);
         return {
           ok,
-          summary: `Each order writes ${r.redoPerOrder} bytes of redo: the order plus one counter row` +
-            (base ? ` ((b)'s counter document: ${base}). ` : '. ') +
-            'The app reads one document from a JSON view. The join, the pre-sorted index and the stop at 10 rows ' +
+          summary: `Each order writes ${r.redoPerOrder} bytes of redo (${split(r)})` +
+            (b ? `, (b) ${b.redoPerOrder} (${split(b)}). ` : '. ') +
+            `Less redo, because the counter is a row: a write changes one number in a ${bytes.row}-byte row, where (b) ` +
+            `rewrites a ${bytes.doc}-byte JSON document and its etag; both move one index entry. And the order and its counter ` +
+            'commit once, together. The app reads one document from a JSON view. The join, the pre-sorted index and the stop at 10 rows ' +
             'are SQL the database owns, with the optimizer and parallel execution behind it as the query grows' +
             (ok ? '' : '; the plan does not show INDEX RANGE SCAN DEVICE_SALES_TOPN with STOPKEY'),
-          metrics: { redoPerOrder: r.redoPerOrder, batches: r.batches, readMs: r.readMs },
+          metrics: { redoPerOrder: r.redoPerOrder, orderRedo: r.orderRedo, counterRedo: r.counterRedo, batches: r.batches, rowBytes: bytes.row, readMs: r.readMs },
           panes: { left: doc },
           plan: { left: r.plan },
           query: { left: r.query },
-          detail: `the view builds all ${r.docs.length} regions, then keeps ${SHOW_REGION} by _id\n\n` +
+          detail: `redo per order, by batch of ${BATCH}: ${r.batches.join(', ')}\n` +
+            `the view builds all ${r.docs.length} regions, then keeps ${SHOW_REGION} by _id\n\n` +
             `read plan:\n${r.plan}\n\ndashboard document:\n${showDoc(doc)}`,
         };
       },
@@ -271,6 +313,7 @@ export default {
         const ok = ab.equal && ac.equal;
         const metrics = {
           redoPerOrder: { embedded: a.redoPerOrder, lookup: b.redoPerOrder, converged: c.redoPerOrder },
+          counterRedo: { embedded: a.counterRedo, lookup: b.counterRedo, converged: c.counterRedo },
           readMs: { embedded: a.readMs, lookup: b.readMs, converged: c.readMs },
         };
         const pick = (x) => x.docs.find((d) => d._id === SHOW_REGION);
@@ -283,11 +326,19 @@ export default {
               '(b) and (c) read the same counts; (b) keeps the query in the app, (c) keeps it in the database behind a document'
             : `dashboards differ: ${ab.equal ? '' : `embedded vs lookup ${ab.diff}`} ${ac.equal ? '' : `embedded vs converged ${ac.diff}`}`.trim(),
           metrics,
-          panes: { left: { embedded: pick(a), lookup: pick(b), converged: pick(c) } },
+          panes: {
+            left: { embedded: pick(a), lookup: pick(b), converged: pick(c) },
+            right: [['(a) embedded', a, 'the region document, rewritten'], ['(b) counter docs', b, 'a JSON document + etag, own commit'],
+              ['(c) converged', c, 'one number in a row, one commit']].map(([variant, x, counter]) => ({
+              variant, 'redo/order': x.redoPerOrder, order: x.orderRedo, counter: x.counterRedo, 'the counter write': counter,
+            })),
+          },
+          labels: { left: `${SHOW_REGION}, three ways`, right: 'Redo per order, in bytes: the order + its counter' },
           detail: [
-            'variant     redo/order  read ms  plan',
+            'variant     redo/order   order  counter  read ms  plan',
             ...[['embedded', a], ['lookup', b], ['converged', c]].map(([n, x]) =>
-              `${n.padEnd(10)}  ${String(x.redoPerOrder).padStart(10)}  ${String(x.readMs).padStart(7)}  ${keySteps(x.plan)}`),
+              `${n.padEnd(10)}  ${String(x.redoPerOrder).padStart(10)}  ${String(x.orderRedo).padStart(6)}  ${String(x.counterRedo).padStart(7)}  ` +
+              `${String(x.readMs).padStart(7)}  ${keySteps(x.plan)}`),
             '',
             `${SHOW_REGION} top 3: ${pick(c).top.slice(0, 3).map((t) => `${t.sku} ${t.units}`).join(', ')}`,
           ].join('\n'),

@@ -939,38 +939,51 @@ def fig_topn_three_ways() -> Fig:
 
 def fig_duality_tradeoff() -> Fig:
     """D5's measured result: where each model pays, after the dashboards were proven identical."""
-    f = Fig(1120, 392, "Where each model pays, measured in D5 on the presenter's Mac after the three "
-                       "dashboards were proven identical, relative only, ranges over the measured runs. Redo "
-                       "per order, the order included: embedded about 17 KB, counter documents about 5 KB, "
-                       "converged about 3.5 KB. Dashboard read for one region: embedded about 0.6 ms, the "
-                       "counter pipeline 0.6 to 0.7 ms, converged about 0.4 ms. The same counts at the same "
-                       "speed: the difference is where the query lives")
+    f = Fig(1120, 480, "Where each model pays, measured in D5 on the presenter's Mac after the three "
+                       "dashboards were proven identical, relative only. Redo per order, the order included: "
+                       "embedded about 17 KB (the order 2.6 plus the counter 14.7), counter documents about 5 KB "
+                       "(2.6 plus 2.3), converged about 3.5 KB (2.4 plus 1.2). The order costs the same in all "
+                       "three; the counter write is the difference: embedded rewrites the region's 9.5 KB "
+                       "document, counter documents rewrite a 127-byte JSON document and its etag with a second "
+                       "commit, converged changes one number in a 17-byte row in the order's own commit. "
+                       "Dashboard read for one region: embedded about 0.6 ms, the counter pipeline 0.6 to 0.7 ms, "
+                       "converged about 0.4 ms. The same counts at the same speed: the difference is where the "
+                       "query lives")
     cols = [(320, "(a) Embedded", "hot"), (580, "(b) $lookup", "hot"), (840, "(c) Converged", "cool")]
     cw = 250  # 10 px gaps between cells
     for x, t, tone in cols:
         f.text(x + cw / 2, 40, t, size=19, weight=800, font=HEAD, fill=TONE[tone][0], anchor="middle")
     rows = [
-        ("Write", "redo per order,", "the order included",
-         [("17 KB", "$inc, whole doc rewritten", "hot"), ("5 KB", "$inc one counter doc", "hot"),
-          ("3.5 KB", "one row, +1", "cool")]),
-        ("Dashboard read", "one region, median", "of 7, across runs",
-         [("0.6 ms", "one doc, client sorts", "cool"), ("0.6 to 0.7 ms", "the app's pipeline", "cool"),
-          ("0.4 ms", "one document, SQL behind it", "cool")]),
+        ("Write", "redo per order,", "the order included", 104,
+         [("17 KB", ["order 2.6 + counter 14.7"], "hot"), ("5 KB", ["order 2.6 + counter 2.3"], "hot"),
+          ("3.5 KB", ["order 2.4 + counter 1.2"], "cool")]),
+        ("The counter", "why the +1", "costs what it does", 80,
+         [(None, ["rewrites the region's", "9.5 KB document"], "hot"),
+          (None, ["rewrites a 127 B JSON doc", "and its etag; 2 commits"], "hot"),
+          (None, ["one number in a 17 B row,", "in the order's commit"], "cool")]),
+        ("Dashboard read", "one region, median", "of 7, across runs", 104,
+         [("0.6 ms", ["one doc, client sorts"], "cool"), ("0.6 to 0.7 ms", ["the app's pipeline"], "cool"),
+          ("0.4 ms", ["one document, SQL behind it"], "cool")]),
     ]
-    top, rh = 60, 104
-    for i, (label, s1, s2, cells) in enumerate(rows):
-        y = top + i * (rh + 12)
-        f.text(18, y + 38, label, size=19, weight=800, font=HEAD)
-        f.text(18, y + 62, s1, size=14, fill="var(--muted)")
-        f.text(18, y + 80, s2, size=14, fill="var(--muted)")
-        for (x, _, _), (big, sub, tone) in zip(cols, cells):
-            col, soft = TONE[tone] if tone != "ink" else ("var(--ink)", "var(--panel)")
-            f.rect(x, y, cw, rh, fill=soft, stroke=col if tone != "ink" else "var(--hairline)", sw=1.4, rx=8,
-                   name="cell")
-            f.text(x + cw / 2, y + 50, big, size=30, weight=800, font=HEAD, fill=col, anchor="middle")
-            f.text(x + cw / 2, y + 80, sub, size=15, fill="var(--muted)", anchor="middle")
-    f.box(18, 300, 1084, 74, ["(b) and (c): the same counts, the same speed. The query moves into the database.",
-                              "The app retrieves documents. Laptop, relative only, after the dashboards matched."],
+    y = 60
+    for label, s1, s2, rh, cells in rows:
+        mid = y + rh / 2
+        f.text(18, mid - 14, label, size=19, weight=800, font=HEAD)
+        f.text(18, mid + 10, s1, size=14, fill="var(--muted)")
+        f.text(18, mid + 28, s2, size=14, fill="var(--muted)")
+        for (x, _, _), (big, subs, tone) in zip(cols, cells):
+            col, soft = TONE[tone]
+            f.rect(x, y, cw, rh, fill=soft, stroke=col, sw=1.4, rx=8, name="cell")
+            if big:
+                f.text(x + cw / 2, y + 50, big, size=30, weight=800, font=HEAD, fill=col, anchor="middle")
+                f.text(x + cw / 2, y + 80, subs[0], size=15, fill="var(--muted)", anchor="middle")
+            else:
+                for k, sub in enumerate(subs):
+                    f.text(x + cw / 2, y + 34 + k * 22, sub, size=15, weight=600 if k == 0 else 400,
+                           fill=col if k == 0 else "var(--ink)", anchor="middle")
+        y += rh + 12
+    f.box(18, y + 4, 1084, 74, ["(c) writes less than (b): its counter is a row, not a JSON document.",
+                                "Same counts, same read speed; the query moves into the database. Laptop, relative only."],
           tone="cool", size=18, sub_size=15)
     return f
 

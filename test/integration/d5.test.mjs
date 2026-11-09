@@ -92,8 +92,24 @@ describe('D5 Top-N counter: embedded vs $lookup vs converged', () => {
     const m = result('same-shape').metrics;
     expect(m).toEqual({
       redoPerOrder: { embedded: expect.any(Number), lookup: expect.any(Number), converged: expect.any(Number) },
+      counterRedo: { embedded: expect.any(Number), lookup: expect.any(Number), converged: expect.any(Number) },
       readMs: { embedded: expect.any(Number), lookup: expect.any(Number), converged: expect.any(Number) },
     });
+  });
+
+  test('redo splits into the order and its counter: the order costs about the same, the counter is the gap', () => {
+    const rows = result('same-shape').panes.right;
+    expect(rows).toHaveLength(3);
+    for (const r of rows) {
+      expect(Object.values(r).every((v) => v == null || typeof v !== 'object')).toBe(true); // flat: the console draws a grid
+      expect(r.order + r.counter).toBe(r['redo/order']);
+    }
+    const [a, b, c] = rows;
+    const orders = rows.map((r) => r.order);
+    expect(Math.max(...orders) / Math.min(...orders)).toBeLessThan(1.25);
+    expect(a.counter).toBeGreaterThan(b.counter);
+    expect(b.counter).toBeGreaterThan(c.counter);
+    expect(result('converged').summary).toMatch(/the counter is a row/);
   });
 
   test('the dashboard document is readable through the MongoDB API (mongosh-read, verified)', () => {

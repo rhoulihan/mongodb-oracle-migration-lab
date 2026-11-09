@@ -208,10 +208,10 @@ Segment 5, slide 35 (clock 1:01, 4 min).
 | # | Lane | Do | Expect |
 |---|---|---|---|
 | 1 | console | Start all three from the same truth | The counter rows match a fresh count of the orders |
-| 2 | console | (a) Embedded counters: one document per region, sorted by the client | Redo per order (about 17 KB); the R03 document holds 120 devices, about 9.5 KB, rewritten by each $inc |
-| 3 | console | (b) Counter documents and a $lookup pipeline the app owns | INDEX RANGE SCAN on the deviceSales counters under COUNT STOPKEY; read time hidden. Say: the query lives in the app |
-| 4 | console | (c) Converged: counter rows, read as one document through a JSON view | INDEX RANGE SCAN on DEVICE_SALES_TOPN under COUNT STOPKEY. Say: the query lives in the database |
-| 5 | console | Same document, three ways | All 8 dashboards identical, **then** the read times appear (Mac: embedded about 0.6 ms, counter pipeline 0.6 to 0.7, converged about 0.4; redo per order, the order included, about 17 / 5 / 3.5 KB) |
+| 2 | console | (a) Embedded counters: one document per region, sorted by the client | Redo per order (about 17 KB: the order 2.6 + the counter 14.7); the R03 document holds 120 devices, about 9.5 KB, rewritten by each $inc |
+| 3 | console | (b) Counter documents and a $lookup pipeline the app owns | Redo about 4.9 KB: the order 2.6 + the counter 2.3 (a 127-byte JSON document and its etag rewritten, its own commit). INDEX RANGE SCAN on the deviceSales counters under COUNT STOPKEY; read time hidden. Say: the query lives in the app |
+| 4 | console | (c) Converged: counter rows, read as one document through a JSON view | Redo about 3.5 KB: the order 2.4 + the counter 1.2. Say why it's less than (b): the counter is a row, one number in a 17-byte row, in the order's commit. INDEX RANGE SCAN on DEVICE_SALES_TOPN under COUNT STOPKEY. Say: the query lives in the database |
+| 5 | console | Same document, three ways | All 8 dashboards identical, **then** the read times appear (Mac: embedded about 0.6 ms, counter pipeline 0.6 to 0.7, converged about 0.4; redo per order, the order included, about 17 / 5 / 3.5 KB; the right pane splits it: the order about 2.5 KB in all three, the counter 14.7 / 2.3 / 1.2) |
 | 6 | terminal | `./lab.sh mongosh ora --eval 'db.region_top_devices_v.findOne({_id:"R03"})'` | Ten devices, sorted. Mark done |
 
 If step 1 fails: `./lab.sh reset d5`. Reset after: none.

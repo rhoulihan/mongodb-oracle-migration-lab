@@ -11,6 +11,26 @@ After a one-time setup it runs fully offline.
 
 ## Run the session hands-off
 
+### Quick start: three steps, then click
+
+1. **Connect an external monitor** (or the projector) to the laptop. It's
+   the screen you share; the laptop keeps your speaker notes.
+2. **Tell your Claude Code agent:** "clone
+   https://github.com/rhoulihan/mongodb-oracle-migration-lab, install the
+   lab skills, and launch the lab". The skills (`launch-lab`, `drive-demo`,
+   `shutdown-lab`) ship in the repo's `.claude/skills` and load when Claude
+   Code runs in the cloned folder. On a new laptop the agent first runs the
+   [one-time setup](#one-time-setup-on-the-mac-apple-silicon) (Podman and
+   the images, with network).
+3. **When the deck comes up on the external monitor, start clicking.** Click
+   through the deck as usual. On a demo slide, each click swaps the shared
+   screen to the console or the terminal and runs the next demo step, just
+   like advancing a slide. The click after the last step brings the deck
+   back, and the next one moves on.
+
+That's it: no windows to arrange and no commands to type during the session.
+The rest of this section is the detail.
+
 You present; the lab runs itself. A Claude Code session, in its own terminal on
 the laptop, sets the lab up, watches every demo and hands you the line to say.
 Your clicker drives the slides **and** the demos. You say three things to Claude:
@@ -581,6 +601,12 @@ read by the app's own pipeline, (c) keeps counter rows read as one document
 from the view, so the query is SQL the database owns. Each write step removes the previous D5 orders, places
 the same 200 seeded orders through its variant and measures redo per order
 (instance-wide `v$sysstat`, median of batches; laptop numbers are relative).
+It then times the counter write alone (+1, undone afterwards) and splits each
+order's redo into the order and its counter. The order costs the same in all
+three (about 2.5 KB); the counter is the difference: (a) rewrites the
+region's whole document (about 15 KB), (b) rewrites a 127-byte JSON document
+and its etag with its own commit (about 2.3 KB), (c) changes one number in a
+17-byte row in the order's commit (about 1.2 KB).
 The presenter's terminal command:
 
 ```sh
