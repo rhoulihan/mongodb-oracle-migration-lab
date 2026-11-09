@@ -445,7 +445,7 @@ MongoDB source (`./lab.sh generate`) and leaves it as it found it;
   plugin's reference matrix plus findings measured in this lab, which win.
 - `profile-on` (terminal): `./lab.sh mongosh src --quiet --eval
   'db.setProfilingLevel(2)'`, the method of `mongoProfileExport.sh` in
-  [mongotools](https://github.com/oramatt/mongotools).
+  [mongotools](https://github.com/oramatt/mongotools) (see [More tools](#more-tools)).
 - `capture`: about 15 s of real traffic through the order service (appName
   `order-service`) and one aggregate from a stand-in reporting script (appName
   `nightly-report`), read back from `system.profile` and classified with the
@@ -655,6 +655,17 @@ Each agent keeps the document and ETag it last read in
 `LAB_HOST_NODE=1`). The agents use the MongoDB API, which enforces the ETag; a
 write that leaves `_metadata` out is last writer wins. Details and the exact
 errors: `docs/spikes/d7-etag-mongo-api.md`.
+
+## More tools
+
+The deck's last slide. For your own migration, beyond this lab:
+
+| What | Use it for |
+|---|---|
+| [mongotools](https://github.com/oramatt/mongotools) ([wiki](https://github.com/oramatt/mongotools/wiki)), UPL | Open-source scripts. Planning: `mongoserverStatus.sh` (serverStatus once or streamed, as JSON: the method D4 uses) and `mongoProfileExport.sh` (the profiler at level 2, exported: the method D1 uses). Preflight: `mongoPrepare.py` (ORDS, the Oracle user, the MongoDB source, the MongoDB API). Door B: `mongoDump.sh` (mongodump, then mongorestore into Oracle). The wiki covers ORDS, TLS and load balancer setup and moving server-side JavaScript |
+| LiveLabs | [Developer journey](https://livelabs.oracle.com/ords/dbpm/r/livelabs/view-workshop?wid=4289), [Lift and shift](https://livelabs.oracle.com/ords/dbpm/r/livelabs/view-workshop?wid=4294), [MongoDB-compatible app](https://livelabs.oracle.com/ords/dbpm/r/livelabs/view-workshop?wid=4288) |
+| Docs | [Oracle Database API for MongoDB](https://docs.oracle.com/en/database/oracle/mongodb-api/) |
+| Your Oracle account team | Code scanning and assessment tooling for MongoDB apps |
 
 ## License
 
